@@ -505,10 +505,19 @@ internal sealed class InputInjector {
         INPUT input = new INPUT();
         input.type = INPUT_KEYBOARD;
         KEYBDINPUT keyboard = new KEYBDINPUT();
-        keyboard.wVk = _useScanCode ? (ushort)0 : key.Vk;
+        keyboard.wVk = key.Vk;
         keyboard.wScan = key.Scan;
         keyboard.dwFlags = up ? KEYEVENTF_KEYUP : 0;
-        if (_useScanCode) keyboard.dwFlags |= KEYEVENTF_SCANCODE;
+        
+        // Prevent conhost/VSCode terminal from misinterpreting scan codes as characters
+        // Arrow Keys (0x25-0x28), Space (0x20), Enter (0x0D), Backspace (0x08), Tab (0x09)
+        bool isArrowOrControl = (key.Vk >= 0x25 && key.Vk <= 0x28) || key.Vk == 0x20 || key.Vk == 0x0D || key.Vk == 0x08 || key.Vk == 0x09;
+        
+        if (_useScanCode && !isArrowOrControl) {
+            keyboard.dwFlags |= KEYEVENTF_SCANCODE;
+            keyboard.wVk = 0; // Windows ignores wVk anyway, but be clean
+        }
+        
         if (key.Extended) keyboard.dwFlags |= KEYEVENTF_EXTENDEDKEY;
         input.ki = keyboard;
         inputs.Add(input);
