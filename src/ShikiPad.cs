@@ -1169,9 +1169,8 @@ internal sealed class MapperForm : Form {
             if (hold.Pending) {
                 if (!curr && !hold.PendingReleased) {
                     hold.PendingReleased = true;
-                    hold.PendingReleasedMs = now;
                 }
-                if (ShouldCapturePendingLayer(hold, curr, now)) {
+                if (curr) {
                     UpdatePendingLayer(ref hold, layer);
                 }
 
@@ -1183,7 +1182,9 @@ internal sealed class MapperForm : Form {
                 }
 
                 bool releasedPending = hold.PendingReleased || !curr;
-                Layer resolvedLayer = hold.PendingLayer != Layer.Base && hold.PendingLayer != Layer.Reserved ? hold.PendingLayer : layer;
+                Layer resolvedLayer = hold.PendingLayer != Layer.Base && hold.PendingLayer != Layer.Reserved
+                    ? hold.PendingLayer
+                    : (releasedPending ? hold.PendingLayer : layer);
                 PhysicalKey resolvedLayerKey = ApplyFnLayer(_mapping.Lookup(resolvedLayer, (ActionButton)i));
                 if (IsFunctionKey(resolvedLayerKey)) {
                     ActivateFnKey(resolvedLayerKey, s.TouchClick);
@@ -1362,11 +1363,6 @@ internal sealed class MapperForm : Form {
 
     private bool ShouldDeferInitialAction(Layer layer) {
         return _config.ActionLayerGraceMs > 0;
-    }
-
-    private bool ShouldCapturePendingLayer(ButtonHold hold, bool currentDown, double now) {
-        if (currentDown || !hold.PendingReleased) return true;
-        return now - hold.PendingReleasedMs <= 30.0;
     }
 
     private void UpdatePendingLayer(ref ButtonHold hold, Layer layer) {
@@ -1653,7 +1649,6 @@ internal sealed class MapperForm : Form {
         public Layer PendingLayer;
         public bool PendingReleased;
         public double PendingSinceMs;
-        public double PendingReleasedMs;
         public double KeyDownMs;
         public bool RepeatEnabled;
         public double RepeatStartedMs;
