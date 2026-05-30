@@ -774,7 +774,7 @@ internal sealed class DirectHidController {
 
         State.TouchpadAvailable = false;
         State.TouchActive = false;
-        State.TouchClick = State.Create;
+        State.TouchClick = State.Create || State.Options;
     }
 
     private void ClearControllerState() {
@@ -2313,8 +2313,8 @@ internal static class Program {
         WritePanelTitle(width, panelWidth, "\u25c7 CONTROLLER PROFILE \u25c7", new Rgb(235, 247, 252));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
         WritePanelLine(width, panelWidth, "  [1] DualSense", "PS5 / Direct HID / touchpad clutch", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, "  [2] Xbox 360", "XInput / View acts as touchpad clutch", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, "  [3] Xbox Series X|S", "XInput / View acts as touchpad clutch", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [2] Xbox 360", "XInput / View or Menu touchpad clutch", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [3] Xbox Series X|S", "XInput / View or Menu touchpad clutch", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
         Console.WriteLine();
 

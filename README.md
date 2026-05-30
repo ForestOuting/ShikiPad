@@ -26,7 +26,7 @@ For shortcuts or launchers, you can skip the prompt:
 .\ShikiPad.exe --controller=xboxseries
 ```
 
-Xbox controllers do not have a DualSense touchpad. Their View/Back button acts as ShikiPad's touchpad clutch for the left-stick accumulator. Menu/Start remains the Options button, so View/Back + Menu/Start is still the emergency enable/disable hold.
+Xbox controllers do not have a DualSense touchpad. Their View/Back and Menu/Start buttons both act as ShikiPad's touchpad clutch for the left-stick accumulator. The clutch stays active while either small button is held, so you can hand the hold from the left-side button to the right-side button without dropping the accumulated keys. Menu/Start also remains the Options button, so View/Back + Menu/Start is still the emergency enable/disable hold.
 
 ## Final Input Model
 
