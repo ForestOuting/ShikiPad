@@ -101,6 +101,7 @@ The current release uses these rules to keep typing stable:
 4. If the base layer is selected, ShikiPad sends a real key down, keeps it held, and enables progressive repeat.
 5. If a combo layer such as `R1+R2` or `L1+L2` is selected, that combo is locked for that action-button press. Releasing one shoulder/trigger while the action button is still down will not fall back to a single layer.
 6. Fn-generated `F1-F12` keys are handled by the left-stick Fn state and keep their existing hold/charge behavior.
+7. `R1+R2` and `L1+L2` only become combo layers when the second key arrives within `comboLayerWindowMs`. If a trigger or shoulder has already been held longer than that window, a late overlap uses the newest single layer instead of accidentally becoming a combo.
 
 This is the intended typing behavior:
 
@@ -174,6 +175,7 @@ Current default settings:
   "baseRepeatRampMs": 1200,
   "actionLayerGraceMs": 80,
   "actionLayerSwitchGuardMs": 120,
+  "comboLayerWindowMs": 100,
   "useScanCode": true,
   "scrollSlowIntervalMs": 100,
   "scrollFastIntervalMs": 20,
@@ -187,6 +189,7 @@ Current default settings:
 |---|---:|---|
 | `actionLayerGraceMs` | 80 | Layer-confirmation window for action buttons. Increase if fast shoulder/trigger presses still fall back to base keys. Decrease if all character taps feel too delayed. |
 | `actionLayerSwitchGuardMs` | 120 | Secondary safety guard for non-base layer-change paths. Normal character input is already protected by virtual tap plus suppress-until-release. |
+| `comboLayerWindowMs` | 100 | Maximum time between R1/R2 or L1/L2 presses for a combo layer. Increase if intentional combos are hard to trigger. Decrease if late shoulder/trigger overlaps still become combos while switching layers. |
 | `repeatDelayMs` | 180 | Delay before base-layer repeat starts. |
 | `baseRepeatSlowIntervalMs` | 160 | First repeat interval for held base-layer keys. |
 | `repeatIntervalMs` | 20 | Fastest repeat interval after the ramp completes. |
@@ -194,6 +197,8 @@ Current default settings:
 | `scrollSlowIntervalMs` | 100 | Mouse wheel interval when the left stick barely crosses the wheel direction threshold. |
 | `scrollFastIntervalMs` | 20 | Mouse wheel interval near full stick deflection. |
 | `r3FreezeMs` | 60 | Short mouse-movement freeze after R3, avoiding accidental pointer drift while right-clicking. |
+
+To tune shoulder/trigger combo timing, edit `comboLayerWindowMs` in `shikipad.json` and restart ShikiPad. A practical range is 70-140 ms: lower values favor fast layer switching, higher values make intentional combos easier.
 
 ### Analog Settings
 
@@ -219,6 +224,7 @@ Important locations in `src/ShikiPad.cs`:
 | Config file loading/saving | `Config.Load` and `Config.Save` |
 | Layer mapping tables | `MappingEngine` constructor |
 | Latest-layer resolution | `MappingEngine.Resolve` |
+| Combo timing window | `comboLayerWindowMs` in `shikipad.json`, used by `MappingEngine.Resolve` |
 | Startup controller selection | `Program.SelectControllerProfile`, `DirectHidController` constructor |
 | DualSense Direct HID parsing | `DirectHidController.ParseReport` |
 | Xbox XInput parsing | `DirectHidController.XInputLoop`, `DirectHidController.ParseXInput` |

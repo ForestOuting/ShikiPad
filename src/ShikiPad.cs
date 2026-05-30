@@ -70,8 +70,8 @@ internal sealed class Config {
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.2;
     public double RightStickEpsilon = 0.002;
-    public double LeftStickEnterDeadzone = 0.30;
-    public double LeftStickExitDeadzone = 0.25;
+    public double LeftStickEnterDeadzone = 0.50;
+    public double LeftStickExitDeadzone = 0.35;
     public double TriggerPressThreshold = 0.35;
     public double TriggerReleaseThreshold = 0.25;
     public double TouchpadSwipeThreshold = 0.22;
@@ -82,6 +82,7 @@ internal sealed class Config {
     public int BaseRepeatRampMs = 1200;
     public int ActionLayerGraceMs = 80;
     public int ActionLayerSwitchGuardMs = 120;
+    public int ComboLayerWindowMs = 100;
     public bool UseScanCode = true;
     public int ScrollSlowIntervalMs = 100;
     public int ScrollFastIntervalMs = 20;
@@ -124,6 +125,7 @@ internal sealed class Config {
             cfg.BaseRepeatRampMs = GetInt(text, "baseRepeatRampMs", cfg.BaseRepeatRampMs);
             cfg.ActionLayerGraceMs = GetInt(text, "actionLayerGraceMs", cfg.ActionLayerGraceMs);
             cfg.ActionLayerSwitchGuardMs = GetInt(text, "actionLayerSwitchGuardMs", cfg.ActionLayerSwitchGuardMs);
+            cfg.ComboLayerWindowMs = GetInt(text, "comboLayerWindowMs", cfg.ComboLayerWindowMs);
             cfg.UseScanCode = GetBool(text, "useScanCode", cfg.UseScanCode);
             cfg.ScrollSlowIntervalMs = GetInt(text, "scrollSlowIntervalMs", cfg.ScrollSlowIntervalMs);
             cfg.ScrollFastIntervalMs = GetInt(text, "scrollFastIntervalMs", cfg.ScrollFastIntervalMs);
@@ -152,7 +154,13 @@ internal sealed class Config {
             if (!text.Contains("\"baseRepeatSlowIntervalMs\"") ||
                 !text.Contains("\"baseRepeatRampMs\"") ||
                 !text.Contains("\"actionLayerGraceMs\"") ||
-                !text.Contains("\"actionLayerSwitchGuardMs\"")) {
+                !text.Contains("\"actionLayerSwitchGuardMs\"") ||
+                !text.Contains("\"comboLayerWindowMs\"")) {
+                shouldSaveMigratedConfig = true;
+            }
+            if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
+                Logger.Warn("invalid comboLayerWindowMs; using 100");
+                cfg.ComboLayerWindowMs = 100;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
@@ -195,6 +203,7 @@ internal sealed class Config {
         Write(sb, "baseRepeatRampMs", BaseRepeatRampMs, true);
         Write(sb, "actionLayerGraceMs", ActionLayerGraceMs, true);
         Write(sb, "actionLayerSwitchGuardMs", ActionLayerSwitchGuardMs, true);
+        Write(sb, "comboLayerWindowMs", ComboLayerWindowMs, true);
         Write(sb, "useScanCode", UseScanCode, true);
         Write(sb, "scrollSlowIntervalMs", ScrollSlowIntervalMs, true);
         Write(sb, "scrollFastIntervalMs", ScrollFastIntervalMs, true);
@@ -285,21 +294,30 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.L1L2] = new PhysicalKey[] { PhysicalKey.Apostrophe, PhysicalKey.Slash, PhysicalKey.Semicolon, PhysicalKey.LeftBracket, PhysicalKey.RightBracket, PhysicalKey.Backslash, PhysicalKey.Grave, PhysicalKey.None };
     }
 
-    public Layer Resolve(bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms) {
+    public Layer Resolve(bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, double comboLayerWindowMs) {
         if (!l1 && !r1 && !l2 && !r2) return Layer.Base;
 
         Layer layer = Layer.Reserved;
         double bestMs = double.NegativeInfinity;
         int bestRank = 0;
+        double comboWindow = Math.Max(0.0, comboLayerWindowMs);
 
         ConsiderLayer(l1, Layer.L1, l1Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(r1, Layer.R1, r1Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(l2, Layer.L2, l2Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(r2, Layer.R2, r2Ms, 1, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(r1 && r2, Layer.R1R2, Math.Max(r1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(l1 && l2, Layer.L1L2, Math.Max(l1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(r1, r2, r1Ms, r2Ms, comboWindow), Layer.R1R2, Math.Max(r1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(l1, l2, l1Ms, l2Ms, comboWindow), Layer.L1L2, Math.Max(l1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
 
         return layer;
+    }
+
+    public Layer Resolve(bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms) {
+        return Resolve(l1, r1, l2, r2, l1Ms, r1Ms, l2Ms, r2Ms, 100.0);
+    }
+
+    private static bool IsComboWithinWindow(bool a, bool b, double aMs, double bMs, double windowMs) {
+        return a && b && Math.Abs(aMs - bMs) <= windowMs;
     }
 
     private static void ConsiderLayer(bool active, Layer candidate, double timestampMs, int rank, ref Layer layer, ref double bestMs, ref int bestRank) {
@@ -1041,6 +1059,7 @@ internal static class NativeMethods {
 internal sealed class MapperForm : Form {
     private readonly DirectHidController _hid;
     private readonly Config _config;
+    private readonly ControllerProfile _controllerProfile;
     private readonly InputInjector _injector;
     private readonly MappingEngine _mapping = new MappingEngine();
     
@@ -1051,6 +1070,7 @@ internal sealed class MapperForm : Form {
     private bool _debugAltTab;
     private bool _debugSources;
     private bool _enabled;
+    private bool _printedConnectedGuide;
     private bool _l2Pressed;
     private bool _r2Pressed;
     private StickDirection _leftDirection = StickDirection.None;
@@ -1078,6 +1098,7 @@ internal sealed class MapperForm : Form {
 
     public MapperForm(Config config, ControllerProfile controllerProfile, bool debugAltTab, bool debugSources, bool traceInput, bool traceSendinput) {
         _config = config;
+        _controllerProfile = controllerProfile;
         _hid = new DirectHidController(controllerProfile);
         _debugAltTab = debugAltTab;
         _debugSources = debugSources;
@@ -1135,10 +1156,15 @@ internal sealed class MapperForm : Form {
 
         UpdateEmergency(s, now);
         if (!s.Connected || !_enabled) {
+            if (!s.Connected) _printedConnectedGuide = false;
             ReleaseHeldActionKeys();
             _leftDirection = StickDirection.None;
             _scrollNextMs = 0;
             return;
+        }
+        if (!_printedConnectedGuide) {
+            Program.PrintControllerGuide(_controllerProfile, _hid.DisplayName, _config);
+            _printedConnectedGuide = true;
         }
         UpdateTriggers(s, now);
         UpdateLeftStick(s, now);
@@ -1319,7 +1345,7 @@ internal sealed class MapperForm : Form {
 
     private void UpdateActionButtons(ControllerState s, double now) {
         bool[] currentDown = new bool[] { s.Up, s.Right, s.Square, s.Triangle, s.Left, s.Down, s.Cross, s.Circle };
-        Layer layer = _mapping.Resolve(s.L1, s.R1, _l2Pressed, _r2Pressed, _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs);
+        Layer layer = _mapping.Resolve(s.L1, s.R1, _l2Pressed, _r2Pressed, _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs, _config.ComboLayerWindowMs);
 
         for (int i = 0; i < 8; i++) {
             bool prev = _prevDown[i];
@@ -1850,9 +1876,8 @@ internal static class Program {
         };
 
         Console.WriteLine();
-        WriteNeonRule(width, panelWidth, "SHIKIPAD BOOT SEQUENCE");
+        WriteNeonRule(width, panelWidth, "SHIKIPAD CONTROL SURFACE");
         WriteSeasonRail(width, panelWidth);
-        WriteAtmosphereLine(width, panelWidth, 0);
         WriteMutedCentered(width, "CONTROL SURFACE READY");
         WriteLogoHalo(width, panelWidth, true);
         for (int i = 0; i < logo.Length; i++) {
@@ -1860,7 +1885,6 @@ internal static class Program {
         }
         WriteLogoHalo(width, panelWidth, false);
         WritePixelSubline(width, panelWidth);
-        WriteAtmosphereLine(width, panelWidth, 1);
         WriteStatusCard(width, panelWidth);
         WriteSeasonDivider(width, panelWidth);
         Console.WriteLine("\x1b[0m");
@@ -1893,6 +1917,55 @@ internal static class Program {
         Console.WriteLine("\x1b[0m");
     }
 
+    public static void PrintControllerGuide(ControllerProfile profile, string backend, Config config) {
+        EnableAnsi();
+        int width = GetConsoleWidth();
+        int panelWidth = Math.Min(112, Math.Max(72, width - 6));
+        bool zh = IsChineseUi();
+        bool xbox = profile == ControllerProfile.Xbox360 || profile == ControllerProfile.XboxSeries;
+
+        Console.WriteLine();
+        WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
+        WritePanelTitle(width, panelWidth, zh ? "\u25c7 \u6620\u5c04\u901f\u67e5 \u25c7" : "\u25c7 MAPPING QUICK REFERENCE \u25c7", new Rgb(235, 247, 252));
+        WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+
+        if (zh) {
+            WritePanelLine(width, panelWidth, "  \u5df2\u8fde\u63a5", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u53f3\u6447\u6746", "\u79fb\u52a8\u9f20\u6807, R3 \u53f3\u952e, L3 \u5de6\u952e", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5de6\u6447\u6746", "\u2191\u6eda\u8f6e\u4e0a  \u2197 Fn  \u2192 Win  \u2198 Alt  \u2193\u6eda\u8f6e\u4e0b  \u2199 Ctrl  \u2190 Shift  \u2196 Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+R2: 7 8 9 0 - = , .    L1+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/R2 \u6216 L1/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309; \u8d85\u65f6\u6309\u6700\u540e\u5355\u5c42", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Back \u6216 Menu/Start \u4efb\u610f\u4e00\u4e2a\u6309\u4f4f\u90fd\u7b97\u84c4\u529b" : "\u6309\u4f4f DualSense \u89e6\u63a7\u677f\u8fdb\u5165\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Fn / \u9000\u51fa", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12    Q + Enter \u9000\u51fa", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
+        } else {
+            WritePanelLine(width, panelWidth, "  Connected", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Right stick", "Move mouse, R3 right click, L3 left click", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Left stick", "Up wheel, UpRight Fn, Right Win, DownRight Alt, Down Ctrl, Left Shift, UpLeft Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Base layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combo layers", "R1+R2: 7 8 9 0 - = , .    L1+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combo window", "R1/R2 or L1/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Clutch", xbox ? "Hold either View/Back or Menu/Start for touchpad charge" : "Hold the DualSense touchpad for touchpad charge", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Fn / Exit", "Left stick UpRight + 1..0,-,= => F1..F12    Q + Enter exits", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
+        }
+
+        WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
+        Console.WriteLine("\x1b[0m");
+    }
+
+    private static bool IsChineseUi() {
+        try {
+            string lang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            return String.Equals(lang, "zh", StringComparison.OrdinalIgnoreCase);
+        } catch {
+            return false;
+        }
+    }
+
     private static void EnableAnsi() {
         try {
             IntPtr handle = GetStdHandle(-11);
@@ -1916,9 +1989,10 @@ internal static class Program {
     }
 
     private static string CenterLine(int width, string text) {
-        if (text.Length >= width) return text.Substring(0, width);
-        int left = (width - text.Length) / 2;
-        return new string(' ', left) + text + new string(' ', width - left - text.Length);
+        int textWidth = DisplayWidth(text);
+        if (textWidth >= width) return TrimToWidth(text, width);
+        int left = (width - textWidth) / 2;
+        return new string(' ', left) + text + new string(' ', width - left - textWidth);
     }
 
     private struct Rgb {
@@ -2041,10 +2115,11 @@ internal static class Program {
 
     private static void WriteLogoHalo(int width, int panelWidth, bool top) {
         int left = (width - panelWidth) / 2;
-        string fill = top ? "\u00b7\u02d9\u00b7" : "\u00b7\u22c6\u00b7";
-        string line = "\u2727 " + RepeatPattern(fill, Math.Max(0, panelWidth - 4)) + " \u2727";
+        string line = top
+            ? CenterLine(panelWidth, "\u2727  seasonal signal online  \u25c7  input layers armed  \u2727")
+            : CenterLine(panelWidth, "\u25c7  physical keys  \u2506  mouse curve  \u2506  touch clutch  \u25c7");
         Console.Write(new string(' ', left));
-        WriteGradientText(line.Substring(0, Math.Min(line.Length, panelWidth)), new Rgb[] {
+        WriteGradientText(TrimToWidth(line, panelWidth), new Rgb[] {
             new Rgb(70, 213, 255), new Rgb(182, 126, 255), new Rgb(255, 132, 205),
             new Rgb(255, 216, 117), new Rgb(255, 255, 255)
         });
@@ -2055,7 +2130,7 @@ internal static class Program {
         int left = (width - panelWidth) / 2;
         string text = "\u25a3 seasonal input mapper  \u25b8  physical keys / mouse / touch charge";
         Console.Write(new string(' ', left));
-        WriteRgb(new Rgb(79, 97, 108), PadRight("", (panelWidth - text.Length) / 2));
+        WriteRgb(new Rgb(79, 97, 108), PadRight("", (panelWidth - DisplayWidth(text)) / 2));
         WriteGradientText(text, new Rgb[] { new Rgb(120, 240, 255), new Rgb(255, 140, 205), new Rgb(255, 218, 112) });
         Console.WriteLine();
     }
@@ -2136,7 +2211,7 @@ internal static class Program {
         int inner = panelWidth - 2;
         int labelWidth = Math.Min(28, Math.Max(18, inner / 3));
         int valueWidth = inner - labelWidth - 3;
-        if (value.Length > valueWidth) value = value.Substring(0, Math.Max(0, valueWidth - 1)) + "\u2026";
+        if (DisplayWidth(value) > valueWidth) value = TrimToWidth(value, valueWidth);
 
         Console.Write(new string(' ', left));
         WriteRgb(new Rgb(72, 91, 101), "\u2502");
@@ -2148,14 +2223,51 @@ internal static class Program {
     }
 
     private static string PadRight(string text, int width) {
-        if (text.Length >= width) return text.Substring(0, width);
-        return text + new string(' ', width - text.Length);
+        if (width <= 0) return "";
+        int textWidth = DisplayWidth(text);
+        if (textWidth >= width) return TrimToWidth(text, width);
+        return text + new string(' ', width - textWidth);
     }
 
     private static string TrimToWidth(string text, int width) {
-        if (text.Length <= width) return text;
-        if (width <= 1) return text.Substring(0, width);
-        return text.Substring(0, width - 1) + "\u2026";
+        if (width <= 0) return "";
+        if (DisplayWidth(text) <= width) return text;
+        if (width <= 1) return "\u2026";
+
+        StringBuilder sb = new StringBuilder();
+        int used = 0;
+        for (int i = 0; i < text.Length; i++) {
+            char c = text[i];
+            int cw = CharDisplayWidth(c);
+            if (used + cw > width - 1) break;
+            sb.Append(c);
+            used += cw;
+        }
+        sb.Append("\u2026");
+        return sb.ToString();
+    }
+
+    private static int DisplayWidth(string text) {
+        if (String.IsNullOrEmpty(text)) return 0;
+        int width = 0;
+        for (int i = 0; i < text.Length; i++) width += CharDisplayWidth(text[i]);
+        return width;
+    }
+
+    private static int CharDisplayWidth(char c) {
+        if (c >= 0x1100 &&
+            (c <= 0x115F ||
+             c == 0x2329 || c == 0x232A ||
+             (c >= 0x2E80 && c <= 0xA4CF) ||
+             (c >= 0xAC00 && c <= 0xD7A3) ||
+             (c >= 0xF900 && c <= 0xFAFF) ||
+             (c >= 0xFE10 && c <= 0xFE19) ||
+             (c >= 0xFE30 && c <= 0xFE6F) ||
+             (c >= 0xFF00 && c <= 0xFF60) ||
+             (c >= 0xFFE0 && c <= 0xFFE6))) {
+            return 2;
+        }
+        return 1;
     }
 
     private static string RepeatPattern(string pattern, int width) {
@@ -2241,7 +2353,7 @@ internal static class Program {
         };
 
         if (HasArg(args, "--layer-test")) {
-            PrintLayerTest();
+            PrintLayerTest(config);
             return 0;
         }
         if (HasArg(args, "--mouse-test")) {
@@ -2452,7 +2564,7 @@ internal static class Program {
         }
     }
 
-    private static void PrintLayerTest() {
+    private static void PrintLayerTest(Config config) {
         MappingEngine m = new MappingEngine();
         Layer[] layers = new Layer[] { Layer.Base, Layer.L1, Layer.R1, Layer.L2, Layer.R2, Layer.R1R2, Layer.L1L2 };
         Console.WriteLine("Action button order: Up, Right, Square, Triangle, Left, Down, Cross, Circle");
@@ -2465,20 +2577,26 @@ internal static class Program {
             }
             Console.WriteLine();
         }
-        Console.WriteLine("Layer priority: latest triggered layer wins; R1+R2 and L1+L2 activate when the second key is pressed.");
+        Console.WriteLine("Layer priority: latest triggered layer wins; R1+R2 and L1+L2 activate only inside comboLayerWindowMs.");
+        Console.WriteLine("comboLayerWindowMs = " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine();
         Console.WriteLine("Resolution checks:");
-        PrintResolutionCheck(m, "R1 then R2 + Square", false, true, false, true, 0, 10, 0, 20, ActionButton.Square);
-        PrintResolutionCheck(m, "R1+R2 then L1 + Square", true, true, false, true, 30, 10, 0, 20, ActionButton.Square);
-        PrintResolutionCheck(m, "R1+R2 release R2 + Square", false, true, false, false, 0, 10, 0, 20, ActionButton.Square);
-        PrintResolutionCheck(m, "L1 then L2 + Up", true, false, true, false, 10, 0, 20, 0, ActionButton.Up);
-        PrintResolutionCheck(m, "L1+L2 then R2 + Up", true, false, true, true, 10, 0, 20, 30, ActionButton.Up);
-        PrintResolutionCheck(m, "R1 then L1 + Square", true, true, false, false, 20, 10, 0, 0, ActionButton.Square);
-        PrintResolutionCheck(m, "L2 then R2 + Square", false, false, true, true, 0, 0, 10, 20, ActionButton.Square);
+        double delayedMs = config.ComboLayerWindowMs + 120.0;
+        PrintResolutionCheck(config, m, "R1 then R2 + Square", false, true, false, true, 0, 10, 0, 20, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R2 held then R1 after window + Square", false, true, false, true, 0, delayedMs, 0, 10, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R1 held then R2 after window + Square", false, true, false, true, 0, 10, 0, delayedMs, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R1+R2 then L1 + Square", true, true, false, true, 30, 10, 0, 20, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R1+R2 release R2 + Square", false, true, false, false, 0, 10, 0, 20, ActionButton.Square);
+        PrintResolutionCheck(config, m, "L1 then L2 + Up", true, false, true, false, 10, 0, 20, 0, ActionButton.Up);
+        PrintResolutionCheck(config, m, "L2 held then L1 after window + Up", true, false, true, false, delayedMs, 0, 10, 0, ActionButton.Up);
+        PrintResolutionCheck(config, m, "L1 held then L2 after window + Up", true, false, true, false, 10, 0, delayedMs, 0, ActionButton.Up);
+        PrintResolutionCheck(config, m, "L1+L2 then R2 + Up", true, false, true, true, 10, 0, 20, 30, ActionButton.Up);
+        PrintResolutionCheck(config, m, "R1 then L1 + Square", true, true, false, false, 20, 10, 0, 0, ActionButton.Square);
+        PrintResolutionCheck(config, m, "L2 then R2 + Square", false, false, true, true, 0, 0, 10, 20, ActionButton.Square);
     }
 
-    private static void PrintResolutionCheck(MappingEngine mapping, string label, bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, ActionButton action) {
-        Layer layer = mapping.Resolve(l1, r1, l2, r2, l1Ms, r1Ms, l2Ms, r2Ms);
+    private static void PrintResolutionCheck(Config config, MappingEngine mapping, string label, bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, ActionButton action) {
+        Layer layer = mapping.Resolve(l1, r1, l2, r2, l1Ms, r1Ms, l2Ms, r2Ms, config.ComboLayerWindowMs);
         PhysicalKey key = mapping.Lookup(layer, action);
         Console.WriteLine(label + " = " + LayerDisplayName(layer) + " / " + LayerTestKeyName(key));
     }
