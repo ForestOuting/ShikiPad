@@ -352,12 +352,19 @@ internal sealed class InputInjector {
         public bool Extended;
     }
 
+    private static readonly object s_instancesLock = new object();
+    private static readonly List<InputInjector> s_instances = new List<InputInjector>();
+
     private readonly Dictionary<PhysicalKey, KeyDef> _keys = new Dictionary<PhysicalKey, KeyDef>();
+    private readonly HashSet<PhysicalKey> _heldKeys = new HashSet<PhysicalKey>();
+    private readonly object _heldLock = new object();
     private readonly KeyDef _shift;
     private readonly KeyDef _ctrl;
     private readonly KeyDef _alt;
     private readonly KeyDef _win;
     private readonly bool _useScanCode;
+    private bool _leftMouseHeld;
+    private bool _rightMouseHeld;
 
     public bool TraceInput;
     public bool TraceSendinput;
@@ -371,6 +378,18 @@ internal sealed class InputInjector {
         _ctrl = Resolve(0xA2, false);
         _alt = Resolve(0xA4, false);
         _win = Resolve(0x5B, true);
+        lock (s_instancesLock) s_instances.Add(this);
+    }
+
+    public static void ReleaseAllRegistered() {
+        InputInjector[] injectors;
+        lock (s_instancesLock) injectors = s_instances.ToArray();
+        for (int i = 0; i < injectors.Length; i++) {
+            try {
+                injectors[i].ReleaseAll();
+            } catch {
+            }
+        }
     }
 
 
@@ -379,6 +398,7 @@ internal sealed class InputInjector {
         List<INPUT> inputs = new List<INPUT>();
         AddKey(inputs, _keys[key], false);
         Send(inputs, "KeyDown(" + key + ")");
+        lock (_heldLock) _heldKeys.Add(key);
     }
 
     public void KeyUp(PhysicalKey key) {
@@ -386,6 +406,7 @@ internal sealed class InputInjector {
         List<INPUT> inputs = new List<INPUT>();
         AddKey(inputs, _keys[key], true);
         Send(inputs, "KeyUp(" + key + ")");
+        lock (_heldLock) _heldKeys.Remove(key);
     }
 
     public void KeyTap(PhysicalKey key, bool shift, bool ctrl, bool alt, bool win) {
@@ -408,12 +429,14 @@ internal sealed class InputInjector {
         List<INPUT> inputs = new List<INPUT>();
         AddKey(inputs, ModifierDef(modifier), false);
         Send(inputs, "ModifierDown(" + modifier + ")");
+        lock (_heldLock) _heldKeys.Add(ModifierKey(modifier));
     }
 
     public void ModifierUp(HeldModifier modifier) {
         List<INPUT> inputs = new List<INPUT>();
         AddKey(inputs, ModifierDef(modifier), true);
         Send(inputs, "ModifierUp(" + modifier + ")");
+        lock (_heldLock) _heldKeys.Remove(ModifierKey(modifier));
     }
 
     public void MouseMove(int dx, int dy) {
@@ -440,6 +463,10 @@ internal sealed class InputInjector {
         List<INPUT> inputs = new List<INPUT>();
         inputs.Add(input);
         Send(inputs, "MouseButton(" + button + ", " + down + ")");
+        lock (_heldLock) {
+            if (button == 0) _leftMouseHeld = down;
+            else _rightMouseHeld = down;
+        }
     }
 
     public void MouseWheel(int delta) {
@@ -456,22 +483,24 @@ internal sealed class InputInjector {
 
     public void ReleaseAll() {
         List<INPUT> inputs = new List<INPUT>();
-        AddKey(inputs, _shift, true);
-        AddKey(inputs, _ctrl, true);
-        AddKey(inputs, _alt, true);
-        AddKey(inputs, _win, true);
-        INPUT left = new INPUT();
-        left.type = INPUT_MOUSE;
-        MOUSEINPUT leftMouse = new MOUSEINPUT();
-        leftMouse.dwFlags = MOUSEEVENTF_LEFTUP;
-        left.mi = leftMouse;
-        inputs.Add(left);
-        INPUT right = new INPUT();
-        right.type = INPUT_MOUSE;
-        MOUSEINPUT rightMouse = new MOUSEINPUT();
-        rightMouse.dwFlags = MOUSEEVENTF_RIGHTUP;
-        right.mi = rightMouse;
-        inputs.Add(right);
+        lock (_heldLock) {
+            foreach (PhysicalKey key in _heldKeys) {
+                KeyDef def;
+                if (_keys.TryGetValue(key, out def)) AddKey(inputs, def, true);
+            }
+
+            AddKey(inputs, _shift, true);
+            AddKey(inputs, _ctrl, true);
+            AddKey(inputs, _alt, true);
+            AddKey(inputs, _win, true);
+
+            if (_leftMouseHeld) AddMouseButton(inputs, 0, false);
+            if (_rightMouseHeld) AddMouseButton(inputs, 1, false);
+
+            _heldKeys.Clear();
+            _leftMouseHeld = false;
+            _rightMouseHeld = false;
+        }
         Send(inputs, "ReleaseAll");
     }
 
@@ -543,6 +572,16 @@ internal sealed class InputInjector {
         }
     }
 
+    private static PhysicalKey ModifierKey(HeldModifier modifier) {
+        switch (modifier) {
+            case HeldModifier.Shift: return PhysicalKey.LShift;
+            case HeldModifier.Ctrl: return PhysicalKey.LCtrl;
+            case HeldModifier.Alt: return PhysicalKey.LAlt;
+            case HeldModifier.Win: return PhysicalKey.LWin;
+            default: return PhysicalKey.None;
+        }
+    }
+
     private static KeyDef Resolve(ushort vk, bool extended) {
         uint raw = MapVirtualKey(vk, MAPVK_VK_TO_VSC_EX);
         KeyDef def = new KeyDef();
@@ -564,6 +603,16 @@ internal sealed class InputInjector {
         
         if (key.Extended) keyboard.dwFlags |= KEYEVENTF_EXTENDEDKEY;
         input.ki = keyboard;
+        inputs.Add(input);
+    }
+
+    private void AddMouseButton(List<INPUT> inputs, int button, bool down) {
+        INPUT input = new INPUT();
+        input.type = INPUT_MOUSE;
+        MOUSEINPUT mouse = new MOUSEINPUT();
+        if (button == 0) mouse.dwFlags = down ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP;
+        else mouse.dwFlags = down ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_RIGHTUP;
+        input.mi = mouse;
         inputs.Add(input);
     }
 
@@ -1939,7 +1988,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+R2: 7 8 9 0 - = , .    L1+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/R2 \u6216 L1/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309; \u8d85\u65f6\u6309\u6700\u540e\u5355\u5c42", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Back \u6216 Menu/Start \u4efb\u610f\u4e00\u4e2a\u6309\u4f4f\u90fd\u7b97\u84c4\u529b" : "\u6309\u4f4f DualSense \u89e6\u63a7\u677f\u8fdb\u5165\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Fn / \u9000\u51fa", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12    Q + Enter \u9000\u51fa", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         } else {
             WritePanelLine(width, panelWidth, "  Connected", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Right stick", "Move mouse, R3 right click, L3 left click", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
@@ -1950,7 +1999,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  Combo layers", "R1+R2: 7 8 9 0 - = , .    L1+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combo window", "R1/R2 or L1/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Clutch", xbox ? "Hold either View/Back or Menu/Start for touchpad charge" : "Hold the DualSense touchpad for touchpad charge", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Fn / Exit", "Left stick UpRight + 1..0,-,= => F1..F12    Q + Enter exits", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         }
 
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
@@ -2144,7 +2193,7 @@ internal static class Program {
             "Keyboard and mouse ready", "READY",
             new Rgb(113, 255, 194), new Rgb(128, 224, 255));
         WritePanelLine(width, panelWidth, "  Season cycle", "Spring / Summer / Autumn / Winter", new Rgb(255, 211, 106), new Rgb(235, 247, 252));
-        WritePanelLine(width, panelWidth, "  Exit command", "Press Q then Enter to exit", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  Input safety", "Auto-release on close", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
     }
 
@@ -2280,7 +2329,7 @@ internal static class Program {
 
     private static void WriteLiveStatusBar(int width, int panelWidth) {
         int left = (width - panelWidth) / 2;
-        string text = "\u25c6 Live session  \u2506  Press Q then Enter to exit";
+        string text = "\u25c6 Live session";
         string rail = "\u256d" + RepeatPattern("\u2500\u22c5", panelWidth - 2) + "\u256e";
         string bottom = "\u2570" + RepeatPattern("\u2500\u22c5", panelWidth - 2) + "\u256f";
 
@@ -2304,7 +2353,7 @@ internal static class Program {
         return "\u2026" + path.Substring(path.Length - maxLength + 1);
     }
 
-    private static InputInjector _exitInjector;
+    private static bool _shutdownReleaseRegistered;
 
     [STAThread]
     private static int Main(string[] args) {
@@ -2314,6 +2363,7 @@ internal static class Program {
         Directory.SetCurrentDirectory(root);
         Logger.Init(root);
         Config config = Config.Load(Path.Combine(root, "shikipad.json"));
+        RegisterShutdownRelease();
         bool debugAltTab = HasArg(args, "--debug-alt-tab");
         bool debugSources = HasArg(args, "--debug-sources");
         bool traceInput = HasArg(args, "--trace-input");
@@ -2345,13 +2395,6 @@ internal static class Program {
         }
         
         
-        _exitInjector = new InputInjector(config.UseScanCode);
-        Console.CancelKeyPress += delegate(object sender, ConsoleCancelEventArgs e) {
-            e.Cancel = true;
-            _exitInjector.ReleaseAll();
-            Application.Exit();
-        };
-
         if (HasArg(args, "--layer-test")) {
             PrintLayerTest(config);
             return 0;
@@ -2392,22 +2435,27 @@ internal static class Program {
 
         
         PrintRunHint();
-        Thread inputThread = new Thread(delegate() {
-            while (true) {
-                string line = Console.ReadLine();
-                if (line != null && line.Trim().Equals("q", StringComparison.OrdinalIgnoreCase)) {
-                    Application.Exit();
-                    return;
-                }
-            }
-        });
-        inputThread.IsBackground = true;
-        inputThread.Start();
-
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new MapperForm(config, controllerProfile, debugAltTab, debugSources, traceInput, traceSendinput));
         return 0;
+    }
+
+    private static void RegisterShutdownRelease() {
+        if (_shutdownReleaseRegistered) return;
+        _shutdownReleaseRegistered = true;
+        Application.ApplicationExit += delegate(object sender, EventArgs e) {
+            InputInjector.ReleaseAllRegistered();
+        };
+        AppDomain.CurrentDomain.ProcessExit += delegate(object sender, EventArgs e) {
+            InputInjector.ReleaseAllRegistered();
+        };
+        Application.ThreadException += delegate(object sender, ThreadExceptionEventArgs e) {
+            InputInjector.ReleaseAllRegistered();
+        };
+        AppDomain.CurrentDomain.UnhandledException += delegate(object sender, UnhandledExceptionEventArgs e) {
+            InputInjector.ReleaseAllRegistered();
+        };
     }
 
     private static ControllerProfile SelectControllerProfile(string[] args) {

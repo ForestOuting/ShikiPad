@@ -28,6 +28,10 @@ For shortcuts or launchers, you can skip the prompt:
 
 Xbox controllers do not have a DualSense touchpad. Their View/Back and Menu/Start buttons both act as ShikiPad's touchpad clutch for the left-stick accumulator. The clutch stays active while either small button is held, so you can hand the hold from the left-side button to the right-side button without dropping the accumulated keys. Menu/Start also remains the Options button, so View/Back + Menu/Start is still the emergency enable/disable hold.
 
+## Stopping ShikiPad
+
+ShikiPad has no terminal exit command. When the program closes, it automatically releases keys and mouse buttons that ShikiPad was holding, including base-layer holds, left-stick modifiers, Fn holds, and mouse buttons.
+
 ## Final Input Model
 
 ### Right Stick
@@ -234,6 +238,7 @@ Important locations in `src/ShikiPad.cs`:
 | Left-stick 8-way mapping | `GetLeftStickKey`, `UpdateLeftStick`, `Sector` |
 | Fn to F1-F12 translation | `TranslateToFKey`, `ApplyFnLayer`, `ActivateFnKey` |
 | Right-stick mouse movement | `UpdateRightStick` |
+| Shutdown input release | `InputInjector.ReleaseAll`, `Program.RegisterShutdownRelease`, `MapperForm.OnFormClosing` |
 | Startup terminal UI | `Program.PrintGradientBanner` and related `Write...` helpers |
 
 Mapping table edits:
@@ -303,4 +308,5 @@ This final release is optimized for practical fast typing:
 - Base layer holds and repeats.
 - Combo layers do not fall back while the action button is still held.
 - Pending layer capture stops when the action button is released, preventing cross-character contamination.
+- Shutdown paths automatically release ShikiPad-held inputs without a terminal exit command.
 - Startup terminal UI uses ANSI color and remains a true console interface.

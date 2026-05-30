@@ -26,12 +26,12 @@ These are terminal-only layouts for Windows Terminal, CMD, and PowerShell. They 
 │┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄│
 │▸ Controller awake  | READY       ┆  ▸ Keyboard and mouse ready  | READY  │
 │  Season cycle                  ┆ Spring / Summer / Autumn / Winter       │
-│  Exit command                  ┆ Press Q then Enter to exit              │
+│  Input safety                  ┆ Releases held inputs when app closes    │
 ╰──────────────────────────────────────────────────────────────────────────╯
 ─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅
       ✿  Spring memory   ◇  Summer signal   ◈  Autumn keylight   ❄  Winter layer online
 ╭─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅╮
-│                 ◆ Live session  ┆  Press Q then Enter to exit           │
+│                                ◆ Live session                           │
 ╰─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅─⋅╯
 ```
 
@@ -85,9 +85,9 @@ string[] logo = {
 │ Controller awake          | READY                                     │
 │ Keyboard and mouse ready  | READY                                     │
 │ Season cycle              | Spring / Summer / Autumn / Winter         │
-│ Exit command              | Press Q then Enter to exit                │
+│ Input safety              | Releases held inputs when app closes      │
 ╰──────────────────────────────────────────────────────────────────────╯
-◆ Live session              | Press Q then Enter to exit
+◆ Live session
 ```
 
 ## Variant B: Cute Pixel
@@ -108,9 +108,9 @@ string[] logo = {
 │ Controller awake        : READY                                      │
 │ Keyboard and mouse ready: READY                                      │
 │ Season cycle            : Spring / Summer / Autumn / Winter          │
-│ Exit command            : Press Q then Enter to exit                 │
+│ Input safety            : Releases held inputs when app closes       │
 └──────────────────────────────────────────────────────────────────────┘
-◆ Live session            : Press Q then Enter to exit
+◆ Live session
 ```
 
 ## Variant C: Cyber Neon
@@ -131,7 +131,7 @@ string[] logo = {
 │ Controller awake          ┆ READY                                     │
 │ Keyboard and mouse ready  ┆ READY                                     │
 │ Season cycle              ┆ Spring / Summer / Autumn / Winter         │
-│ Exit command              ┆ Press Q then Enter to exit                │
+│ Input safety              ┆ Releases held inputs when app closes      │
 ╰──────────────────────────────────────────────────────────────────────╯
-◆ Live session              ┆ Press Q then Enter to exit
+◆ Live session
 ```
