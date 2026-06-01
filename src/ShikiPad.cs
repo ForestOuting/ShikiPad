@@ -83,7 +83,7 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 80;
     public int LayerTakeoverWindowMs = 35;
     public int ActionLayerSwitchGuardMs = 120;
-    public int ComboLayerWindowMs = 100;
+    public int ComboLayerWindowMs = 80;
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 100;
@@ -170,8 +170,13 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
-                Logger.Warn("invalid comboLayerWindowMs; using 100");
-                cfg.ComboLayerWindowMs = 100;
+                Logger.Warn("invalid comboLayerWindowMs; using 80");
+                cfg.ComboLayerWindowMs = 80;
+                shouldSaveMigratedConfig = true;
+            }
+            if (cfg.ComboLayerWindowMs == 100) {
+                Logger.Info("migrating comboLayerWindowMs from 100 to 80");
+                cfg.ComboLayerWindowMs = 80;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
@@ -326,7 +331,7 @@ internal sealed class MappingEngine {
     }
 
     public Layer Resolve(bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms) {
-        return Resolve(l1, r1, l2, r2, l1Ms, r1Ms, l2Ms, r2Ms, 100.0);
+        return Resolve(l1, r1, l2, r2, l1Ms, r1Ms, l2Ms, r2Ms, 80.0);
     }
 
     private static bool IsComboWithinWindow(bool a, bool b, double aMs, double bMs, double windowMs) {

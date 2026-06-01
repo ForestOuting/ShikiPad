@@ -184,7 +184,7 @@ Current default settings:
   "actionLayerGraceMs": 80,
   "layerTakeoverWindowMs": 35,
   "actionLayerSwitchGuardMs": 120,
-  "comboLayerWindowMs": 100,
+  "comboLayerWindowMs": 80,
   "useScanCode": true,
   "scrollSlowIntervalMs": 100,
   "scrollFastIntervalMs": 20,
@@ -199,7 +199,7 @@ Current default settings:
 | `actionLayerGraceMs` | 80 | Layer-confirmation window for action buttons. The first shoulder/trigger layer can claim a still-held base action button pressed up to 80 ms earlier; increase if fast shoulder/trigger presses still fall back to base keys, or decrease if character taps feel too delayed. |
 | `layerTakeoverWindowMs` | 35 | Look-back window for a later shoulder/trigger layer to take over an already non-base pending action button. By default, it only claims action buttons pressed within the previous 35 ms; keep it no larger than `actionLayerGraceMs` to avoid stealing the previous action. |
 | `actionLayerSwitchGuardMs` | 120 | Secondary safety guard for non-base layer-change paths. Normal character input is already protected by virtual tap plus suppress-until-release. |
-| `comboLayerWindowMs` | 100 | Maximum time between R1/R2 or L1/L2 presses for a combo layer. Increase if intentional combos are hard to trigger. Decrease if late shoulder/trigger overlaps still become combos while switching layers. |
+| `comboLayerWindowMs` | 80 | Maximum time between R1/R2 or L1/L2 presses for a combo layer. It matches the action-layer settle window, staying wide enough for deliberate chords while avoiding late overlaps after an action has already settled. |
 | `repeatDelayMs` | 180 | Delay before base-layer repeat starts. |
 | `baseRepeatSlowIntervalMs` | 160 | First repeat interval for held base-layer keys. |
 | `repeatIntervalMs` | 20 | Fastest repeat interval after the ramp completes. |
@@ -208,7 +208,7 @@ Current default settings:
 | `scrollFastIntervalMs` | 20 | Mouse wheel interval near full stick deflection. |
 | `r3FreezeMs` | 60 | Short mouse-movement freeze after R3, avoiding accidental pointer drift while right-clicking. |
 
-To tune shoulder/trigger combo timing, edit `comboLayerWindowMs` in `shikipad.json` and restart ShikiPad. A practical range is 70-140 ms: lower values favor fast layer switching, higher values make intentional combos easier.
+To tune shoulder/trigger combo timing, edit `comboLayerWindowMs` in `shikipad.json` and restart ShikiPad. A practical range is 70-120 ms: lower values favor fast layer switching, higher values make intentional combos easier. Keeping the default aligned with `actionLayerGraceMs` avoids combo recognition after the action-button layer has already settled.
 
 To tune how long the first shoulder/trigger can claim a base action button, edit `actionLayerGraceMs`. To tune how far a later shoulder/trigger can look back and steal an already non-base pending action button, edit `layerTakeoverWindowMs`. Both settings live in `shikipad.json` and take effect after restart; `layerTakeoverWindowMs` must be at least 0 and no larger than `actionLayerGraceMs`, or config loading falls back to a safe value.
 
@@ -248,6 +248,7 @@ To change the built-in default timing values in code, edit these fields in the `
 ```csharp
 public int ActionLayerGraceMs = 80;
 public int LayerTakeoverWindowMs = 35;
+public int ComboLayerWindowMs = 80;
 ```
 
 | Area | Code location |
@@ -284,7 +285,7 @@ Mapping table edits:
 After changing code, rebuild with:
 
 ```powershell
-& "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /utf8output /platform:x64 /target:exe /out:ShikiPad.exe /win32icon:shiki.ico /win32manifest:ShikiPad.manifest /reference:System.Windows.Forms.dll /reference:System.Drawing.dll src\ShikiPad.cs
+& "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /utf8output /platform:x64 /target:exe /out:ShikiPad.exe /win32icon:shiki.ico /win32manifest:ShikiPad.manifest /reference:System.Windows.Forms.dll /reference:System.Drawing.dll src\ShikiPad.cs src\Interception.cs
 ```
 
 ## UAC and Elevated Windows
