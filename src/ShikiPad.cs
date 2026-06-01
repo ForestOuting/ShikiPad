@@ -1056,19 +1056,6 @@ internal sealed class DirectHidController {
     private static double Trigger(byte value) { return Clamp((double)value / 255.0, 0.0, 1.0); }
     private static double Clamp(double value, double min, double max) { return value < min ? min : (value > max ? max : value); }
 
-    private const int WM_INPUT = 0x00FF;
-    private const uint RID_INPUT = 0x10000003;
-    private const uint RIM_TYPEHID = 2;
-    private const uint RIDEV_INPUTSINK = 0x00000100;
-    private const uint RIDEV_DEVNOTIFY = 0x00002000;
-    
-    private const long GIDC_REMOVAL = 2;
-
-    
-    
-    
-
-    
     [StructLayout(LayoutKind.Sequential)]
     private struct RAWINPUTDEVICE {
         public ushort usUsagePage;
@@ -1077,13 +1064,6 @@ internal sealed class DirectHidController {
         public IntPtr hwndTarget;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct RAWINPUTHEADER {
-        public uint dwType;
-        public uint dwSize;
-        public IntPtr hDevice;
-        public IntPtr wParam;
-    }
 internal static class NativeMethods {
         [DllImport("hid.dll", SetLastError = true)] public static extern void HidD_GetHidGuid(out Guid hidGuid);
         [DllImport("setupapi.dll", SetLastError = true, CharSet = CharSet.Auto)] public static extern IntPtr SetupDiGetClassDevs(ref Guid ClassGuid, IntPtr Enumerator, IntPtr hwndParent, uint Flags);
@@ -1237,9 +1217,7 @@ internal sealed class MapperForm : Form {
         _lastTickMs = NowMs();
     }
 
-        protected override void WndProc(ref Message m) {
-        base.WndProc(ref m);
-    }
+
 
     protected override void OnFormClosing(FormClosingEventArgs e) {
         _hid.Stop();
