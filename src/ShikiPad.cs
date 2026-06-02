@@ -66,7 +66,7 @@ internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
     public double MouseMaxSpeed = 28.0;
-    public double RightStickDeadzone = 0.03;
+    public double RightStickDeadzone = 0.05;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.2;
     public double RightStickEpsilon = 0.002;
@@ -135,6 +135,11 @@ internal sealed class Config {
             cfg.ScrollFastIntervalMs = GetInt(text, "scrollFastIntervalMs", cfg.ScrollFastIntervalMs);
             cfg.R3FreezeMs = GetInt(text, "r3FreezeMs", cfg.R3FreezeMs);
             
+            if (cfg.RightStickDeadzone == 0.0 || Math.Abs(cfg.RightStickDeadzone - 0.03) < 0.0001) {
+                Logger.Info("migrating rightStickDeadzone to 0.05");
+                cfg.RightStickDeadzone = 0.05;
+                shouldSaveMigratedConfig = true;
+            }
 
             if (!String.Equals(cfg.RightStickCurve, "power", StringComparison.Ordinal)) {
                 Logger.Warn("unsupported rightStickCurve '" + cfg.RightStickCurve + "'; using power");
@@ -1840,7 +1845,7 @@ internal sealed class MapperForm : Form {
     private void UpdateRightStick(ControllerState s, double now, double deltaSec) {
         double cx = s.RX - _rightNeutralX;
         double cy = s.RY - _rightNeutralY;
-        if (Math.Abs(cx) < 0.03 && Math.Abs(cy) < 0.03) {
+        if (Math.Abs(cx) < _config.RightStickDeadzone && Math.Abs(cy) < _config.RightStickDeadzone) {
             _rightNeutralX = _rightNeutralX * 0.995 + s.RX * 0.005;
             _rightNeutralY = _rightNeutralY * 0.995 + s.RY * 0.005;
         }
