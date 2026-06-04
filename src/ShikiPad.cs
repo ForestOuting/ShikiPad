@@ -67,8 +67,6 @@ internal sealed class Config {
     public double LeftStickExitDeadzone = 0.35;
     public double TriggerPressThreshold = 0.35;
     public double TriggerReleaseThreshold = 0.25;
-    public double TouchpadSwipeThreshold = 0.22;
-    public int TouchpadMaxSwipeMs = 600;
     public int RepeatDelayMs = 180;
     public int RepeatIntervalMs = 20;
     public int BaseRepeatSlowIntervalMs = 160;
@@ -92,6 +90,8 @@ internal sealed class Config {
         try {
             string text = File.ReadAllText(path);
             bool shouldSaveMigratedConfig = text.Contains("\"mouseDeadzone\"") ||
+                                            text.Contains("\"touchpadSwipeThreshold\"") ||
+                                            text.Contains("\"touchpadMaxSwipeMs\"") ||
                                             !text.Contains("\"rightStickDeadzone\"") ||
                                             !text.Contains("\"rightStickCurve\"") ||
                                             !text.Contains("\"rightStickCurveExponent\"") ||
@@ -110,8 +110,6 @@ internal sealed class Config {
             cfg.LeftStickExitDeadzone = GetDouble(text, "leftStickExitDeadzone", cfg.LeftStickExitDeadzone);
             cfg.TriggerPressThreshold = GetDouble(text, "triggerPressThreshold", cfg.TriggerPressThreshold);
             cfg.TriggerReleaseThreshold = GetDouble(text, "triggerReleaseThreshold", cfg.TriggerReleaseThreshold);
-            cfg.TouchpadSwipeThreshold = GetDouble(text, "touchpadSwipeThreshold", cfg.TouchpadSwipeThreshold);
-            cfg.TouchpadMaxSwipeMs = GetInt(text, "touchpadMaxSwipeMs", cfg.TouchpadMaxSwipeMs);
             cfg.RepeatDelayMs = GetInt(text, "repeatDelayMs", cfg.RepeatDelayMs);
             cfg.RepeatIntervalMs = GetInt(text, "repeatIntervalMs", cfg.RepeatIntervalMs);
             cfg.BaseRepeatSlowIntervalMs = GetInt(text, "baseRepeatSlowIntervalMs", cfg.BaseRepeatSlowIntervalMs);
@@ -203,8 +201,6 @@ internal sealed class Config {
         Write(sb, "leftStickExitDeadzone", LeftStickExitDeadzone, true);
         Write(sb, "triggerPressThreshold", TriggerPressThreshold, true);
         Write(sb, "triggerReleaseThreshold", TriggerReleaseThreshold, true);
-        Write(sb, "touchpadSwipeThreshold", TouchpadSwipeThreshold, true);
-        Write(sb, "touchpadMaxSwipeMs", TouchpadMaxSwipeMs, true);
         Write(sb, "repeatDelayMs", RepeatDelayMs, true);
         Write(sb, "repeatIntervalMs", RepeatIntervalMs, true);
         Write(sb, "baseRepeatSlowIntervalMs", BaseRepeatSlowIntervalMs, true);
@@ -696,13 +692,10 @@ internal sealed class InputInjector {
 
 internal sealed class ControllerState {
     public bool Connected;
-    public bool TouchpadAvailable;
     public double LX, LY, RX, RY, L2, R2;
     public bool Up, Right, Down, Left, Square, Triangle, Cross, Circle;
     public bool L1, R1, L3, R3, Options, Create;
-    public bool TouchActive;
     public bool TouchClick;
-    public double TouchX, TouchY;
 }
 
 internal sealed class DirectHidController {
@@ -712,7 +705,6 @@ internal sealed class DirectHidController {
     private volatile bool _running;
     private IntPtr _handle = IntPtr.Zero;
     private string _deviceName = "Sony Controller";
-    private bool _touchpadAvailable;
     private int _xinputUserIndex = -1;
 
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -765,7 +757,6 @@ internal sealed class DirectHidController {
                 if (_handle != IntPtr.Zero && _handle != new IntPtr(-1)) {
                     ControllerState cs = new ControllerState();
                     cs.Connected = true;
-                    cs.TouchpadAvailable = _touchpadAvailable;
                     State = cs;
                     Logger.Info("Direct HID device connected: " + _deviceName);
                 } else {
@@ -861,8 +852,6 @@ internal sealed class DirectHidController {
         s.Create = (b & NativeMethods.XINPUT_GAMEPAD_BACK) != 0;
         s.Options = (b & NativeMethods.XINPUT_GAMEPAD_START) != 0;
 
-        s.TouchpadAvailable = false;
-        s.TouchActive = false;
         s.TouchClick = s.Create || s.Options;
         State = s;  // Atomic publish: all fields are complete before reference becomes visible
     }
@@ -906,7 +895,6 @@ internal sealed class DirectHidController {
                                 productName = Marshal.PtrToStringAuto(prodStr);
                             }
                             Marshal.FreeHGlobal(prodStr);
-                            _touchpadAvailable = HasKnownTouchpad(attrs.ProductID);
                             _deviceName = String.IsNullOrEmpty(productName)
                                 ? "Sony Controller"
                                 : productName + " (PID 0x" + attrs.ProductID.ToString("X4", CultureInfo.InvariantCulture) + ")";
@@ -931,7 +919,6 @@ internal sealed class DirectHidController {
 
         ControllerState s = new ControllerState();
         s.Connected = true;
-        s.TouchpadAvailable = State.TouchpadAvailable;
 
         s.LX = Axis(r[1]);
         s.LY = Axis(r[2]);
@@ -961,8 +948,6 @@ internal sealed class DirectHidController {
         s.L3 = (b2 & 0x40) != 0;
         s.R3 = (b2 & 0x80) != 0;
 
-        FillTouch(s, r, 33, 1920.0, 1080.0);
-
         State = s;  // Atomic publish: all fields are complete before reference becomes visible
     }
 
@@ -976,33 +961,6 @@ internal sealed class DirectHidController {
         s.Cross = (b & 0x20) != 0;
         s.Circle = (b & 0x40) != 0;
         s.Triangle = (b & 0x80) != 0;
-    }
-
-    private static void FillTouch(ControllerState s, byte[] r, int index, double width, double height) {
-        if (index < 0 || r.Length <= index + 4) {
-            s.TouchActive = false;
-            return;
-        }
-        byte status = r[index + 1];
-        bool active = (status & 0x80) == 0;
-        if (!active) {
-            s.TouchActive = false;
-            return;
-        }
-        int x = r[index + 2] | ((r[index + 3] & 0x0F) << 8);
-        int y = ((r[index + 3] & 0xF0) >> 4) | (r[index + 4] << 4);
-        s.TouchX = Clamp(x / width, 0.0, 1.0);
-        s.TouchY = Clamp(y / height, 0.0, 1.0);
-        s.TouchActive = true;
-    }
-
-
-
-    private static bool HasKnownTouchpad(ushort productId) {
-        return productId == 0x05C4 ||
-               productId == 0x09CC ||
-               productId == 0x0CE6 ||
-               productId == 0x0DF2;
     }
 
     private static double Axis(byte value) { return Clamp(((double)value - 128.0) / 127.0, -1.0, 1.0); }
@@ -1129,13 +1087,6 @@ internal sealed class MapperForm : Form {
     private bool _prevTouchClick;
     private double _disableStartMs;
     private bool _disableArmed = true;
-    private bool _touchTracking;
-    private double _touchStartX;
-    private double _touchStartY;
-    private double _touchLastX;
-
-    private double _touchLastY;
-    private double _touchStartMs;
     private double _lastTickMs;
 
     public MapperForm(Config config, ControllerProfile controllerProfile, bool debugAltTab, bool debugSources, bool traceInput, bool traceSendinput) {
@@ -1218,7 +1169,6 @@ internal sealed class MapperForm : Form {
         UpdateActionButtons(s, now);
         UpdateMouseButtons(s, now);
         UpdateRightStick(s, now, deltaSec);
-        UpdateTouchpad(s, now);
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
@@ -1790,43 +1740,6 @@ internal sealed class MapperForm : Form {
             _injector.MouseMove(ix, iy);
             _mouseAccumX -= ix;
             _mouseAccumY -= iy;
-        }
-    }
-
-    private void UpdateTouchpad(ControllerState s, double now) {
-        if (!s.TouchpadAvailable) return;
-        if (s.TouchActive && !_touchTracking) {
-            _touchTracking = true;
-            _touchStartX = s.TouchX;
-            _touchStartY = s.TouchY;
-            _touchLastX = s.TouchX;
-            _touchLastY = s.TouchY;
-            _touchStartMs = now;
-        } else if (s.TouchActive && _touchTracking) {
-            _touchLastX = s.TouchX;
-            _touchLastY = s.TouchY;
-        } else if (!s.TouchActive && _touchTracking) {
-            double dx = _touchLastX - _touchStartX;
-            double dy = _touchLastY - _touchStartY;
-            double elapsed = now - _touchStartMs;
-            _touchTracking = false;
-            if (elapsed <= _config.TouchpadMaxSwipeMs) {
-                _injector.CurrentSource = "Touchpad";
-                _injector.CurrentReason = "Swipe";
-                Swipe(dx, dy);
-            }
-        }
-    }
-
-    private void Swipe(double dx, double dy) {
-        double ax = Math.Abs(dx);
-        double ay = Math.Abs(dy);
-        if (ax >= _config.TouchpadSwipeThreshold && ax >= ay * 1.5) {
-            if (dx > 0) _injector.KeyTap(PhysicalKey.Tab, false, true, false, false);
-            else _injector.KeyTap(PhysicalKey.Tab, true, true, false, false);
-        } else if (ay >= _config.TouchpadSwipeThreshold && ay >= ax * 1.5) {
-            if (dy > 0) _injector.KeyTap(PhysicalKey.Tab, false, false, true, false);
-            else _injector.KeyTap(PhysicalKey.Tab, true, false, true, false);
         }
     }
 
