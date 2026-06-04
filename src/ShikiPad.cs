@@ -49,13 +49,6 @@ internal enum StickDirection {
     UpLeft
 }
 
-internal enum HeldModifier {
-    Shift,
-    Ctrl,
-    Alt,
-    Win
-}
-
 internal enum ControllerProfile {
     DualSense,
     Xbox360,
@@ -89,8 +82,6 @@ internal sealed class Config {
     public int ScrollSlowIntervalMs = 100;
     public int ScrollFastIntervalMs = 20;
     public int R3FreezeMs = 60;
-    
-
     public static Config Load(string path) {
         Config cfg = new Config();
         if (!File.Exists(path)) {
@@ -331,8 +322,6 @@ internal sealed class MappingEngine {
         return layer;
     }
 
-
-
     private static bool IsComboWithinWindow(bool a, bool b, double aMs, double bMs, double windowMs) {
         return a && b && Math.Abs(aMs - bMs) <= windowMs;
     }
@@ -359,7 +348,6 @@ internal sealed class MappingEngine {
         return key.ToString();
     }
 
-    public static string ActionName(ActionButton action) { return action.ToString(); }
 }
 
 internal sealed class InputInjector {
@@ -451,20 +439,6 @@ internal sealed class InputInjector {
         if (ctrl) AddKey(inputs, _ctrl, true);
         if (shift) AddKey(inputs, _shift, true);
         Send(inputs, "KeyTap(" + key + ")");
-    }
-
-    public void ModifierDown(HeldModifier modifier) {
-        List<INPUT> inputs = new List<INPUT>();
-        AddKey(inputs, ModifierDef(modifier), false);
-        Send(inputs, "ModifierDown(" + modifier + ")");
-        lock (_heldLock) _heldKeys.Add(ModifierKey(modifier));
-    }
-
-    public void ModifierUp(HeldModifier modifier) {
-        List<INPUT> inputs = new List<INPUT>();
-        AddKey(inputs, ModifierDef(modifier), true);
-        Send(inputs, "ModifierUp(" + modifier + ")");
-        lock (_heldLock) _heldKeys.Remove(ModifierKey(modifier));
     }
 
     public void MouseMove(int dx, int dy) {
@@ -590,26 +564,6 @@ internal sealed class InputInjector {
         _keys[key] = Resolve(vk, extended);
     }
 
-    private KeyDef ModifierDef(HeldModifier modifier) {
-        switch (modifier) {
-            case HeldModifier.Shift: return _shift;
-            case HeldModifier.Ctrl: return _ctrl;
-            case HeldModifier.Alt: return _alt;
-            case HeldModifier.Win: return _win;
-            default: return _shift;
-        }
-    }
-
-    private static PhysicalKey ModifierKey(HeldModifier modifier) {
-        switch (modifier) {
-            case HeldModifier.Shift: return PhysicalKey.LShift;
-            case HeldModifier.Ctrl: return PhysicalKey.LCtrl;
-            case HeldModifier.Alt: return PhysicalKey.LAlt;
-            case HeldModifier.Win: return PhysicalKey.LWin;
-            default: return PhysicalKey.None;
-        }
-    }
-
     private static KeyDef Resolve(ushort vk, bool extended) {
         uint raw = MapVirtualKey(vk, MAPVK_VK_TO_VSC_EX);
         KeyDef def = new KeyDef();
@@ -624,13 +578,16 @@ internal sealed class InputInjector {
         input.type = INPUT_KEYBOARD;
         KEYBDINPUT keyboard = new KEYBDINPUT();
 
-        // We always populate wScan so Interception can read it later in Send.
-        // SendInput ignores wScan if KEYEVENTF_SCANCODE is not set, which it isn't.
-        keyboard.wVk = key.Vk;
-        keyboard.wScan = key.Scan; 
-        keyboard.dwFlags = up ? KEYEVENTF_KEYUP : 0;
-        
-        // No KEYEVENTF_SCANCODE at all
+        // Always populate wScan so Interception can read it later in Send.
+        keyboard.wScan = key.Scan;
+        if (_useScanCode) {
+            keyboard.wVk = 0;
+            keyboard.dwFlags = KEYEVENTF_SCANCODE;
+        } else {
+            keyboard.wVk = key.Vk;
+            keyboard.dwFlags = 0;
+        }
+        if (up) keyboard.dwFlags |= KEYEVENTF_KEYUP;
         if (key.Extended) keyboard.dwFlags |= KEYEVENTF_EXTENDEDKEY;
         input.ki = keyboard;
         inputs.Add(input);
@@ -755,6 +712,7 @@ internal sealed class DirectHidController {
     private volatile bool _running;
     private IntPtr _handle = IntPtr.Zero;
     private string _deviceName = "Sony Controller";
+    private bool _touchpadAvailable;
     private int _xinputUserIndex = -1;
 
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -786,6 +744,7 @@ internal sealed class DirectHidController {
         _running = false;
         if (_handle != IntPtr.Zero && _handle != new IntPtr(-1)) {
             NativeMethods.CloseHandle(_handle);
+            _handle = IntPtr.Zero;
         }
         if (_thread != null) {
             _thread.Join(500);
@@ -806,7 +765,7 @@ internal sealed class DirectHidController {
                 if (_handle != IntPtr.Zero && _handle != new IntPtr(-1)) {
                     ControllerState cs = new ControllerState();
                     cs.Connected = true;
-                    cs.TouchpadAvailable = HasKnownTouchpad(_deviceName);
+                    cs.TouchpadAvailable = _touchpadAvailable;
                     State = cs;
                     Logger.Info("Direct HID device connected: " + _deviceName);
                 } else {
@@ -821,7 +780,7 @@ internal sealed class DirectHidController {
                     byte[] report = new byte[bytesRead];
                     Buffer.BlockCopy(buffer, 0, report, 0, (int)bytesRead);
                     try {
-                        ParseReport(_deviceName, report);
+                        ParseReport(report);
                     } catch (Exception ex) {
                         Logger.Error("Parse error: " + ex.Message);
                     }
@@ -942,10 +901,15 @@ internal sealed class DirectHidController {
                     if (NativeMethods.HidD_GetAttributes(handle, ref attrs)) {
                         if (attrs.VendorID == 0x054C) { // Sony
                             IntPtr prodStr = Marshal.AllocHGlobal(254);
+                            string productName = "";
                             if (NativeMethods.HidD_GetProductString(handle, prodStr, 254)) {
-                                _deviceName = Marshal.PtrToStringAuto(prodStr);
+                                productName = Marshal.PtrToStringAuto(prodStr);
                             }
                             Marshal.FreeHGlobal(prodStr);
+                            _touchpadAvailable = HasKnownTouchpad(attrs.ProductID);
+                            _deviceName = String.IsNullOrEmpty(productName)
+                                ? "Sony Controller"
+                                : productName + " (PID 0x" + attrs.ProductID.ToString("X4", CultureInfo.InvariantCulture) + ")";
                             foundHandle = handle;
                             Marshal.FreeHGlobal(detailData);
                             break; 
@@ -962,7 +926,7 @@ internal sealed class DirectHidController {
     }
 
 
-    private void ParseReport(string name, byte[] r) {
+    private void ParseReport(byte[] r) {
         if (r.Length < 10 || r[0] != 0x01) return;
 
         ControllerState s = new ControllerState();
@@ -1034,12 +998,11 @@ internal sealed class DirectHidController {
 
 
 
-    private static bool HasKnownTouchpad(string name) {
-        string n = name.ToUpperInvariant();
-        return n.IndexOf("PID_05C4", StringComparison.Ordinal) >= 0 ||
-               n.IndexOf("PID_09CC", StringComparison.Ordinal) >= 0 ||
-               n.IndexOf("PID_0CE6", StringComparison.Ordinal) >= 0 ||
-               n.IndexOf("PID_0DF2", StringComparison.Ordinal) >= 0;
+    private static bool HasKnownTouchpad(ushort productId) {
+        return productId == 0x05C4 ||
+               productId == 0x09CC ||
+               productId == 0x0CE6 ||
+               productId == 0x0DF2;
     }
 
     private static double Axis(byte value) { return Clamp(((double)value - 128.0) / 127.0, -1.0, 1.0); }
@@ -1147,11 +1110,12 @@ internal sealed class MapperForm : Form {
     private bool _debugAltTab;
     private bool _debugSources;
     private bool _enabled;
+    private bool _runtimeReleased = true;
     private bool _printedConnectedGuide;
     private bool _l2Pressed;
     private bool _r2Pressed;
     private StickDirection _leftDirection = StickDirection.None;
-      private double _scrollNextMs;
+    private double _scrollNextMs;
     private double _rightNeutralX;
     private double _rightNeutralY;
     private double _mouseAccumX;
@@ -1159,10 +1123,10 @@ internal sealed class MapperForm : Form {
     private double _mouseFreezeUntilMs;
     private bool _leftMouseDown;
     private bool _rightMouseDown;
-      private System.Collections.Generic.List<PhysicalKey> _accumulatedModifiers = new System.Collections.Generic.List<PhysicalKey>();
-      private System.Collections.Generic.List<PhysicalKey> _heldLeftStickKeys = new System.Collections.Generic.List<PhysicalKey>();
-      private System.Collections.Generic.List<PhysicalKey> _activeFnKeys = new System.Collections.Generic.List<PhysicalKey>();
-      private bool _prevTouchClick;
+    private List<PhysicalKey> _accumulatedModifiers = new List<PhysicalKey>();
+    private List<PhysicalKey> _heldLeftStickKeys = new List<PhysicalKey>();
+    private List<PhysicalKey> _activeFnKeys = new List<PhysicalKey>();
+    private bool _prevTouchClick;
     private double _disableStartMs;
     private bool _disableArmed = true;
     private bool _touchTracking;
@@ -1194,7 +1158,7 @@ internal sealed class MapperForm : Form {
 
     protected override void OnLoad(EventArgs e) {
         base.OnLoad(e);
-                        _hid.Start();
+        _hid.Start();
         int parentId = 0;
         try {
             var pc = new System.Diagnostics.PerformanceCounter("Process", "Creating Process ID", Process.GetCurrentProcess().ProcessName);
@@ -1225,7 +1189,6 @@ internal sealed class MapperForm : Form {
         double deltaSec = Math.Max(0.0, (now - _lastTickMs) / 1000.0);
         _lastTickMs = now;
         
-        // Save pre-change modifier state before updating
         bool preL1 = _prevL1;
         bool preR1 = _prevR1;
         bool l1JustDown = s.L1 && !preL1;
@@ -1238,17 +1201,17 @@ internal sealed class MapperForm : Form {
         UpdateEmergency(s, now);
         if (!s.Connected || !_enabled) {
             if (!s.Connected) _printedConnectedGuide = false;
-            ReleaseHeldActionKeys();
-            _leftDirection = StickDirection.None;
-            _scrollNextMs = 0;
+            if (!_runtimeReleased) {
+                ReleaseRuntimeHolds();
+                _runtimeReleased = true;
+            }
             return;
         }
+        _runtimeReleased = false;
         if (!_printedConnectedGuide) {
             Program.PrintControllerGuide(_controllerProfile, _hid.DisplayName, _config);
             _printedConnectedGuide = true;
         }
-        bool preL2 = _l2Pressed;
-        bool preR2 = _r2Pressed;
         UpdateTriggers(s, now);
 
         UpdateLeftStick(s, now);
@@ -1304,7 +1267,7 @@ internal sealed class MapperForm : Form {
         bool touchJustPressed = s.TouchClick && !_prevTouchClick;
         _prevTouchClick = s.TouchClick;
 
-        System.Collections.Generic.List<PhysicalKey> desiredKeys = new System.Collections.Generic.List<PhysicalKey>();
+        List<PhysicalKey> desiredKeys = new List<PhysicalKey>();
 
         if (touchJustPressed) {
             foreach (var key in _heldLeftStickKeys) {
@@ -1335,16 +1298,16 @@ internal sealed class MapperForm : Form {
 
         foreach (var key in _heldLeftStickKeys) {
             if (!desiredKeys.Contains(key)) {
-                _injector.KeyUp(key);
                 _injector.CurrentSource = "LeftStick";
                 _injector.CurrentReason = "ModifierUp " + key;
+                _injector.KeyUp(key);
             }
         }
         foreach (var key in desiredKeys) {
             if (!_heldLeftStickKeys.Contains(key)) {
-                _injector.KeyDown(key);
                 _injector.CurrentSource = "LeftStick";
                 _injector.CurrentReason = "ModifierDown " + key;
+                _injector.KeyDown(key);
             }
         }
         
@@ -1397,7 +1360,7 @@ internal sealed class MapperForm : Form {
         return key >= PhysicalKey.F1 && key <= PhysicalKey.F12;
     }
 
-    private static void AddUnique(System.Collections.Generic.List<PhysicalKey> keys, PhysicalKey key) {
+    private static void AddUnique(List<PhysicalKey> keys, PhysicalKey key) {
         if (key != PhysicalKey.None && !keys.Contains(key)) {
             keys.Add(key);
         }
@@ -1881,7 +1844,6 @@ internal sealed class MapperForm : Form {
         if (_disableArmed && now - _disableStartMs >= 2000.0) {
             _enabled = !_enabled;
             _disableArmed = false;
-            if (!_enabled) ReleaseRuntimeHolds();
             Logger.Info(_enabled ? "enabled" : "disabled");
         }
     }
@@ -1895,12 +1857,15 @@ internal sealed class MapperForm : Form {
         _scrollNextMs = 0;
         _heldLeftStickKeys.Clear();
         _accumulatedModifiers.Clear();
+        _activeFnKeys.Clear();
         for (int i = 0; i < _holds.Length; i++) _holds[i] = new ButtonHold();
     }
 
     private void ReleaseHeldActionKeys() {
         for (int i = 0; i < _holds.Length; i++) {
             if (_holds[i].KeyIsDown) {
+                _injector.CurrentSource = "Release";
+                _injector.CurrentReason = "Runtime release " + ActionButtonName(i);
                 _injector.KeyUp(_holds[i].Key);
                 if (_holds[i].Key == PhysicalKey.Tab) DebugAltTab("Tab up");
             }
@@ -2334,26 +2299,6 @@ internal static class Program {
         return baseColor;
     }
 
-    private static void WriteGradientCentered(int width, string text, Rgb[] stops) {
-        string line = CenterLine(width, text);
-        int start = (width - text.Length) / 2;
-        int end = start + text.Length;
-        for (int i = 0; i < line.Length; i++) {
-            if (i < start || i >= end) {
-                Console.Write(line[i]);
-            } else {
-                double t = text.Length <= 1 ? 1.0 : (double)(i - start) / (double)(text.Length - 1);
-                WriteRgb(GradientAt(stops, t), line[i].ToString());
-            }
-        }
-        Console.WriteLine();
-    }
-
-    private static void WriteMutedCentered(int width, string text) {
-        WriteRgb(new Rgb(206, 225, 232), CenterLine(width, text));
-        Console.WriteLine();
-    }
-
     private static void WriteReadyLine(int width, int panelWidth, bool zh) {
         WriteEmbossedCenteredText(width, panelWidth, zh ? "\u257a \u63a7\u5236\u754c\u9762\u5df2\u5c31\u7eea \u2578" : "\u257a CONTROL SURFACE READY \u2578", SeasonGlowStops(), true);
         WriteEmbossedCenteredText(width, panelWidth, zh ? "\u2727  \u56db\u5b63\u4fe1\u53f7\u5728\u7ebf  \u25c7  \u8f93\u5165\u5c42\u5df2\u5c31\u7eea  \u2727" : "\u2727  seasonal signal online  \u25c7  input layers armed  \u2727", SeasonFlowStops(), false);
@@ -2727,8 +2672,7 @@ internal static class Program {
             Console.WriteLine(Process.GetCurrentProcess().MainModule.FileName);
             return 0;
         }
-        
-        
+
         if (HasArg(args, "--layer-test")) {
             PrintLayerTest(config);
             return 0;
@@ -2764,10 +2708,7 @@ internal static class Program {
         if (debugSources) Logger.Info("debug-sources enabled");
         if (traceInput) Logger.Info("trace-input enabled");
         if (traceSendinput) Logger.Info("trace-sendinput enabled");
-        
-        
 
-        
         PrintRunHint();
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -2874,7 +2815,7 @@ internal static class Program {
     }
 
 
-        private static void RunHidEnumTest() {
+    private static void RunHidEnumTest() {
         Console.WriteLine("\n--- HID DEVICE ENUMERATION TEST ---");
         Console.WriteLine("This test bypasses RawInput and directly queries the OS for connected HID devices.");
         Console.WriteLine("It will attempt to open each device to read VID/PID.\n");

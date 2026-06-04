@@ -1,7 +1,7 @@
 @echo off
 net session >nul 2>&1
 if %errorLevel% == 0 (
-    echo Administator privileges confirmed.
+    echo Administrator privileges confirmed.
 ) else (
     echo This script requires Administrator privileges.
     echo Right-click on this script and select "Run as administrator".
