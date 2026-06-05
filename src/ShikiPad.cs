@@ -59,7 +59,7 @@ internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
     public double MouseMaxSpeed = 28.0;
-    public double RightStickDeadzone = 0.03;
+    public double RightStickDeadzone = 0.05;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.2;
     public double LeftStickEnterDeadzone = 0.50;
