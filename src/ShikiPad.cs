@@ -1274,8 +1274,11 @@ internal sealed class MapperForm : Form {
 
     private PhysicalKey GetLeftStickKey(StickDirection dir) {
         switch (dir) {
+            case StickDirection.Up: return PhysicalKey.None; // Wheel Up
+            case StickDirection.UpRight: return PhysicalKey.None; // Fn Layer
             case StickDirection.Right: return PhysicalKey.LWin;
             case StickDirection.DownRight: return PhysicalKey.LAlt;
+            case StickDirection.Down: return PhysicalKey.None; // Wheel Down
             case StickDirection.DownLeft: return PhysicalKey.LCtrl;
             case StickDirection.Left: return PhysicalKey.LShift;
             case StickDirection.UpLeft: return PhysicalKey.Escape;
