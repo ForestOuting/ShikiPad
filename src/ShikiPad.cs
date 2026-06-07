@@ -66,7 +66,7 @@ internal sealed class Config {
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.2;
     public double LeftStickEnterDeadzone = 0.50;
-    public double LeftStickExitDeadzone = 0.35;
+    public double LeftStickExitDeadzone = 0.45;
     public double TriggerPressThreshold = 0.35;
     public double TriggerReleaseThreshold = 0.25;
     public int RepeatDelayMs = 180;
@@ -171,8 +171,13 @@ internal sealed class Config {
                 shouldSaveLeftStickConfig = true;
             }
             if (Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001) {
-                Logger.Info("migrating leftStickExitDeadzone from 0.20 to 0.35");
-                cfg.LeftStickExitDeadzone = 0.35;
+                Logger.Info("migrating leftStickExitDeadzone from 0.20 to 0.45");
+                cfg.LeftStickExitDeadzone = 0.45;
+                shouldSaveLeftStickConfig = true;
+            }
+            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.35) < 0.000001) {
+                Logger.Info("migrating leftStickExitDeadzone from 0.35 to 0.45");
+                cfg.LeftStickExitDeadzone = 0.45;
                 shouldSaveLeftStickConfig = true;
             }
             if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
