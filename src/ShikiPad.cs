@@ -889,6 +889,19 @@ internal sealed class DirectHidController {
                     attrs.Size = (uint)Marshal.SizeOf(attrs);
                     if (NativeMethods.HidD_GetAttributes(handle, ref attrs)) {
                         if (attrs.VendorID == 0x054C) { // Sony
+                            IntPtr preparsedData;
+                            if (NativeMethods.HidD_GetPreparsedData(handle, out preparsedData)) {
+                                NativeMethods.HIDP_CAPS caps;
+                                if (NativeMethods.HidP_GetCaps(preparsedData, out caps) == 0x110000) { // HIDP_STATUS_SUCCESS
+                                    if (caps.UsagePage != 1 || (caps.Usage != 4 && caps.Usage != 5)) {
+                                        NativeMethods.HidD_FreePreparsedData(preparsedData);
+                                        NativeMethods.CloseHandle(handle);
+                                        continue;
+                                    }
+                                }
+                                NativeMethods.HidD_FreePreparsedData(preparsedData);
+                            }
+
                             IntPtr prodStr = Marshal.AllocHGlobal(254);
                             string productName = "";
                             if (NativeMethods.HidD_GetProductString(handle, prodStr, 254)) {
@@ -1022,6 +1035,30 @@ internal static class NativeMethods {
         [DllImport("kernel32.dll", SetLastError = true)] public static extern bool CloseHandle(IntPtr hObject);
         [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_GetAttributes(IntPtr device, ref NativeMethods.HIDD_ATTRIBUTES attributes);
         [DllImport("hid.dll", SetLastError = true, CharSet = CharSet.Auto)] public static extern bool HidD_GetProductString(IntPtr hidDeviceObject, IntPtr buffer, uint bufferLength);
+        [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_GetPreparsedData(IntPtr HidDeviceObject, out IntPtr PreparsedData);
+        [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_FreePreparsedData(IntPtr PreparsedData);
+        [DllImport("hid.dll", SetLastError = true)] public static extern int HidP_GetCaps(IntPtr PreparsedData, out HIDP_CAPS Capabilities);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct HIDP_CAPS {
+            public ushort Usage;
+            public ushort UsagePage;
+            public ushort InputReportByteLength;
+            public ushort OutputReportByteLength;
+            public ushort FeatureReportByteLength;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 17)]
+            public ushort[] Reserved;
+            public ushort NumberLinkCollectionNodes;
+            public ushort NumberInputButtonCaps;
+            public ushort NumberInputValueCaps;
+            public ushort NumberInputDataIndices;
+            public ushort NumberOutputButtonCaps;
+            public ushort NumberOutputValueCaps;
+            public ushort NumberOutputDataIndices;
+            public ushort NumberFeatureButtonCaps;
+            public ushort NumberFeatureValueCaps;
+            public ushort NumberFeatureDataIndices;
+        }
 
         public const ushort XINPUT_GAMEPAD_DPAD_UP = 0x0001;
         public const ushort XINPUT_GAMEPAD_DPAD_DOWN = 0x0002;
