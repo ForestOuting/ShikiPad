@@ -76,7 +76,7 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 80;
     public int LayerTakeoverWindowMs = 35;
     public int ActionLayerSwitchGuardMs = 120;
-    public int ComboLayerWindowMs = 50;
+    public int ComboLayerWindowMs = 80;
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 100;
@@ -162,6 +162,11 @@ internal sealed class Config {
             }
             if (cfg.ComboLayerWindowMs == 100) {
                 Logger.Info("migrating comboLayerWindowMs from 100 to 80");
+                cfg.ComboLayerWindowMs = 80;
+                shouldSaveMigratedConfig = true;
+            }
+            if (cfg.ComboLayerWindowMs == 50) {
+                Logger.Info("migrating comboLayerWindowMs from 50 to 80");
                 cfg.ComboLayerWindowMs = 80;
                 shouldSaveMigratedConfig = true;
             }
@@ -2018,7 +2023,7 @@ internal static class Program {
         } else {
             WritePanelLine(width, panelWidth, "  Connected", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Right stick", "Move mouse, R3 right click, L3 left click", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Left stick", "Up wheel, UpRight Fn, Right Win, DownRight Alt, Down Ctrl, Left Shift, UpLeft Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Left stick", "Up WheelUp, UpRight Fn, Right Win, DownRight Alt, Down WheelDown, DownLeft Ctrl, Left Shift, UpLeft Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Base layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
