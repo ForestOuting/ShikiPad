@@ -1230,7 +1230,7 @@ internal sealed class MapperForm : Form {
             }
             double elapsed = sw.Elapsed.TotalMilliseconds;
             sw.Restart();
-            int sleepMs = Math.Max(1, 4 - (int)elapsed);
+            int sleepMs = Math.Max(1, 2 - (int)elapsed);
             Thread.Sleep(sleepMs);
         }
     }
@@ -1841,7 +1841,7 @@ internal sealed class MapperForm : Form {
         double dirX = cx / actualRadius;
         double dirY = cy / actualRadius;
         double speedRatio = Math.Pow(normalizedRadius, _config.RightStickCurveExponent);
-        double speed = _config.MouseMaxSpeed * deltaSec * 250.0 * _config.MouseSensitivity;
+        double speed = _config.MouseMaxSpeed * deltaSec * 120.0 * _config.MouseSensitivity;
         double dx = dirX * speedRatio * speed;
         double dy = dirY * speedRatio * speed;
         if (Math.Abs(dx) + Math.Abs(dy) < 0.000001) return;
