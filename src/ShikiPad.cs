@@ -76,7 +76,7 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 80;
     public int LayerTakeoverWindowMs = 35;
     public int ActionLayerSwitchGuardMs = 120;
-    public int ComboLayerWindowMs = 80;
+    public int ComboLayerWindowMs = 50;
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 100;
@@ -162,11 +162,6 @@ internal sealed class Config {
             }
             if (cfg.ComboLayerWindowMs == 100) {
                 Logger.Info("migrating comboLayerWindowMs from 100 to 80");
-                cfg.ComboLayerWindowMs = 80;
-                shouldSaveMigratedConfig = true;
-            }
-            if (cfg.ComboLayerWindowMs == 50) {
-                Logger.Info("migrating comboLayerWindowMs from 50 to 80");
                 cfg.ComboLayerWindowMs = 80;
                 shouldSaveMigratedConfig = true;
             }
