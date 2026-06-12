@@ -1059,6 +1059,8 @@ internal static class NativeMethods {
         [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_GetPreparsedData(IntPtr HidDeviceObject, out IntPtr PreparsedData);
         [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_FreePreparsedData(IntPtr PreparsedData);
         [DllImport("hid.dll", SetLastError = true)] public static extern int HidP_GetCaps(IntPtr PreparsedData, out HIDP_CAPS Capabilities);
+        [DllImport("winmm.dll")] public static extern uint timeBeginPeriod(uint uMilliseconds);
+        [DllImport("winmm.dll")] public static extern uint timeEndPeriod(uint uMilliseconds);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct HIDP_CAPS {
@@ -1157,7 +1159,9 @@ internal sealed class MapperForm : Form {
     private readonly InputInjector _injector;
     private readonly MappingEngine _mapping = new MappingEngine();
     
-    private readonly System.Windows.Forms.Timer _timer = new System.Windows.Forms.Timer();
+    private Thread _pollThread;
+    private volatile bool _pollRunning;
+    private readonly object _tickLock = new object();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly ButtonHold[] _holds = new ButtonHold[8];
     private readonly bool[] _prevDown = new bool[8];
@@ -1197,8 +1201,6 @@ internal sealed class MapperForm : Form {
         WindowState = FormWindowState.Minimized;
         FormBorderStyle = FormBorderStyle.FixedToolWindow;
         Opacity = 0;
-        _timer.Interval = 1;
-        _timer.Tick += OnTick;
     }
 
     protected override void OnLoad(EventArgs e) {
@@ -1211,13 +1213,36 @@ internal sealed class MapperForm : Form {
         } catch { }
         Program.PrintRuntimeStatus(Process.GetCurrentProcess().MainModule.FileName, Process.GetCurrentProcess().Id, parentId, _hid.DisplayName, true);
         
-        _timer.Start();
         _lastTickMs = NowMs();
+        _pollRunning = true;
+        NativeMethods.timeBeginPeriod(1);
+        _pollThread = new Thread(PollLoop);
+        _pollThread.IsBackground = true;
+        _pollThread.Priority = ThreadPriority.AboveNormal;
+        _pollThread.Start();
+    }
+
+    private void PollLoop() {
+        Stopwatch sw = Stopwatch.StartNew();
+        while (_pollRunning) {
+            lock (_tickLock) {
+                try { OnTick(); } catch (Exception ex) { Logger.Error("Tick error: " + ex.Message); }
+            }
+            double elapsed = sw.Elapsed.TotalMilliseconds;
+            sw.Restart();
+            int sleepMs = Math.Max(1, 4 - (int)elapsed);
+            Thread.Sleep(sleepMs);
+        }
     }
 
 
 
     protected override void OnFormClosing(FormClosingEventArgs e) {
+        _pollRunning = false;
+        if (_pollThread != null) {
+            _pollThread.Join(500);
+        }
+        NativeMethods.timeEndPeriod(1);
         _hid.Stop();
         ReleaseRuntimeHolds();
         
@@ -1228,7 +1253,7 @@ internal sealed class MapperForm : Form {
     private bool _prevL1, _prevR1;
     private double _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs;
 
-    private void OnTick(object sender, EventArgs e) {
+    private void OnTick() {
         ControllerState s = _hid.State;
         double now = NowMs();
         double deltaSec = Math.Max(0.0, (now - _lastTickMs) / 1000.0);
@@ -1816,7 +1841,7 @@ internal sealed class MapperForm : Form {
         double dirX = cx / actualRadius;
         double dirY = cy / actualRadius;
         double speedRatio = Math.Pow(normalizedRadius, _config.RightStickCurveExponent);
-        double speed = _config.MouseMaxSpeed * deltaSec * 120.0 * _config.MouseSensitivity;
+        double speed = _config.MouseMaxSpeed * deltaSec * 250.0 * _config.MouseSensitivity;
         double dx = dirX * speedRatio * speed;
         double dy = dirY * speedRatio * speed;
         if (Math.Abs(dx) + Math.Abs(dy) < 0.000001) return;
