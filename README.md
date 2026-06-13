@@ -1,6 +1,6 @@
 # ShikiPad (Windows Controller-to-Keyboard Mapper)
 
-ShikiPad is a Windows application that maps DualSense (PS5), Xbox 360, and Xbox Series X|S controllers to keyboard and mouse inputs.
+ShikiPad is a Windows application that maps DualSense (PS5), DualShock 4 (PS4), Xbox 360, and Xbox Series X|S controllers to keyboard and mouse inputs.
 
 This final release is heavily optimized for **fast controller typing**. You can use it to fluently type characters and operate the mouse while lying in bed or using a handheld/streaming device.
 
@@ -21,10 +21,15 @@ To allow ShikiPad to work inside **Virtual Machines (like VMware)** or in **game
 ### 3. Run the Program
 After restarting your computer:
 1. Double-click `ShikiPad.exe`.
-2. A black terminal window will appear asking you to choose your controller profile:
-   - Type `1` for DualSense (PS5)
-   - Type `2` for Xbox 360
-   - Type `3` for Xbox Series X|S
+2. A black terminal window will appear asking you to choose your controller profile `[1..8, Enter = 1]`:
+   - Type `1` for DualSense (PS5, USB)
+   - Type `2` for DualSense (PS5, Bluetooth)
+   - Type `3` for DualShock 4 (PS4, USB)
+   - Type `4` for DualShock 4 (PS4, Bluetooth)
+   - Type `5` for Xbox 360 (USB)
+   - Type `6` for Xbox 360 (Bluetooth)
+   - Type `7` for Xbox Series X|S (USB)
+   - Type `8` for Xbox Series X|S (Bluetooth)
 3. The program will minimize, and your controller is now mapped to your computer!
 
 To close ShikiPad, simply close the black terminal window.
@@ -109,4 +114,9 @@ Common settings you might want to change:
 
 ## 💡 Tip: Double Input Issue
 If you play a game that natively supports controllers, the game might receive both the raw gamepad input *and* ShikiPad's keyboard input at the same time.
-To fix this, install [HidHide](https://github.com/nefarius/HidHide/releases), hide your physical controller from the system, and add `ShikiPad.exe` to HidHide's whitelist.
+
+**For Sony controllers (DualSense / DualShock 4):** Install [HidHide](https://github.com/nefarius/HidHide/releases), hide your physical controller from the system, and add `ShikiPad.exe` to HidHide's whitelist.
+
+> ⚠️ **WARNING — Xbox controllers CANNOT be hidden by HidHide.** Xbox controllers use the XInput API (an API-level hook), not the HID layer. HidHide only works at the HID device level, so it has no effect on XInput devices.
+>
+> If you need to hide an Xbox-protocol controller, consider using a **third-party gamepad** from brands like **GameSir**, **Flydigi**, or **Betop** that support switching to **PS / DirectInput mode**. In DirectInput mode, the controller appears as a standard HID device and **can** be hidden by HidHide.

@@ -1,6 +1,6 @@
 # ShikiPad (Windows 手柄键鼠映射工具)
 
-ShikiPad 是一个在 Windows 上将 DualSense (PS5手柄)、Xbox 360 和 Xbox Series X|S 手柄映射为键盘和鼠标的软件。
+ShikiPad 是一个在 Windows 上将 DualSense (PS5手柄)、DualShock 4 (PS4手柄)、Xbox 360 和 Xbox Series X|S 手柄映射为键盘和鼠标的软件。
 
 这个最终版专为 **“使用手柄快速打字”** 进行了深度优化。你可以使用它在躺在床上或者使用掌机（例如串流设备）时，流畅地输入字符和操作鼠标。
 
@@ -19,10 +19,15 @@ ShikiPad 是一个在 Windows 上将 DualSense (PS5手柄)、Xbox 360 和 Xbox S
 ### 3. 运行程序
 重启电脑后：
 1. 双击打开 `ShikiPad.exe`。
-2. 启动时会弹出一个黑色终端窗口，根据提示输入数字选择你连接的手柄型号：
-   - 输入 `1` 选择 DualSense (PS5 手柄)
-   - 输入 `2` 选择 Xbox 360 手柄
-   - 输入 `3` 选择 Xbox Series X|S 手柄
+2. 启动时会弹出一个黑色终端窗口，根据提示输入数字选择你连接的手柄型号 `[1..8, Enter = 1]`：
+   - 输入 `1` 选择 DualSense (PS5, USB)
+   - 输入 `2` 选择 DualSense (PS5, 蓝牙)
+   - 输入 `3` 选择 DualShock 4 (PS4, USB)
+   - 输入 `4` 选择 DualShock 4 (PS4, 蓝牙)
+   - 输入 `5` 选择 Xbox 360 (USB)
+   - 输入 `6` 选择 Xbox 360 (蓝牙)
+   - 输入 `7` 选择 Xbox Series X|S (USB)
+   - 输入 `8` 选择 Xbox Series X|S (蓝牙)
 3. 之后程序会缩小到后台，你可以开始使用手柄操作电脑了！
 
 如果要关闭 ShikiPad，只需要关闭那个黑色的终端窗口即可。
@@ -107,4 +112,9 @@ ShikiPad 是一个在 Windows 上将 DualSense (PS5手柄)、Xbox 360 和 Xbox S
 
 ## 💡 提示：双重输入问题
 如果你玩的游戏同时支持手柄和键盘，此时你的手柄既会发出原始手柄信号，又会发出 ShikiPad 的键盘信号。
-解决办法：下载并安装 [HidHide](https://github.com/nefarius/HidHide/releases)，将你的物理手柄隐藏起来，并将 `ShikiPad.exe` 加入白名单。
+
+**Sony 手柄（DualSense / DualShock 4）：** 下载并安装 [HidHide](https://github.com/nefarius/HidHide/releases)，将你的物理手柄隐藏起来，并将 `ShikiPad.exe` 加入白名单。
+
+> ⚠️ **注意 — Xbox 手柄无法被 HidHide 隐藏。** Xbox 手柄使用的是 XInput API（API 层级的接口），而非 HID 层。HidHide 只能在 HID 设备层生效，因此对 XInput 设备无效。
+>
+> 如果你需要隐藏使用 Xbox 协议的手柄，建议使用支持切换到 **PS / DirectInput 模式**的**国产第三方手柄**，例如 **盖世小鸡（GameSir）**、**飞智（Flydigi）**、**北通（Betop）** 等品牌。在 DirectInput 模式下，手柄会被识别为标准 HID 设备，**可以**被 HidHide 隐藏。

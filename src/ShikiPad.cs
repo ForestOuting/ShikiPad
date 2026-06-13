@@ -52,6 +52,8 @@ internal enum StickDirection {
 internal enum ControllerProfile {
     DualSense,
     DualSenseBT,
+    DualShock4,
+    DualShock4BT,
     Xbox360,
     Xbox360BT,
     XboxSeries,
@@ -61,10 +63,10 @@ internal enum ControllerProfile {
 internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
-    public double MouseMaxSpeed = 10.0;
+    public double MouseMaxSpeed = 12.0;
     public double RightStickDeadzone = 0.05;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 2.2;
+    public double RightStickCurveExponent = 2.4;
     public double LeftStickEnterDeadzone = 0.50;
     public double LeftStickExitDeadzone = 0.45;
     public double TriggerPressThreshold = 0.35;
@@ -137,8 +139,8 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.RightStickCurveExponent <= 0.0 || Double.IsNaN(cfg.RightStickCurveExponent) || Double.IsInfinity(cfg.RightStickCurveExponent)) {
-                Logger.Warn("invalid rightStickCurveExponent; using 2.2");
-                cfg.RightStickCurveExponent = 2.2;
+                Logger.Warn("invalid rightStickCurveExponent; using 2.4");
+                cfg.RightStickCurveExponent = 2.4;
                 shouldSaveMigratedConfig = true;
             }
             if (!text.Contains("\"baseRepeatSlowIntervalMs\"") ||
@@ -165,14 +167,14 @@ internal sealed class Config {
                 cfg.ComboLayerWindowMs = 80;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001) {
-                Logger.Info("migrating mouseMaxSpeed to 10.0");
-                cfg.MouseMaxSpeed = 10.0;
+            if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001) {
+                Logger.Info("migrating mouseMaxSpeed to 12.0");
+                cfg.MouseMaxSpeed = 12.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent to 2.2");
-                cfg.RightStickCurveExponent = 2.2;
+            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001) {
+                Logger.Info("migrating rightStickCurveExponent to 2.4");
+                cfg.RightStickCurveExponent = 2.4;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
@@ -730,6 +732,8 @@ internal sealed class DirectHidController {
             switch (_profile) {
                 case ControllerProfile.Xbox360: return "Xbox 360 Controller / XInput";
                 case ControllerProfile.XboxSeries: return "Xbox Series X|S Controller / XInput";
+                case ControllerProfile.DualShock4: return "DualShock 4 / Direct HID";
+                case ControllerProfile.DualShock4BT: return "DualShock 4 / Direct HID (BT)";
                 default: return "DualSense / Direct HID";
             }
         }
@@ -754,8 +758,9 @@ internal sealed class DirectHidController {
     }
 
     private void Loop() {
-        bool isDualSense = _profile == ControllerProfile.DualSense || _profile == ControllerProfile.DualSenseBT;
-        if (!isDualSense) {
+        bool isSonyHid = _profile == ControllerProfile.DualSense || _profile == ControllerProfile.DualSenseBT ||
+                         _profile == ControllerProfile.DualShock4 || _profile == ControllerProfile.DualShock4BT;
+        if (!isSonyHid) {
             XInputLoop();
             return;
         }
@@ -957,18 +962,18 @@ internal sealed class DirectHidController {
         s = null;
         if (r == null || r.Length < 10) return false;
 
-        bool isUsbProfile = (profile == ControllerProfile.DualSense);
-        bool isBtProfile = (profile == ControllerProfile.DualSenseBT);
-        bool isAdvancedBt = (r[0] == 0x31);
+        bool isUsbProfile = (profile == ControllerProfile.DualSense || profile == ControllerProfile.DualShock4);
+        bool isBtProfile = (profile == ControllerProfile.DualSenseBT || profile == ControllerProfile.DualShock4BT);
+        bool isAdvancedBt = (r[0] == 0x31 || r[0] == 0x11);
 
         if (isUsbProfile) {
             if (r[0] != 0x01) {
-                Logger.Warn("DualSense (USB) mode rejected report: ID=" + r[0] + ", Length=" + r.Length);
+                Logger.Warn("Sony (USB) mode rejected report: ID=" + r[0] + ", Length=" + r.Length);
                 return false;
             }
         } else if (isBtProfile) {
             if (r[0] != 0x01 && !isAdvancedBt) {
-                Logger.Warn("DualSense (BT) mode rejected report: ID=" + r[0] + ", Length=" + r.Length);
+                Logger.Warn("Sony (BT) mode rejected report: ID=" + r[0] + ", Length=" + r.Length);
                 return false;
             }
         } else {
@@ -1000,7 +1005,7 @@ internal sealed class DirectHidController {
             byte b3 = r[7];
             s.TouchClick = (b3 & 0x02) != 0;
         } else {
-            int offset = isUsbProfile ? 1 : 2;
+            int offset = isUsbProfile ? 1 : (r[0] == 0x11 ? 3 : 2);
             
             if (r.Length < offset + 9) return false;
             
@@ -1984,6 +1989,7 @@ internal static class Program {
         bool zh = IsChineseUi();
         bool xbox = profile == ControllerProfile.Xbox360 || profile == ControllerProfile.XboxSeries || 
                     profile == ControllerProfile.Xbox360BT || profile == ControllerProfile.XboxSeriesBT;
+        bool ds4 = profile == ControllerProfile.DualShock4 || profile == ControllerProfile.DualShock4BT;
 
         Console.WriteLine();
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
@@ -2743,28 +2749,32 @@ internal static class Program {
         WriteSeasonPanelTitle(width, panelWidth, zh ? "\u25c7 \u9009\u62e9\u624b\u67c4\u578b\u53f7 \u25c7" : "\u25c7 CONTROLLER PROFILE \u25c7");
         WriteSeasonPanelSeparator(width, panelWidth);
         WritePanelLine(width, panelWidth, "  [1] DualSense (USB)", zh ? "PS5 / Direct HID / 触控板蓄力" : "PS5 / Direct HID / touchpad clutch", SeasonSummer(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, "  [2] DualSense (BT)", zh ? "蓝牙专属模式 / 隔绝有线干扰" : "PS5 Bluetooth / strict isolation", SeasonSummer(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, "  [3] Xbox 360 (USB)", zh ? "XInput / View 或 Menu 蓄力" : "XInput / View or Menu touchpad clutch", SeasonSpring(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, "  [4] Xbox 360 (BT)", zh ? "蓝牙模式 / XInput" : "XInput / Bluetooth", SeasonSpring(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, "  [5] Xbox Series X|S (USB)", zh ? "XInput / View 或 Menu 蓄力" : "XInput / View or Menu touchpad clutch", SeasonGold(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, "  [6] Xbox Series X|S (BT)", zh ? "蓝牙模式 / XInput" : "XInput / Bluetooth", SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [2] DualSense (BT)", zh ? "PS5 蓝牙专属模式" : "PS5 Bluetooth / strict isolation", SeasonSummer(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [3] DualShock 4 (USB)", zh ? "PS4 / Direct HID / 触控板蓄力" : "PS4 / Direct HID / touchpad clutch", new Rgb(100, 180, 255), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [4] DualShock 4 (BT)", zh ? "PS4 蓝牙专属模式" : "PS4 Bluetooth / strict isolation", new Rgb(100, 180, 255), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [5] Xbox 360 (USB)", zh ? "XInput / View 或 Menu 蓄力" : "XInput / View or Menu touchpad clutch", SeasonSpring(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [6] Xbox 360 (BT)", zh ? "蓝牙模式 / XInput" : "XInput / Bluetooth", SeasonSpring(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [7] Xbox Series X|S (USB)", zh ? "XInput / View 或 Menu 蓄力" : "XInput / View or Menu touchpad clutch", SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  [8] Xbox Series X|S (BT)", zh ? "蓝牙模式 / XInput" : "XInput / Bluetooth", SeasonGold(), new Rgb(245, 250, 255));
         WriteSeasonPanelBorder(width, panelWidth, false);
         WriteSeasonDropShadow(width, panelWidth);
         Console.WriteLine();
 
         while (true) {
-            WriteRgb(SeasonSummer(), zh ? "选择手柄型号 [1..6，Enter = 1] > " : "Select controller profile [1..6, Enter = 1] > ");
+            WriteRgb(SeasonSummer(), zh ? "选择手柄型号 [1..8，Enter = 1] > " : "Select controller profile [1..8, Enter = 1] > ");
             Console.Write("\x1b[0m");
             string line = Console.ReadLine();
             if (line == null) return ControllerProfile.DualSense;
             line = line.Trim();
             if (line.Length == 0 || line == "1") return ControllerProfile.DualSense;
             if (line == "2") return ControllerProfile.DualSenseBT;
-            if (line == "3") return ControllerProfile.Xbox360;
-            if (line == "4") return ControllerProfile.Xbox360BT;
-            if (line == "5") return ControllerProfile.XboxSeries;
-            if (line == "6") return ControllerProfile.XboxSeriesBT;
-            WriteRgb(SeasonAutumn(), zh ? "请选择 1 到 6 之间的数字。\n" : "Please choose 1 to 6.\n");
+            if (line == "3") return ControllerProfile.DualShock4;
+            if (line == "4") return ControllerProfile.DualShock4BT;
+            if (line == "5") return ControllerProfile.Xbox360;
+            if (line == "6") return ControllerProfile.Xbox360BT;
+            if (line == "7") return ControllerProfile.XboxSeries;
+            if (line == "8") return ControllerProfile.XboxSeriesBT;
+            WriteRgb(SeasonAutumn(), zh ? "请选择 1 到 8 之间的数字。\n" : "Please choose 1 to 8.\n");
         }
     }
 
@@ -2793,19 +2803,27 @@ internal static class Program {
             profile = ControllerProfile.DualSenseBT;
             return true;
         }
-        if (v == "3" || v == "xbox360" || v == "x360" || v == "xbox360usb") {
+        if (v == "3" || v == "ds4" || v == "dualshock4" || v == "ps4" || v == "ds4usb") {
+            profile = ControllerProfile.DualShock4;
+            return true;
+        }
+        if (v == "4" || v == "ds4bt" || v == "dualshock4bt" || v == "ps4bt") {
+            profile = ControllerProfile.DualShock4BT;
+            return true;
+        }
+        if (v == "5" || v == "xbox360" || v == "x360" || v == "xbox360usb") {
             profile = ControllerProfile.Xbox360;
             return true;
         }
-        if (v == "4" || v == "xbox360bt" || v == "x360bt") {
+        if (v == "6" || v == "xbox360bt" || v == "x360bt") {
             profile = ControllerProfile.Xbox360BT;
             return true;
         }
-        if (v == "5" || v == "xboxseries" || v == "xboxseriesxs" || v == "xsx" || v == "xss" || v == "xboxxs" || v == "xboxseriesusb") {
+        if (v == "7" || v == "xboxseries" || v == "xboxseriesxs" || v == "xsx" || v == "xss" || v == "xboxxs" || v == "xboxseriesusb") {
             profile = ControllerProfile.XboxSeries;
             return true;
         }
-        if (v == "6" || v == "xboxseriesbt" || v == "xsxbt" || v == "xssbt") {
+        if (v == "8" || v == "xboxseriesbt" || v == "xsxbt" || v == "xssbt") {
             profile = ControllerProfile.XboxSeriesBT;
             return true;
         }
@@ -2816,6 +2834,8 @@ internal static class Program {
     private static string ControllerProfileName(ControllerProfile profile) {
         switch (profile) {
             case ControllerProfile.DualSenseBT: return "DualSense / Direct HID (Bluetooth)";
+            case ControllerProfile.DualShock4: return "DualShock 4 / Direct HID (USB)";
+            case ControllerProfile.DualShock4BT: return "DualShock 4 / Direct HID (Bluetooth)";
             case ControllerProfile.Xbox360: return "Xbox 360 Controller / XInput (USB)";
             case ControllerProfile.Xbox360BT: return "Xbox 360 Controller / XInput (Bluetooth)";
             case ControllerProfile.XboxSeries: return "Xbox Series X|S Controller / XInput (USB)";
@@ -2999,6 +3019,7 @@ internal static class Program {
     private static bool PrintControllerParityCheck(Config config, MappingEngine mapping) {
         ControllerProfile[] profiles = new ControllerProfile[] {
             ControllerProfile.DualSense,
+            ControllerProfile.DualShock4,
             ControllerProfile.Xbox360,
             ControllerProfile.XboxSeries
         };
@@ -3007,7 +3028,7 @@ internal static class Program {
             Layer layer = mapping.Resolve(false, true, false, false, 0, 10, 0, 0, config.ComboLayerWindowMs);
             PhysicalKey key = mapping.Lookup(layer, ActionButton.Cross);
             bool profileOk = layer == Layer.R1 && key == PhysicalKey.H;
-            string actionName = profiles[i] == ControllerProfile.DualSense ? "Cross" : "A";
+            string actionName = (profiles[i] == ControllerProfile.DualSense || profiles[i] == ControllerProfile.DualShock4) ? "Cross" : "A";
             Console.WriteLine(ControllerProfileName(profiles[i]) + " R1/RB + " + actionName + " = " +
                               LayerTestKeyName(key) + (profileOk ? " [PASS]" : " [FAIL]"));
             ok = profileOk && ok;
