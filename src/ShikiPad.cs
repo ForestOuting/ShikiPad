@@ -158,13 +158,13 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
-                Logger.Warn("invalid comboLayerWindowMs; using 80");
-                cfg.ComboLayerWindowMs = 80;
+                Logger.Warn("invalid comboLayerWindowMs; using 50");
+                cfg.ComboLayerWindowMs = 50;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ComboLayerWindowMs == 100) {
-                Logger.Info("migrating comboLayerWindowMs from 100 to 80");
-                cfg.ComboLayerWindowMs = 80;
+            if (cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
+                Logger.Info("migrating comboLayerWindowMs to 50");
+                cfg.ComboLayerWindowMs = 50;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001) {
