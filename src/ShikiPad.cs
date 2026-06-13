@@ -61,7 +61,7 @@ internal enum ControllerProfile {
 internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
-    public double MouseMaxSpeed = 13.0;
+    public double MouseMaxSpeed = 10.0;
     public double RightStickDeadzone = 0.05;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.2;
@@ -165,9 +165,9 @@ internal sealed class Config {
                 cfg.ComboLayerWindowMs = 80;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001) {
-                Logger.Info("migrating mouseMaxSpeed from 16.0 to 13.0");
-                cfg.MouseMaxSpeed = 13.0;
+            if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001) {
+                Logger.Info("migrating mouseMaxSpeed to 10.0");
+                cfg.MouseMaxSpeed = 10.0;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
