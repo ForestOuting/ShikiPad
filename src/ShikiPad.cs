@@ -173,8 +173,8 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent to 2.0");
-                cfg.RightStickCurveExponent = 2.0;
+                Logger.Info("migrating rightStickCurveExponent to 2.4");
+                cfg.RightStickCurveExponent = 2.4;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ScrollFastIntervalMs == 12) {
@@ -193,7 +193,7 @@ internal sealed class Config {
                 shouldSaveLeftStickConfig = true;
             }
             if (Math.Abs(cfg.RightStickCurveExponent - 2.0) < 0.000001) {
-                cfg.RightStickCurveExponent = 2.2;
+                cfg.RightStickCurveExponent = 2.4;
                 shouldSaveLeftStickConfig = true;
             }
             if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
