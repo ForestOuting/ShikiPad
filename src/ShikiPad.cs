@@ -66,9 +66,9 @@ internal sealed class Config {
     public double MouseMaxSpeed = 12.0;
     public double RightStickDeadzone = 0.05;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 2.0;
-    public double LeftStickEnterDeadzone = 0.50;
-    public double LeftStickExitDeadzone = 0.45;
+    public double RightStickCurveExponent = 2.2;
+    public double LeftStickEnterDeadzone = 0.35;
+    public double LeftStickExitDeadzone = 0.15;
     public double TriggerPressThreshold = 0.35;
     public double TriggerReleaseThreshold = 0.25;
     public int RepeatDelayMs = 180;
@@ -182,14 +182,18 @@ internal sealed class Config {
                 cfg.ScrollFastIntervalMs = 6;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.35) < 0.000001 || Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
-                Logger.Info("migrating leftStickEnterDeadzone back to 0.50");
-                cfg.LeftStickEnterDeadzone = 0.50;
+            if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.50) < 0.000001 || Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
+                Logger.Info("migrating leftStickEnterDeadzone to 0.35");
+                cfg.LeftStickEnterDeadzone = 0.35;
                 shouldSaveLeftStickConfig = true;
             }
-            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.30) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001) {
-                Logger.Info("migrating leftStickExitDeadzone back to 0.45");
-                cfg.LeftStickExitDeadzone = 0.45;
+            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.45) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.30) < 0.000001) {
+                Logger.Info("migrating leftStickExitDeadzone to 0.15");
+                cfg.LeftStickExitDeadzone = 0.15;
+                shouldSaveLeftStickConfig = true;
+            }
+            if (Math.Abs(cfg.RightStickCurveExponent - 2.0) < 0.000001) {
+                cfg.RightStickCurveExponent = 2.2;
                 shouldSaveLeftStickConfig = true;
             }
             if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
@@ -1338,7 +1342,7 @@ internal sealed class MapperForm : Form {
         } else if (radius < _config.LeftStickExitDeadzone) {
             next = StickDirection.None;
         } else {
-            next = previous;
+            next = Sector(s.LX, s.LY);
         }
 
         if (next != previous) {
@@ -1784,12 +1788,8 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateRightStick(ControllerState s, double now, double deltaSec) {
-        double cx = s.RX - _rightNeutralX;
-        double cy = s.RY - _rightNeutralY;
-        if (Math.Abs(cx) < _config.RightStickDeadzone && Math.Abs(cy) < _config.RightStickDeadzone) {
-            _rightNeutralX = _rightNeutralX * 0.995 + s.RX * 0.005;
-            _rightNeutralY = _rightNeutralY * 0.995 + s.RY * 0.005;
-        }
+        double cx = s.RX;
+        double cy = s.RY;
         if (now < _mouseFreezeUntilMs) return;
 
         double actualRadius = Math.Sqrt(cx * cx + cy * cy);
@@ -1941,7 +1941,6 @@ internal static class Program {
         int left = (width - panelWidth) / 2;
 
         string[] logo = BuildShikiPadLogo();
-        Console.WriteLine();
 
         // top decorative rail
         Console.Write(new string(' ', left));
@@ -1954,7 +1953,6 @@ internal static class Program {
         // thin separator
         Console.Write(new string(' ', left));
         WriteGradientText(RepeatPattern("┈", panelWidth), SeasonFlowStops());
-        Console.WriteLine();
         Console.WriteLine();
 
         // logo
@@ -2798,7 +2796,6 @@ internal static class Program {
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(104, Math.Max(66, width - 6));
         bool zh = IsChineseUi();
-        Console.WriteLine();
         WriteSeasonPanelBorder(width, panelWidth, true);
         WriteSeasonPanelTitle(width, panelWidth, zh ? "◇ 选择手柄型号 ◇" : "◇ CONTROLLER PROFILE ◇");
         WriteSeasonPanelSeparator(width, panelWidth);
