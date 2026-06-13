@@ -64,7 +64,7 @@ internal sealed class Config {
     public double MouseMaxSpeed = 13.0;
     public double RightStickDeadzone = 0.05;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 3.0;
+    public double RightStickCurveExponent = 2.2;
     public double LeftStickEnterDeadzone = 0.50;
     public double LeftStickExitDeadzone = 0.45;
     public double TriggerPressThreshold = 0.35;
@@ -137,8 +137,8 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.RightStickCurveExponent <= 0.0 || Double.IsNaN(cfg.RightStickCurveExponent) || Double.IsInfinity(cfg.RightStickCurveExponent)) {
-                Logger.Warn("invalid rightStickCurveExponent; using 3.0");
-                cfg.RightStickCurveExponent = 3.0;
+                Logger.Warn("invalid rightStickCurveExponent; using 2.2");
+                cfg.RightStickCurveExponent = 2.2;
                 shouldSaveMigratedConfig = true;
             }
             if (!text.Contains("\"baseRepeatSlowIntervalMs\"") ||
@@ -170,9 +170,9 @@ internal sealed class Config {
                 cfg.MouseMaxSpeed = 13.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent from 2.4 to 3.0");
-                cfg.RightStickCurveExponent = 3.0;
+            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
+                Logger.Info("migrating rightStickCurveExponent to 2.2");
+                cfg.RightStickCurveExponent = 2.2;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
