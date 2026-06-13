@@ -1186,8 +1186,6 @@ internal sealed class MapperForm : Form {
     private bool _l2Pressed;
     private bool _r2Pressed;
     private StickDirection _leftDirection = StickDirection.None;
-    private double _l2DownMs = 0;
-    private double _r2DownMs = 0;
     private double _scrollNextMs;
     private double _mouseAccumX;
     private double _mouseAccumY;
