@@ -1340,7 +1340,7 @@ internal sealed class MapperForm : Form {
         } else if (radius < _config.LeftStickExitDeadzone) {
             next = StickDirection.None;
         } else {
-            next = Sector(s.LX, s.LY);
+            next = previous;
         }
 
         if (next != previous) {
