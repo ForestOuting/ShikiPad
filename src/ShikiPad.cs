@@ -66,9 +66,9 @@ internal sealed class Config {
     public double MouseMaxSpeed = 12.0;
     public double RightStickDeadzone = 0.05;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 2.4;
-    public double LeftStickEnterDeadzone = 0.50;
-    public double LeftStickExitDeadzone = 0.45;
+    public double RightStickCurveExponent = 2.0;
+    public double LeftStickEnterDeadzone = 0.35;
+    public double LeftStickExitDeadzone = 0.30;
     public double TriggerPressThreshold = 0.35;
     public double TriggerReleaseThreshold = 0.25;
     public int RepeatDelayMs = 180;
@@ -82,7 +82,7 @@ internal sealed class Config {
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 100;
-    public int ScrollFastIntervalMs = 12;
+    public int ScrollFastIntervalMs = 6;
     public int R3FreezeMs = 60;
     public static Config Load(string path) {
         Config cfg = new Config();
@@ -139,8 +139,8 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.RightStickCurveExponent <= 0.0 || Double.IsNaN(cfg.RightStickCurveExponent) || Double.IsInfinity(cfg.RightStickCurveExponent)) {
-                Logger.Warn("invalid rightStickCurveExponent; using 2.4");
-                cfg.RightStickCurveExponent = 2.4;
+                Logger.Warn("invalid rightStickCurveExponent; using 2.0");
+                cfg.RightStickCurveExponent = 2.0;
                 shouldSaveMigratedConfig = true;
             }
             if (!text.Contains("\"baseRepeatSlowIntervalMs\"") ||
@@ -172,24 +172,24 @@ internal sealed class Config {
                 cfg.MouseMaxSpeed = 12.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent to 2.4");
-                cfg.RightStickCurveExponent = 2.4;
+            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
+                Logger.Info("migrating rightStickCurveExponent to 2.0");
+                cfg.RightStickCurveExponent = 2.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
-                Logger.Info("migrating leftStickEnterDeadzone from 0.30 to 0.50");
-                cfg.LeftStickEnterDeadzone = 0.50;
+            if (cfg.ScrollFastIntervalMs == 12) {
+                Logger.Info("migrating scrollFastIntervalMs from 12 to 6");
+                cfg.ScrollFastIntervalMs = 6;
+                shouldSaveMigratedConfig = true;
+            }
+            if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.50) < 0.000001 || Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
+                Logger.Info("migrating leftStickEnterDeadzone to 0.35");
+                cfg.LeftStickEnterDeadzone = 0.35;
                 shouldSaveLeftStickConfig = true;
             }
-            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001) {
-                Logger.Info("migrating leftStickExitDeadzone from 0.20 to 0.45");
-                cfg.LeftStickExitDeadzone = 0.45;
-                shouldSaveLeftStickConfig = true;
-            }
-            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.35) < 0.000001) {
-                Logger.Info("migrating leftStickExitDeadzone from 0.35 to 0.45");
-                cfg.LeftStickExitDeadzone = 0.45;
+            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.45) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.35) < 0.000001) {
+                Logger.Info("migrating leftStickExitDeadzone to 0.30");
+                cfg.LeftStickExitDeadzone = 0.30;
                 shouldSaveLeftStickConfig = true;
             }
             if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
