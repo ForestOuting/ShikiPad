@@ -1942,14 +1942,10 @@ internal static class Program {
         string[] logo = BuildShikiPadLogo();
         Console.WriteLine();
         WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u63a7\u5236\u754c\u9762" : "ShikiPad Control Surface");
-        WriteSeasonRail(width, panelWidth, zh);
-        WriteReadyLine(width, panelWidth, zh);
-        WriteLogoHalo(width, panelWidth, true, zh);
+        Console.WriteLine();
         WriteExtrudedLogo(width, logo, SeasonFlowStops());
-        WriteLogoHalo(width, panelWidth, false, zh);
-        WritePixelSubline(width, panelWidth, zh);
-        WriteStatusCard(width, panelWidth, zh);
-        WriteSeasonDivider(width, panelWidth, zh);
+        Console.WriteLine();
+        WriteMinimalStatus(width, panelWidth, zh);
         Console.WriteLine("\x1b[0m");
     }
 
@@ -2442,6 +2438,14 @@ internal static class Program {
         WritePanelLine(width, panelWidth, zh ? "  \u8f93\u5165\u5b89\u5168" : "  Input safety", zh ? "\u5173\u95ed\u65f6\u81ea\u52a8\u91ca\u653e" : "Auto-release on close", SeasonAutumn(), SeasonWinter());
         WriteSeasonPanelBorder(width, panelWidth, false);
         WriteSeasonDropShadow(width, panelWidth);
+    }
+
+    private static void WriteMinimalStatus(int width, int panelWidth, bool zh) {
+        int left = (width - panelWidth) / 2;
+        string line = "\u2500\u2500\u2500  " + (zh ? "\u5c31\u7eea  \u00b7  \u5173\u95ed\u65f6\u81ea\u52a8\u91ca\u653e\u6240\u6709\u6309\u952e" : "READY  \u00b7  Auto-release all keys on close") + "  \u2500\u2500\u2500";
+        Console.Write(new string(' ', left));
+        WriteGradientText(CenterLine(panelWidth, line), SeasonFlowStops());
+        Console.WriteLine();
     }
 
     private static void WriteSeasonPanelBorder(int width, int panelWidth, bool top) {
