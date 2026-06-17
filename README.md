@@ -96,8 +96,8 @@ Here is the Character Mapping Table:
 | **L1 (LB)** | s | r | d | g | l | c | y | z |
 | **R2 (RT)** | m | w | j | x | q | f | p | b |
 | **L2 (LT)** | k | v | 1 | 2 | 3 | 4 | 5 | 6 |
-| **R1 + R2** | 7 | 8 | 9 | 0 | - | = | , | . |
-| **L1 + L2** | `'` | `/` | `;` | `[` | `]` | `\` | `` ` `` | None |
+| **R1 + L1** | 7 | 8 | 9 | 0 | - | = | , | . |
+| **R2 + L2** | `'` | `/` | `;` | `[` | `]` | `\` | `` ` `` | None |
 
 *Note: For uppercase letters or symbols (like `!`, `@`, `_`, `?`), push the Left Stick to the Left (`Shift`) while typing the character.*
 

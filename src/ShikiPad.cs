@@ -21,8 +21,8 @@ internal enum Layer {
     R1,
     L2,
     R2,
-    R1R2,
-    L1L2,
+    R1L1,
+    R2L2,
     Reserved
 }
 
@@ -78,7 +78,7 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 80;
     public int LayerTakeoverWindowMs = 35;
     public int ActionLayerSwitchGuardMs = 120;
-    public int ComboLayerWindowMs = 80;
+    public int ComboLayerWindowMs = 35;
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 100;
@@ -158,13 +158,13 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
-                Logger.Warn("invalid comboLayerWindowMs; using 80");
-                cfg.ComboLayerWindowMs = 80;
+                Logger.Warn("invalid comboLayerWindowMs; using 35");
+                cfg.ComboLayerWindowMs = 35;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100) {
-                Logger.Info("migrating comboLayerWindowMs to 80");
-                cfg.ComboLayerWindowMs = 80;
+            if (cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
+                Logger.Info("migrating comboLayerWindowMs to 35");
+                cfg.ComboLayerWindowMs = 35;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001) {
@@ -312,8 +312,8 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.L1] = new PhysicalKey[] { PhysicalKey.S, PhysicalKey.R, PhysicalKey.D, PhysicalKey.G, PhysicalKey.L, PhysicalKey.C, PhysicalKey.Y, PhysicalKey.Z };
         _tables[(int)Layer.R2] = new PhysicalKey[] { PhysicalKey.M, PhysicalKey.W, PhysicalKey.J, PhysicalKey.X, PhysicalKey.Q, PhysicalKey.F, PhysicalKey.P, PhysicalKey.B };
         _tables[(int)Layer.L2] = new PhysicalKey[] { PhysicalKey.K, PhysicalKey.V, PhysicalKey.Num1, PhysicalKey.Num2, PhysicalKey.Num3, PhysicalKey.Num4, PhysicalKey.Num5, PhysicalKey.Num6 };
-        _tables[(int)Layer.R1R2] = new PhysicalKey[] { PhysicalKey.Num7, PhysicalKey.Num8, PhysicalKey.Num9, PhysicalKey.Num0, PhysicalKey.Minus, PhysicalKey.Equals, PhysicalKey.Comma, PhysicalKey.Period };
-        _tables[(int)Layer.L1L2] = new PhysicalKey[] { PhysicalKey.Apostrophe, PhysicalKey.Slash, PhysicalKey.Semicolon, PhysicalKey.LeftBracket, PhysicalKey.RightBracket, PhysicalKey.Backslash, PhysicalKey.Grave, PhysicalKey.None };
+        _tables[(int)Layer.R1L1] = new PhysicalKey[] { PhysicalKey.Num7, PhysicalKey.Num8, PhysicalKey.Num9, PhysicalKey.Num0, PhysicalKey.Minus, PhysicalKey.Equals, PhysicalKey.Comma, PhysicalKey.Period };
+        _tables[(int)Layer.R2L2] = new PhysicalKey[] { PhysicalKey.Apostrophe, PhysicalKey.Slash, PhysicalKey.Semicolon, PhysicalKey.LeftBracket, PhysicalKey.RightBracket, PhysicalKey.Backslash, PhysicalKey.Grave, PhysicalKey.None };
     }
 
     public Layer Resolve(bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, double comboLayerWindowMs) {
@@ -328,8 +328,8 @@ internal sealed class MappingEngine {
         ConsiderLayer(r1, Layer.R1, r1Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(l2, Layer.L2, l2Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(r2, Layer.R2, r2Ms, 1, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(r1, r2, r1Ms, r2Ms, comboWindow), Layer.R1R2, Math.Max(r1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(l1, l2, l1Ms, l2Ms, comboWindow), Layer.L1L2, Math.Max(l1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(r1, l1, r1Ms, l1Ms, comboWindow), Layer.R1L1, Math.Max(r1Ms, l1Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(r2, l2, r2Ms, l2Ms, comboWindow), Layer.R2L2, Math.Max(r2Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
 
         return layer;
     }
@@ -1640,8 +1640,8 @@ internal sealed class MapperForm : Form {
             case Layer.R1: return _r1DownMs;
             case Layer.L2: return _l2DownMs;
             case Layer.R2: return _r2DownMs;
-            case Layer.R1R2: return Math.Max(_r1DownMs, _r2DownMs);
-            case Layer.L1L2: return Math.Max(_l1DownMs, _l2DownMs);
+            case Layer.R1L1: return Math.Max(_r1DownMs, _l1DownMs);
+            case Layer.R2L2: return Math.Max(_r2DownMs, _l2DownMs);
             default: return 0.0;
         }
     }
@@ -1687,7 +1687,7 @@ internal sealed class MapperForm : Form {
     }
 
     private static bool IsComboLayer(Layer layer) {
-        return layer == Layer.R1R2 || layer == Layer.L1L2;
+        return layer == Layer.R1L1 || layer == Layer.R2L2;
     }
 
     private void PressActionKey(int index, PhysicalKey key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now) {
@@ -2026,8 +2026,8 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+R2: 7 8 9 0 - = , .    L1+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/R2 \u6216 L1/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309; \u8d85\u65f6\u6309\u6700\u540e\u5355\u5c42", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/L1 \u6216 R2/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309; \u8d85\u65f6\u6309\u6700\u540e\u5355\u5c42", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u5c42\u786e\u8ba4", "\u52a8\u4f5c\u952e\u7b49 " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms; \u65b0\u5355\u5c42\u4ec5\u56de\u770b " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Back \u6216 Menu/Start \u4efb\u610f\u4e00\u4e2a\u6309\u4f4f\u90fd\u7b97\u84c4\u529b" : "\u6309\u4f4f DualSense \u89e6\u63a7\u677f\u8fdb\u5165\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
@@ -2038,8 +2038,8 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  Base layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combo layers", "R1+R2: 7 8 9 0 - = , .    L1+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combo window", "R1/R2 or L1/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combo window", "R1/L1 or R2/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Layer settle", "Action waits " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms; takeover looks back " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Clutch", xbox ? "Hold either View/Back or Menu/Start for touchpad charge" : "Hold the DualSense touchpad for touchpad charge", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
@@ -2971,7 +2971,7 @@ internal static class Program {
 
     private static void PrintLayerTest(Config config) {
         MappingEngine m = new MappingEngine();
-        Layer[] layers = new Layer[] { Layer.Base, Layer.L1, Layer.R1, Layer.L2, Layer.R2, Layer.R1R2, Layer.L1L2 };
+        Layer[] layers = new Layer[] { Layer.Base, Layer.L1, Layer.R1, Layer.L2, Layer.R2, Layer.R1L1, Layer.R2L2 };
         Console.WriteLine("Action button order: Up, Right, Square, Triangle, Left, Down, Cross, Circle");
         Console.WriteLine();
         for (int l = 0; l < layers.Length; l++) {
@@ -2982,22 +2982,22 @@ internal static class Program {
             }
             Console.WriteLine();
         }
-        Console.WriteLine("Layer priority: latest triggered layer wins; R1+R2 and L1+L2 activate only inside comboLayerWindowMs.");
+        Console.WriteLine("Layer priority: latest triggered layer wins; R1+L1 and R2+L2 activate only inside comboLayerWindowMs.");
         Console.WriteLine("comboLayerWindowMs = " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine();
         Console.WriteLine("Resolution checks:");
         double delayedMs = config.ComboLayerWindowMs + 120.0;
-        PrintResolutionCheck(config, m, "R1 then R2 + Square", false, true, false, true, 0, 10, 0, 20, ActionButton.Square);
-        PrintResolutionCheck(config, m, "R2 held then R1 after window + Square", false, true, false, true, 0, delayedMs, 0, 10, ActionButton.Square);
-        PrintResolutionCheck(config, m, "R1 held then R2 after window + Square", false, true, false, true, 0, 10, 0, delayedMs, ActionButton.Square);
-        PrintResolutionCheck(config, m, "R1+R2 then L1 + Square", true, true, false, true, 30, 10, 0, 20, ActionButton.Square);
-        PrintResolutionCheck(config, m, "R1+R2 release R2 + Square", false, true, false, false, 0, 10, 0, 20, ActionButton.Square);
-        PrintResolutionCheck(config, m, "L1 then L2 + Up", true, false, true, false, 10, 0, 20, 0, ActionButton.Up);
-        PrintResolutionCheck(config, m, "L2 held then L1 after window + Up", true, false, true, false, delayedMs, 0, 10, 0, ActionButton.Up);
-        PrintResolutionCheck(config, m, "L1 held then L2 after window + Up", true, false, true, false, 10, 0, delayedMs, 0, ActionButton.Up);
-        PrintResolutionCheck(config, m, "L1+L2 then R2 + Up", true, false, true, true, 10, 0, 20, 30, ActionButton.Up);
         PrintResolutionCheck(config, m, "R1 then L1 + Square", true, true, false, false, 20, 10, 0, 0, ActionButton.Square);
-        PrintResolutionCheck(config, m, "L2 then R2 + Square", false, false, true, true, 0, 0, 10, 20, ActionButton.Square);
+        PrintResolutionCheck(config, m, "L1 held then R1 after window + Square", true, true, false, false, 10, delayedMs, 0, 0, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R1 held then L1 after window + Square", true, true, false, false, delayedMs, 10, 0, 0, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R1+L1 then R2 + Square", true, true, false, true, 20, 10, 0, 30, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R1+L1 release L1 + Square", false, true, false, false, 0, 10, 0, 0, ActionButton.Square);
+        PrintResolutionCheck(config, m, "R2 then L2 + Up", false, false, true, true, 0, 0, 20, 10, ActionButton.Up);
+        PrintResolutionCheck(config, m, "L2 held then R2 after window + Up", false, false, true, true, 0, 0, delayedMs, 10, ActionButton.Up);
+        PrintResolutionCheck(config, m, "R2 held then L2 after window + Up", false, false, true, true, 0, 0, 10, delayedMs, ActionButton.Up);
+        PrintResolutionCheck(config, m, "R2+L2 then R1 + Up", false, true, true, true, 0, 30, 20, 10, ActionButton.Up);
+        PrintResolutionCheck(config, m, "R1 then R2 + Square", false, true, false, true, 0, 10, 0, 20, ActionButton.Square);
+        PrintResolutionCheck(config, m, "L1 then L2 + Square", true, false, true, false, 10, 0, 20, 0, ActionButton.Square);
         Console.WriteLine();
         PrintPendingTimingChecks(config, m);
     }
@@ -3203,8 +3203,8 @@ internal static class Program {
     }
 
     private static string LayerDisplayName(Layer layer) {
-        if (layer == Layer.R1R2) return "R1+R2";
-        if (layer == Layer.L1L2) return "L1+L2";
+        if (layer == Layer.R1L1) return "R1+L1";
+        if (layer == Layer.R2L2) return "R2+L2";
         return layer.ToString();
     }
 
