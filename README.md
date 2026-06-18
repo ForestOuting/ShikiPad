@@ -58,7 +58,14 @@ The left stick acts as an 8-way directional pad for modifier keys. Push the stic
 | **Up-Left** | `Esc` |
 | **Up** | Mouse Wheel Up |
 | **Down** | Mouse Wheel Down |
-| **Up-Right** | Activate **`Fn`** Layer (see below) |
+| **Up-Right** | Activates **`Fn`** Layer (see below) |
+
+#### ⚡ Clutch Design (Modifier Accumulation)
+Normally, the Left Stick can only output one modifier key at a time. If you want to use complex shortcuts like `Ctrl + Shift + Esc`, you can use the **Clutch** feature:
+- **How to trigger**:
+  - **DS4 / DS5 Controllers**: Hold the **Touchpad**, or click the **Options** button to toggle Clutch ON (click **Share/Create** to toggle OFF).
+  - **Xbox Controllers**: Click the **Menu/Start** button to toggle Clutch ON (click **View/Back** to toggle OFF).
+- **How to use**: While the Clutch is active, you can move the Left Stick freely to "collect" multiple modifiers. For example, pushing Left collects `Shift`, then pushing Down-Left collects `Ctrl`. They will be held down together until you release the Clutch!
 
 #### Fn Layer (F1 - F12)
 When you hold the Left Stick in the **Up-Right (Fn)** direction, number keys on the controller will output F-keys instead.
