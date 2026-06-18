@@ -1007,7 +1007,7 @@ internal sealed class DirectHidController {
             s.R3 = (b2 & 0x80) != 0;
             
             byte b3 = r[7];
-            s.TouchClick = (b3 & 0x02) != 0;
+            s.TouchClick = ((b3 & 0x02) != 0) || s.Create || s.Options;
         } else {
             int offset = isUsbProfile ? 1 : (r[0] == 0x11 ? 3 : 2);
             
@@ -1029,7 +1029,7 @@ internal sealed class DirectHidController {
             
             s.Create = (b2 & 0x10) != 0;
             s.Options = (b2 & 0x20) != 0;
-            if (r.Length > offset + 9) s.TouchClick = (r[offset + 9] & 0x02) != 0;
+            if (r.Length > offset + 9) s.TouchClick = ((r[offset + 9] & 0x02) != 0) || s.Create || s.Options;
             s.L3 = (b2 & 0x40) != 0;
             s.R3 = (b2 & 0x80) != 0;
         }
@@ -2029,7 +2029,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/L1 \u6216 R2/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309; \u8d85\u65f6\u6309\u6700\u540e\u5355\u5c42", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u5c42\u786e\u8ba4", "\u52a8\u4f5c\u952e\u7b49 " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms; \u65b0\u5355\u5c42\u4ec5\u56de\u770b " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Back \u6216 Menu/Start \u4efb\u610f\u4e00\u4e2a\u6309\u4f4f\u90fd\u7b97\u84c4\u529b" : "\u6309\u4f4f DualSense \u89e6\u63a7\u677f\u8fdb\u5165\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Back \u6216 Menu/Start \u4efb\u610f\u4e00\u4e2a\u6309\u4f4f\u90fd\u7b97\u84c4\u529b" : "\u6309\u4f4f\u89e6\u63a7\u677f \u6216 \u5206\u4eab/\u8bbe\u7f6e \u952e\u8fdb\u5165\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         } else {
             WritePanelLine(width, panelWidth, "  Connected", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
@@ -2041,7 +2041,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combo window", "R1/L1 or R2/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Layer settle", "Action waits " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms; takeover looks back " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Clutch", xbox ? "Hold either View/Back or Menu/Start for touchpad charge" : "Hold the DualSense touchpad for touchpad charge", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Clutch", xbox ? "Hold either View/Back or Menu/Start for touchpad charge" : "Hold Touchpad or Share/Options for charge", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         }
 
