@@ -84,7 +84,7 @@ When you hold down the top bumpers or triggers (**L1, R1, L2, R2**), the D-Pad a
 
 To prevent typos during fast typing, **Character Layer inputs act as single virtual taps**. Holding them down will *not* repeat the character.
 
-> **💡 Tip:** If you find typing with a controller too difficult, you can use the `Win + H` shortcut (`Left Stick →` + `R1 + Square/X`) to activate Windows Voice Typing. For the best experience, it is highly recommended to enable "Online speech recognition" in `Windows Settings` -> `Privacy & security` -> `Speech`.
+> **💡 Tip:** If you find typing with a controller too difficult, you can use the `Win + H` shortcut (`Left Stick →` + `R1 + Square/X`) to activate Windows Voice Typing. For the best experience, it is highly recommended to enable "Online speech recognition" in `Windows Settings` -> `Privacy & security` -> `Speech`. Additionally, if you're using a DualSense (PS5) controller, you can select its built-in microphone as your input device—talking close to it yields excellent recognition results!
 
 Here is the Character Mapping Table:
 
