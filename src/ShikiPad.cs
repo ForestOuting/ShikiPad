@@ -876,7 +876,7 @@ internal sealed class DirectHidController {
         s.Create = (b & NativeMethods.XINPUT_GAMEPAD_BACK) != 0;
         s.Options = (b & NativeMethods.XINPUT_GAMEPAD_START) != 0;
 
-        s.TouchClick = s.Create || s.Options;
+        // Xbox has no physical touchpad; clutch toggle is handled in MapperForm
         return s;
     }
 
@@ -1007,7 +1007,7 @@ internal sealed class DirectHidController {
             s.R3 = (b2 & 0x80) != 0;
             
             byte b3 = r[7];
-            s.TouchClick = ((b3 & 0x02) != 0) || s.Create || s.Options;
+            s.TouchClick = (b3 & 0x02) != 0;
         } else {
             int offset = isUsbProfile ? 1 : (r[0] == 0x11 ? 3 : 2);
             
@@ -1029,7 +1029,7 @@ internal sealed class DirectHidController {
             
             s.Create = (b2 & 0x10) != 0;
             s.Options = (b2 & 0x20) != 0;
-            if (r.Length > offset + 9) s.TouchClick = ((r[offset + 9] & 0x02) != 0) || s.Create || s.Options;
+            if (r.Length > offset + 9) s.TouchClick = (r[offset + 9] & 0x02) != 0;
             s.L3 = (b2 & 0x40) != 0;
             s.R3 = (b2 & 0x80) != 0;
         }
@@ -1196,6 +1196,9 @@ internal sealed class MapperForm : Form {
     private List<PhysicalKey> _accumulatedModifiers = new List<PhysicalKey>();
     private List<PhysicalKey> _heldLeftStickKeys = new List<PhysicalKey>();
     private bool _prevTouchClick;
+    private bool _clutchToggled;
+    private bool _prevCreate;
+    private bool _prevOptions;
     private double _disableStartMs;
     private bool _disableArmed = true;
     private double _lastTickMs;
@@ -1351,8 +1354,17 @@ internal sealed class MapperForm : Form {
             }
         }
 
-        bool touchJustPressed = s.TouchClick && !_prevTouchClick;
-        _prevTouchClick = s.TouchClick;
+        // Toggle clutch: Options click = ON, Create click = OFF
+        if (s.Options && !_prevOptions) _clutchToggled = true;
+        if (s.Create && !_prevCreate) _clutchToggled = false;
+        _prevCreate = s.Create;
+        _prevOptions = s.Options;
+
+        // Effective clutch = physical touchpad hold OR toggle state
+        bool clutch = s.TouchClick || _clutchToggled;
+
+        bool touchJustPressed = clutch && !_prevTouchClick;
+        _prevTouchClick = clutch;
 
         List<PhysicalKey> desiredKeys = new List<PhysicalKey>();
 
@@ -1364,7 +1376,7 @@ internal sealed class MapperForm : Form {
 
         if (_leftDirection != StickDirection.None && _leftDirection != StickDirection.Up && _leftDirection != StickDirection.Down) {
             PhysicalKey rawStickKey = GetLeftStickKey(_leftDirection);
-            if (s.TouchClick) {
+            if (clutch) {
                 AccumulateLeftStickKey(rawStickKey);
                 desiredKeys.AddRange(_accumulatedModifiers);
             } else {
@@ -1376,7 +1388,7 @@ internal sealed class MapperForm : Form {
                 }
             }
         } else {
-            if (s.TouchClick) {
+            if (clutch) {
                 desiredKeys.AddRange(_accumulatedModifiers);
             } else {
                 _accumulatedModifiers.Clear();
@@ -1857,6 +1869,9 @@ internal sealed class MapperForm : Form {
         _l2Pressed = false;
         _r2Pressed = false;
         _prevTouchClick = false;
+        _clutchToggled = false;
+        _prevCreate = false;
+        _prevOptions = false;
         _mouseFreezeUntilMs = 0;
         _mouseAccumX = 0;
         _mouseAccumY = 0;
@@ -2029,7 +2044,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/L1 \u6216 R2/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309; \u8d85\u65f6\u6309\u6700\u540e\u5355\u5c42", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u5c42\u786e\u8ba4", "\u52a8\u4f5c\u952e\u7b49 " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms; \u65b0\u5355\u5c42\u4ec5\u56de\u770b " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Back \u6216 Menu/Start \u4efb\u610f\u4e00\u4e2a\u6309\u4f4f\u90fd\u7b97\u84c4\u529b" : "\u6309\u4f4f\u89e6\u63a7\u677f \u6216 \u5206\u4eab/\u8bbe\u7f6e \u952e\u8fdb\u5165\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u84c4\u529b", "\u89e6\u63a7\u677f\u6309\u4f4f=\u84c4\u529b; \u70b9\u51fb\u8bbe\u7f6e\u952e=\u5f00\u542f\u84c4\u529b, \u70b9\u51fb\u5206\u4eab\u952e=\u89e3\u9664\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         } else {
             WritePanelLine(width, panelWidth, "  Connected", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
@@ -2041,7 +2056,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combo window", "R1/L1 or R2/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Layer settle", "Action waits " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms; takeover looks back " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Clutch", xbox ? "Hold either View/Back or Menu/Start for touchpad charge" : "Hold Touchpad or Share/Options for charge", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Clutch", "Touchpad hold=clutch; Menu/Start click=ON, View/Back click=OFF", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         }
 
