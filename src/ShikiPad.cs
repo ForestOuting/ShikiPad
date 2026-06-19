@@ -722,6 +722,7 @@ internal sealed class ControllerState {
     public bool Up, Right, Down, Left, Square, Triangle, Cross, Circle;
     public bool L1, R1, L3, R3, Options, Create;
     public bool TouchClick;
+    public bool Home;
 }
 
 internal sealed class DirectHidController {
@@ -886,6 +887,7 @@ internal sealed class DirectHidController {
         s.Create = (b & NativeMethods.XINPUT_GAMEPAD_BACK) != 0;
         s.Options = (b & NativeMethods.XINPUT_GAMEPAD_START) != 0;
 
+        s.Home = (b & NativeMethods.XINPUT_GAMEPAD_GUIDE) != 0;
         // Xbox has no physical touchpad; clutch toggle is handled in MapperForm
         return s;
     }
@@ -1017,6 +1019,7 @@ internal sealed class DirectHidController {
             s.R3 = (b2 & 0x80) != 0;
             
             byte b3 = r[7];
+            s.Home = (b3 & 0x01) != 0;
             s.TouchClick = (b3 & 0x02) != 0;
         } else {
             int offset = isUsbProfile ? 1 : (r[0] == 0x11 ? 3 : 2);
@@ -1039,7 +1042,10 @@ internal sealed class DirectHidController {
             
             s.Create = (b2 & 0x10) != 0;
             s.Options = (b2 & 0x20) != 0;
-            if (r.Length > offset + 9) s.TouchClick = (r[offset + 9] & 0x02) != 0;
+            if (r.Length > offset + 9) {
+                s.Home = (r[offset + 9] & 0x01) != 0;
+                s.TouchClick = (r[offset + 9] & 0x02) != 0;
+            }
             s.L3 = (b2 & 0x40) != 0;
             s.R3 = (b2 & 0x80) != 0;
         }
@@ -1117,6 +1123,7 @@ internal static class NativeMethods {
         public const ushort XINPUT_GAMEPAD_RIGHT_THUMB = 0x0080;
         public const ushort XINPUT_GAMEPAD_LEFT_SHOULDER = 0x0100;
         public const ushort XINPUT_GAMEPAD_RIGHT_SHOULDER = 0x0200;
+        public const ushort XINPUT_GAMEPAD_GUIDE = 0x0400;
         public const ushort XINPUT_GAMEPAD_A = 0x1000;
         public const ushort XINPUT_GAMEPAD_B = 0x2000;
         public const ushort XINPUT_GAMEPAD_X = 0x4000;
@@ -1124,17 +1131,26 @@ internal static class NativeMethods {
 
         public static int XInputGetStateAny(int userIndex, out XINPUT_STATE state) {
             try {
-                return XInputGetState14(userIndex, out state);
+                return XInputGetStateEx14(userIndex, out state);
             } catch (DllNotFoundException) {
+                try { return XInputGetState14(userIndex, out state); }
+                catch (DllNotFoundException) {}
+                catch (EntryPointNotFoundException) {}
                 try { return XInputGetState910(userIndex, out state); }
                 catch (DllNotFoundException) { state = new XINPUT_STATE(); return 1167; }
                 catch (EntryPointNotFoundException) { state = new XINPUT_STATE(); return 1167; }
             } catch (EntryPointNotFoundException) {
+                try { return XInputGetState14(userIndex, out state); }
+                catch (DllNotFoundException) {}
+                catch (EntryPointNotFoundException) {}
                 try { return XInputGetState910(userIndex, out state); }
                 catch (DllNotFoundException) { state = new XINPUT_STATE(); return 1167; }
                 catch (EntryPointNotFoundException) { state = new XINPUT_STATE(); return 1167; }
             }
         }
+
+        [DllImport("xinput1_4.dll", EntryPoint = "#100")]
+        private static extern int XInputGetStateEx14(int dwUserIndex, out XINPUT_STATE pState);
 
         [DllImport("xinput1_4.dll", EntryPoint = "XInputGetState")]
         private static extern int XInputGetState14(int dwUserIndex, out XINPUT_STATE pState);
@@ -1209,6 +1225,8 @@ internal sealed class MapperForm : Form {
     private bool _clutchToggled;
     private bool _prevCreate;
     private bool _prevOptions;
+    private bool _prevHome;
+    private bool _homeKeyDown;
     private double _disableStartMs;
     private bool _disableArmed = true;
     private double _lastTickMs;
@@ -1313,6 +1331,7 @@ internal sealed class MapperForm : Form {
         UpdateActionButtons(s, now);
         UpdateMouseButtons(s, now);
         UpdateRightStick(s, now, deltaSec);
+        UpdateHomeButton(s);
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
@@ -1839,6 +1858,22 @@ internal sealed class MapperForm : Form {
         }
     }
 
+    private void UpdateHomeButton(ControllerState s) {
+        bool home = s.Home;
+        if (home && !_prevHome) {
+            _injector.CurrentSource = "Home";
+            _injector.CurrentReason = "Home button press";
+            _injector.KeyDown(PhysicalKey.RAlt);
+            _homeKeyDown = true;
+        } else if (!home && _prevHome && _homeKeyDown) {
+            _injector.CurrentSource = "Home";
+            _injector.CurrentReason = "Home button release";
+            _injector.KeyUp(PhysicalKey.RAlt);
+            _homeKeyDown = false;
+        }
+        _prevHome = home;
+    }
+
     private void UpdateEmergency(ControllerState s, double now) {
         bool held = s.Options && s.Create;
         if (!held) {
@@ -1884,6 +1919,8 @@ internal sealed class MapperForm : Form {
         _mouseFreezeUntilMs = 0;
         _mouseAccumX = 0;
         _mouseAccumY = 0;
+        _prevHome = false;
+        _homeKeyDown = false;
     }
 
     private void ReleaseHeldActionKeys() {

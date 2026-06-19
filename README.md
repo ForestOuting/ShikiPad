@@ -58,6 +58,7 @@ While running, **hold Share/Create/View + Options/Menu simultaneously for 2 seco
 | **Right Stick** movement | Mouse cursor movement | Power-curve acceleration: gentle for fine control, fast when pushed hard |
 | **R3** (Right Stick click) | Right Mouse Button | Cursor freezes briefly on click to prevent accidental movement |
 | **L3** (Left Stick click) | Left Mouse Button | — |
+| **PS / Xbox Home Button** | `Right Alt` | Hold to press, release to let go |
 
 ---
 
