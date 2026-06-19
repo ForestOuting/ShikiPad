@@ -134,7 +134,7 @@ To prevent accidental repeats during fast typing, **all Character Layer inputs a
 > **Uppercase & shifted symbols:** Push the Left Stick **Left (Shift)** while pressing the letter key. For example: `Shift` + R1 + `e` = `E`, `Shift` + L2 + `1` = `!`.
 
 > **💡 Voice Typing Tip:** If controller typing still feels too slow, you can use `Win + H` (`Left Stick →` + `R1 + □/X`) to open **Windows Voice Typing** (enable "Online speech recognition" in Windows Settings for best results).
-> For even better speed and accuracy, we highly recommend using third-party AI voice typing software like **typeless Whisper** or **闪电说**. Additionally, if you're using a DualSense (PS5) controller, you can switch your system input device to the controller's built-in microphone — speaking close to it yields excellent recognition results!
+> For even better speed and accuracy, we highly recommend using third-party AI voice typing software like **Typeless**, **Whisper**, or **闪电说**. Additionally, if you're using a DualSense (PS5) controller, you can switch your system input device to the controller's built-in microphone — speaking close to it yields excellent recognition results!
 
 ---
 
