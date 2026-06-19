@@ -159,10 +159,10 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | Parameter | Default | Description |
 |---|---|---|
 | `mouseMaxSpeed` | `8.0` | Maximum cursor speed when the right stick is fully pushed |
-| `mouseSensitivity` | `1.0` | Global mouse sensitivity multiplier |
+| `mouseSensitivity` | `1.0` | Global multiplier for mouse speed (Final Speed = MaxSpeed * Sensitivity) |
 | `rightStickDeadzone` | `0.03` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
 | `rightStickCurveExponent` | `2.6` | Power curve exponent. Higher values = more precise at low deflection |
-| `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3, preventing accidental movement on click |
+| `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3. Clicking the stick often causes accidental nudges; this briefly ignores stick movement to ensure stable clicks |
 
 ### Left Stick / Modifiers
 
@@ -184,7 +184,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 |---|---|---|
 | `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
 | `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
-| `actionLayerSwitchGuardMs` | `120` | Layer-switch guard period (ms), prevents residual input when rapidly changing layers |
+| `actionLayerSwitchGuardMs` | `120` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
 
 ### Repeat / Scroll
 
@@ -221,7 +221,3 @@ Increase `rightStickDeadzone` in `shikipad.json` (e.g., from `0.03` to `0.05` or
 ### Typing Accidentally Triggers Base Layer Keys
 Increase `actionLayerGraceMs` (e.g., from `35` to `50` or `80`) to give the layer detection more confirmation time.
 
----
-
-## 📜 License
-MIT License
