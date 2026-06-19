@@ -64,7 +64,7 @@ internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
     public double MouseMaxSpeed = 8.0;
-    public double RightStickDeadzone = 0.05;
+    public double RightStickDeadzone = 0.03;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.6;
     public double LeftStickEnterDeadzone = 0.35;
@@ -127,7 +127,7 @@ internal sealed class Config {
             cfg.ScrollFastIntervalMs = GetInt(text, "scrollFastIntervalMs", cfg.ScrollFastIntervalMs);
             cfg.R3FreezeMs = GetInt(text, "r3FreezeMs", cfg.R3FreezeMs);
             
-            if (cfg.RightStickDeadzone == 0.0) {
+            if (cfg.RightStickDeadzone == 0.0 || Math.Abs(cfg.RightStickDeadzone - 0.05) < 0.000001) {
                 Logger.Info("migrating rightStickDeadzone to 0.03");
                 cfg.RightStickDeadzone = 0.03;
                 shouldSaveMigratedConfig = true;
