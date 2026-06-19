@@ -77,7 +77,7 @@ internal sealed class Config {
     public int BaseRepeatRampMs = 1200;
     public int ActionLayerGraceMs = 35;
     public int LayerTakeoverWindowMs = 35;
-    public int ActionLayerSwitchGuardMs = 120;
+    public int ActionLayerSwitchGuardMs = 35;
     public int ComboLayerWindowMs = 35;
     public bool UseScanCode = true;
     public bool UseInterception = true;
@@ -160,6 +160,11 @@ internal sealed class Config {
             if (cfg.ActionLayerGraceMs == 80) {
                 Logger.Info("migrating actionLayerGraceMs to 35");
                 cfg.ActionLayerGraceMs = 35;
+                shouldSaveMigratedConfig = true;
+            }
+            if (cfg.ActionLayerSwitchGuardMs == 120) {
+                Logger.Info("migrating actionLayerSwitchGuardMs to 35");
+                cfg.ActionLayerSwitchGuardMs = 35;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
@@ -1687,6 +1692,9 @@ internal sealed class MapperForm : Form {
         bool layerCombo = IsComboLayer(layer);
         if (pendingCombo && !layerCombo) return pendingLayer;
 
+        bool pendingSingle = pendingLayer != Layer.Base && pendingLayer != Layer.Reserved && !pendingCombo;
+        bool layerSingle = layer != Layer.Base && layer != Layer.Reserved && !layerCombo;
+        if (pendingSingle && layerSingle) return pendingLayer;
 
         return layer;
     }

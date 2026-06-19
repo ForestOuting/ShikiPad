@@ -184,7 +184,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 |---|---|---|
 | `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
 | `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
-| `actionLayerSwitchGuardMs` | `120` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
+| `actionLayerSwitchGuardMs` | `35` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
 
 ### Repeat / Scroll
 
