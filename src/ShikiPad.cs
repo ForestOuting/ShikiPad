@@ -887,8 +887,8 @@ internal sealed class DirectHidController {
         s.Create = (b & NativeMethods.XINPUT_GAMEPAD_BACK) != 0;
         s.Options = (b & NativeMethods.XINPUT_GAMEPAD_START) != 0;
 
-        s.Home = (b & NativeMethods.XINPUT_GAMEPAD_GUIDE) != 0;
         // Xbox has no physical touchpad; clutch toggle is handled in MapperForm
+        // Xbox Home/Guide button is intercepted by Windows for Xbox Game Bar and cannot be read via XInput
         return s;
     }
 
@@ -1123,7 +1123,6 @@ internal static class NativeMethods {
         public const ushort XINPUT_GAMEPAD_RIGHT_THUMB = 0x0080;
         public const ushort XINPUT_GAMEPAD_LEFT_SHOULDER = 0x0100;
         public const ushort XINPUT_GAMEPAD_RIGHT_SHOULDER = 0x0200;
-        public const ushort XINPUT_GAMEPAD_GUIDE = 0x0400;
         public const ushort XINPUT_GAMEPAD_A = 0x1000;
         public const ushort XINPUT_GAMEPAD_B = 0x2000;
         public const ushort XINPUT_GAMEPAD_X = 0x4000;
@@ -1131,26 +1130,17 @@ internal static class NativeMethods {
 
         public static int XInputGetStateAny(int userIndex, out XINPUT_STATE state) {
             try {
-                return XInputGetStateEx14(userIndex, out state);
+                return XInputGetState14(userIndex, out state);
             } catch (DllNotFoundException) {
-                try { return XInputGetState14(userIndex, out state); }
-                catch (DllNotFoundException) {}
-                catch (EntryPointNotFoundException) {}
                 try { return XInputGetState910(userIndex, out state); }
                 catch (DllNotFoundException) { state = new XINPUT_STATE(); return 1167; }
                 catch (EntryPointNotFoundException) { state = new XINPUT_STATE(); return 1167; }
             } catch (EntryPointNotFoundException) {
-                try { return XInputGetState14(userIndex, out state); }
-                catch (DllNotFoundException) {}
-                catch (EntryPointNotFoundException) {}
                 try { return XInputGetState910(userIndex, out state); }
                 catch (DllNotFoundException) { state = new XINPUT_STATE(); return 1167; }
                 catch (EntryPointNotFoundException) { state = new XINPUT_STATE(); return 1167; }
             }
         }
-
-        [DllImport("xinput1_4.dll", EntryPoint = "#100")]
-        private static extern int XInputGetStateEx14(int dwUserIndex, out XINPUT_STATE pState);
 
         [DllImport("xinput1_4.dll", EntryPoint = "XInputGetState")]
         private static extern int XInputGetState14(int dwUserIndex, out XINPUT_STATE pState);
