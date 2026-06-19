@@ -1,131 +1,227 @@
-# ShikiPad (Windows Controller-to-Keyboard Mapper)
+# ShikiPad — Windows Controller-to-Keyboard & Mouse Mapper
 
-ShikiPad is a Windows application that maps DualSense (PS5), DualShock 4 (PS4), Xbox 360, and Xbox Series X|S controllers to keyboard and mouse inputs.
+> Map **DualSense (PS5)** · **DualShock 4 (PS4)** · **Xbox 360** · **Xbox Series X|S** controllers to keyboard and mouse.
 
-This final release is heavily optimized for **fast controller typing**. You can use it to fluently type characters and operate the mouse while lying in bed or using a handheld/streaming device.
+ShikiPad is a native Windows application purpose-built for **fast controller typing**. Whether you're lying in bed, using a handheld streaming device, or simply prefer a gamepad over a keyboard, ShikiPad delivers fluid, accurate character input and precise mouse control.
+
+Key features:
+- 🎯 **All 26 English letters + digits + punctuation** accessible via shoulder/trigger layers, arranged by letter frequency
+- 🖱️ Right stick mouse control with adjustable acceleration curve and deadzone
+- ⚡ Original "Clutch" system for effortless multi-modifier shortcuts like `Ctrl + Shift + Esc`
+- 🛡️ Interception kernel driver support — works inside VMs and some anti-cheat games
+- ⚙️ Every parameter is tunable via a JSON config file
 
 Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
+---
+
 ## 📥 Installation & First Run
 
-### 1. Download ShikiPad
-Download the latest zip archive from the **Releases** section on the right side of the GitHub page (or clone this repository). Extract it to any folder on your computer.
+### 1. Download
+Download the latest release archive from the **Releases** section on the right side of the GitHub page (or clone this repository). Extract it to any folder.
 
-### 2. (Required) Install the Kernel Driver
-To allow ShikiPad to work inside **Virtual Machines (like VMware)** or in **games with low-level anti-cheat**, we use the Interception driver for hardware-level injection.
-1. Inside the extracted folder, find the **`install_driver.bat`** file.
-2. **Right-click on it and select "Run as administrator"**.
-3. A black command prompt will appear. Once it says `Installation complete!`, you can close the window.
-4. **You MUST restart your computer** for the driver to take effect.
+### 2. Install the Kernel Driver (Required)
+ShikiPad uses the [Interception](https://github.com/oblitum/Interception) kernel driver for hardware-level keyboard injection, ensuring it works inside VMs and games with low-level anti-cheat.
 
-### 3. Run the Program
-After restarting your computer:
-1. Double-click `ShikiPad.exe`.
-2. A black terminal window will appear asking you to choose your controller profile `[1..8, Enter = 1]`:
-   - Type `1` for DualSense (PS5, USB)
-   - Type `2` for DualSense (PS5, Bluetooth)
-   - Type `3` for DualShock 4 (PS4, USB)
-   - Type `4` for DualShock 4 (PS4, Bluetooth)
-   - Type `5` for Xbox 360 (USB)
-   - Type `6` for Xbox 360 (Bluetooth)
-   - Type `7` for Xbox Series X|S (USB)
-   - Type `8` for Xbox Series X|S (Bluetooth)
-3. The program will minimize, and your controller is now mapped to your computer!
+1. In the extracted folder, find **`install_driver.bat`**.
+2. **Right-click → Run as administrator**.
+3. Wait for the command prompt to display `Installation complete!`, then close the window.
+4. ⚠️ **You MUST restart your computer** for the driver to take effect.
 
-To close ShikiPad, simply close the black terminal window.
+### 3. Launch
+After restarting, double-click `ShikiPad.exe`. In the terminal window, select your controller profile `[1..8, Enter = 1]`:
+
+| # | Controller | Connection |
+|:---:|---|---|
+| 1 | DualSense (PS5) | USB |
+| 2 | DualSense (PS5) | Bluetooth |
+| 3 | DualShock 4 (PS4) | USB |
+| 4 | DualShock 4 (PS4) | Bluetooth |
+| 5 | Xbox 360 | USB |
+| 6 | Xbox 360 | Bluetooth |
+| 7 | Xbox Series X\|S | USB |
+| 8 | Xbox Series X\|S | Bluetooth |
+
+The program runs in the background after selection. **Close the terminal window to exit.**
+
+### 4. Emergency Toggle
+While running, **hold Share/Create/View + Options/Menu simultaneously for 2 seconds** to toggle ShikiPad on/off — useful when you need to temporarily restore raw controller input.
 
 ---
 
-## 🎮 Controls Overview
+## 🎮 Complete Controls Guide
 
 ### 🖱️ Mouse Control (Right Stick)
 
-| Controller Input | Output |
-|---|---|
-| **Right Stick** movement | Mouse movement |
-| **R3** (Right Stick Click) | Right Mouse Button |
-| **L3** (Left Stick Click) | Left Mouse Button |
+| Controller Input | Output | Notes |
+|---|---|---|
+| **Right Stick** movement | Mouse cursor movement | Power-curve acceleration: gentle for fine control, fast when pushed hard |
+| **R3** (Right Stick click) | Right Mouse Button | Cursor freezes briefly on click to prevent accidental movement |
+| **L3** (Left Stick click) | Left Mouse Button | — |
+
+---
 
 ### 🛠️ Modifiers & Functions (Left Stick)
-The left stick acts as an 8-way directional pad for modifier keys. Push the stick in a direction to hold the key, and release the stick back to the center to release the key.
 
-| Left Stick Direction | Keyboard Output |
-|---|---|
-| **Left** | `Shift` |
-| **Down-Left** | `Ctrl` |
-| **Down-Right** | `Left Alt` |
-| **Right** | `Win` |
-| **Up-Left** | `Esc` |
-| **Up** | Mouse Wheel Up |
-| **Down** | Mouse Wheel Down |
-| **Up-Right** | Activates **`Fn`** Layer (see below) |
+The Left Stick acts as an **8-way function dial**: push in a direction to hold the corresponding key, release to center to let go.
 
-#### ⚡ Clutch Design (Modifier Accumulation)
-Normally, the Left Stick can only output one modifier key at a time. If you want to use complex shortcuts like `Ctrl + Shift + Esc`, you can use the **Clutch** feature:
-- **How to trigger**:
-  - **DS4 / DS5 Controllers**: Hold the **Touchpad**, or click the **Options** button to toggle Clutch ON (click **Share/Create** to toggle OFF).
-  - **Xbox Controllers**: Click the **Menu/Start** button to toggle Clutch ON (click **View/Back** to toggle OFF).
-- **How to use**: While the Clutch is active, you can move the Left Stick freely to "collect" multiple modifiers. For example, pushing Left collects `Shift`, then pushing Down-Left collects `Ctrl`. They will be held down together until you release the Clutch!
+| Direction | Output | Typical Use |
+|---|---|---|
+| **← Left** | `Shift` | Uppercase letters, shifted symbols |
+| **↙ Down-Left** | `Ctrl` | Shortcuts (e.g., Ctrl+C to copy) |
+| **↘ Down-Right** | `Left Alt` | Shortcuts (e.g., Alt+Tab to switch windows) |
+| **→ Right** | `Win` | Start menu, system shortcuts |
+| **↖ Up-Left** | `Esc` | Cancel, exit |
+| **↑ Up** | Mouse Wheel ↑ | Scroll up (accelerates when held) |
+| **↓ Down** | Mouse Wheel ↓ | Scroll down (accelerates when held) |
+| **↗ Up-Right** | Activate `Fn` layer | Converts number keys to F1–F12 |
 
-#### Fn Layer (F1 - F12)
-When you hold the Left Stick in the **Up-Right (Fn)** direction, number keys on the controller will output F-keys instead.
-- Pressing numbers or `-`/`=` while holding Fn will output `F1` ~ `F12`.
+#### ⚡ Clutch System (Modifier Accumulator)
+
+By default, the Left Stick can only hold one modifier at a time. When you need multi-modifier shortcuts like `Ctrl + Shift + Esc` (Task Manager), use the **Clutch**:
+
+**How to trigger:**
+
+| Controller Type | Clutch ON | Clutch OFF |
+|---|---|---|
+| DS4 / DS5 | Hold **Touchpad** *or* click **Options** | Release Touchpad *or* click **Share/Create** |
+| Xbox | Click **Menu / Start** | Click **View / Back** |
+
+- **Touchpad** = "hold-to-clutch" — releases automatically when you let go.
+- **Options / Menu** = "click-toggle" — stays active until you click Share / View to cancel.
+
+**How to use:** While the Clutch is active, freely move the Left Stick to "collect" modifiers one by one. For example: push Left (collect `Shift`), then push Down-Left (collect `Ctrl`), then push Up-Left (collect `Esc`) — all three keys are now held simultaneously, just like pressing `Ctrl + Shift + Esc` on a real keyboard! Releasing the Clutch releases all collected modifiers at once.
+
+#### Fn Layer (F1 – F12)
+
+Push the Left Stick to **Up-Right (↗)** to activate the Fn layer. While held, pressing number keys `1`–`0` and `-`/`=` will output `F1` through `F12`.
+
+---
 
 ### ⌨️ Typing & Action Buttons
 
-#### Base Layer
-When you press the D-Pad or Face Buttons *without* holding any triggers or bumpers:
+#### Base Layer (No Shoulder/Trigger Held)
 
-| Controller Button | Keyboard Output |
-|---|---|
-| **D-Pad (Up/Down/Left/Right)** | Arrow Keys |
-| **Square** (Xbox: X) | `Space` |
-| **Triangle** (Xbox: Y) | `Backspace` |
-| **Cross** (Xbox: A) | `Enter` |
-| **Circle** (Xbox: B) | `Tab` |
+| Controller Button | Output | Notes |
+|---|---|---|
+| **D-Pad ↑↓←→** | Arrow Keys | Hold to repeat |
+| **□ Square** (Xbox: X) | `Space` | Hold to repeat |
+| **△ Triangle** (Xbox: Y) | `Backspace` | Hold to repeat |
+| **✕ Cross** (Xbox: A) | `Enter` | Hold to repeat |
+| **○ Circle** (Xbox: B) | `Tab` | Hold to repeat |
 
-*Holding keys on the Base Layer will repeatedly output them (just like holding a real key).*
+> Base Layer keys **auto-repeat when held** — starting after 180ms with gradual acceleration, mimicking real keyboard behavior.
 
-#### Character Layer (Fast Typing)
-When you hold down the top bumpers or triggers (**L1, R1, L2, R2**), the D-Pad and Face buttons turn into English letters, numbers, and punctuation marks.
+#### Character Layers (Hold Shoulder/Trigger — Fast Typing)
 
-To prevent typos during fast typing, **Character Layer inputs act as single virtual taps**. Holding them down will *not* repeat the character.
+When you hold **R1, L1, R2, or L2** (or a combination), the D-Pad and Face buttons turn into English letters, digits, and punctuation.
 
-> **💡 Tip:** If you find typing with a controller too difficult, you can use the `Win + H` shortcut (`Left Stick →` + `R1 + Square/X`) to activate Windows Voice Typing. For the best experience, it is highly recommended to enable "Online speech recognition" in `Windows Settings` -> `Privacy & security` -> `Speech`. Additionally, if you're using a DualSense (PS5) controller, you can select its built-in microphone as your input device—talking close to it yields excellent recognition results!
+To prevent accidental repeats during fast typing, **all Character Layer inputs are single virtual taps** — press once for one character, holding will NOT repeat. Letters are arranged by English usage frequency: the 8 most common letters (`i n e a o t h u`) are on the R1 layer, the next 8 on L1, and so on.
 
-Here is the Character Mapping Table:
+**Complete Character Mapping Table:**
 
 *Button order (left to right): Up, Right, Square, Triangle, Left, Down, Cross, Circle*
 
-| Shoulder/Trigger Held | Up | Right | Square(X) | Triangle(Y) | Left | Down | Cross(A) | Circle(B) |
-|---|---|---|---|---|---|---|---|---|
+| Shoulder/Trigger Held | ↑ | → | □(X) | △(Y) | ← | ↓ | ✕(A) | ○(B) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **R1 (RB)** | i | n | e | a | o | t | h | u |
 | **L1 (LB)** | s | r | d | g | l | c | y | z |
 | **R2 (RT)** | m | w | j | x | q | f | p | b |
 | **L2 (LT)** | k | v | 1 | 2 | 3 | 4 | 5 | 6 |
 | **R1 + L1** | 7 | 8 | 9 | 0 | - | = | , | . |
-| **R2 + L2** | `'` | `/` | `;` | `[` | `]` | `\` | `` ` `` | None |
+| **R2 + L2** | `'` | `/` | `;` | `[` | `]` | `\` | `` ` `` | — |
 
-*Note: For uppercase letters or symbols (like `!`, `@`, `_`, `?`), push the Left Stick to the Left (`Shift`) while typing the character.*
+> **Uppercase & shifted symbols:** Push the Left Stick **Left (Shift)** while pressing the letter key. For example: `Shift` + R1 + `e` = `E`, `Shift` + L2 + `1` = `!`.
+
+> **💡 Voice Typing Tip:** If controller typing feels too slow, use `Win + H` (`Left Stick →` + `R1 + □/X`) to open **Windows Voice Typing**. Enable "Online speech recognition" in `Windows Settings` → `Privacy & security` → `Speech` for the best results. If you're using a DualSense (PS5) controller, you can also switch your system input device to the controller's built-in microphone — speaking close to it yields excellent recognition accuracy!
+
+---
+
+### 🔧 Layer Detection Timing (Advanced)
+
+ShikiPad uses a precise timing system to correctly determine whether you intended to press a "base key" or a "character key":
+
+| Parameter | Default | Purpose |
+|---|---|---|
+| `actionLayerGraceMs` | 35ms | After pressing an action button, the system waits within this window for shoulder/trigger state changes to determine the final layer. Similarly, action buttons pressed within this window after releasing a shoulder/trigger are still attributed to that layer |
+| `comboLayerWindowMs` | 35ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
+
+In short: all layer detection windows are unified at **35ms** for consistent, predictable behavior.
 
 ---
 
 ## ⚙️ Advanced Configuration
-If you want to tweak mouse sensitivity or typing delays, you can edit the `shikipad.json` file in the program folder (open it with Notepad). Save the file and restart ShikiPad for the changes to take effect.
 
-Common settings you might want to change:
-- `mouseMaxSpeed`: Maximum mouse cursor speed.
-- `rightStickCurveExponent`: Stick acceleration curve (higher values make fine movements more precise).
-- `rightStickDeadzone`: Right stick deadzone (Default `0.05`. Increase this if the mouse drifts when idle).
-- `useInterception`: Whether to use the kernel driver (Defaults to `true`. If the driver isn't installed, it safely falls back to normal Windows input).
-- `actionLayerGraceMs`: Typing typo-prevention delay (Default `80` ms). If you keep accidentally typing a Space or Enter when you meant to type a letter, increase this value to `100` or `120`.
-- `layerTakeoverWindowMs`: Grace window for a later-pressed shoulder/trigger to override an already-pressed action button (Default `35` ms).
+On first launch, ShikiPad auto-generates a `shikipad.json` config file in the same directory. Edit it with any text editor (e.g., Notepad), save, and restart ShikiPad.
 
-## 💡 Tip: Double Input Issue
-If you play a game that natively supports controllers, the game might receive both the raw gamepad input *and* ShikiPad's keyboard input at the same time.
+### Mouse
 
-**For Sony controllers (DualSense / DualShock 4):** Install [HidHide](https://github.com/nefarius/HidHide/releases), hide your physical controller from the system, and add `ShikiPad.exe` to HidHide's whitelist.
+| Parameter | Default | Description |
+|---|---|---|
+| `mouseMaxSpeed` | `8.0` | Maximum cursor speed when the right stick is fully pushed |
+| `mouseSensitivity` | `1.0` | Global mouse sensitivity multiplier |
+| `rightStickDeadzone` | `0.03` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
+| `rightStickCurveExponent` | `2.6` | Power curve exponent. Higher values = more precise at low deflection |
+| `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3, preventing accidental movement on click |
 
-> ⚠️ **WARNING — Xbox controllers CANNOT be hidden by HidHide.** Xbox controllers use the XInput API (an API-level hook), not the HID layer. HidHide only works at the HID device level, so it has no effect on XInput devices.
+### Left Stick / Modifiers
+
+| Parameter | Default | Description |
+|---|---|---|
+| `leftStickEnterDeadzone` | `0.35` | Left stick must be pushed past this threshold to register a direction |
+| `leftStickExitDeadzone` | `0.15` | Left stick must return below this threshold to register as "centered" |
+
+### Triggers / Shoulders
+
+| Parameter | Default | Description |
+|---|---|---|
+| `triggerPressThreshold` | `0.35` | L2/R2 "pressed" threshold |
+| `triggerReleaseThreshold` | `0.25` | L2/R2 "released" threshold (lower than press to create hysteresis and prevent jitter) |
+
+### Typing & Layers
+
+| Parameter | Default | Description |
+|---|---|---|
+| `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
+| `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
+| `actionLayerSwitchGuardMs` | `120` | Layer-switch guard period (ms), prevents residual input when rapidly changing layers |
+
+### Repeat / Scroll
+
+| Parameter | Default | Description |
+|---|---|---|
+| `repeatDelayMs` | `180` | Initial delay before Base Layer key repeat starts |
+| `repeatIntervalMs` | `20` | Fastest repeat interval at full speed |
+| `scrollSlowIntervalMs` | `100` | Initial scroll interval (ms) |
+| `scrollFastIntervalMs` | `6` | Fastest scroll interval when stick is held (ms) |
+
+### System
+
+| Parameter | Default | Description |
+|---|---|---|
+| `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
+| `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
+
+---
+
+## 💡 FAQ
+
+### Double Input Issue
+If a game receives both raw gamepad input and ShikiPad's keyboard input simultaneously:
+
+**Sony controllers (DualSense / DualShock 4):** Install [HidHide](https://github.com/nefarius/HidHide/releases), hide your physical controller, and add the full path of `ShikiPad.exe` to HidHide's application whitelist.
+
+> ⚠️ **WARNING — Xbox controllers CANNOT be hidden by HidHide.** Xbox controllers use the XInput API (an API-level interface), while HidHide only operates at the HID device layer and has no effect on XInput devices.
 >
 > If you need to hide an Xbox-protocol controller, consider using a **third-party gamepad** from brands like **GameSir**, **Flydigi**, or **Betop** that support switching to **PS / DirectInput mode**. In DirectInput mode, the controller appears as a standard HID device and **can** be hidden by HidHide.
+
+### Mouse Drifts When Idle
+Increase `rightStickDeadzone` in `shikipad.json` (e.g., from `0.03` to `0.05` or `0.08`).
+
+### Typing Accidentally Triggers Base Layer Keys
+Increase `actionLayerGraceMs` (e.g., from `35` to `50` or `80`) to give the layer detection more confirmation time.
+
+---
+
+## 📜 License
+MIT License
