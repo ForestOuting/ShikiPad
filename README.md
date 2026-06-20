@@ -163,7 +163,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 
 | Parameter | Default | Description |
 |---|---|---|
-| `mouseMaxSpeed` | `20.0` | Maximum cursor speed when the right stick is fully pushed |
+| `mouseMaxSpeed` | `22.4` | Maximum cursor speed when the right stick is fully pushed |
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed (Final Speed = MaxSpeed * Sensitivity) |
 | `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
 | `rightStickCurveExponent` | `2.5` | Power curve exponent. Higher values = more precise at low deflection |
