@@ -149,9 +149,9 @@ ShikiPad uses a precise timing system to correctly determine whether you intende
 | Parameter | Default | Purpose |
 |---|---|---|
 | `actionLayerGraceMs` | 35ms | After pressing an action button, the system waits within this window for shoulder/trigger state changes to determine the final layer. Similarly, action buttons pressed within this window after releasing a shoulder/trigger are still attributed to that layer |
-| `comboLayerWindowMs` | 35ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
+| `comboLayerWindowMs` | 25ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
 
-In short: all layer detection windows are unified at **35ms** for consistent, predictable behavior.
+In short: single-layer confirmation remains **35ms**, while combo layers use a tighter **25ms** pairing window.
 
 ---
 
@@ -163,9 +163,9 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 
 | Parameter | Default | Description |
 |---|---|---|
-| `mouseMaxSpeed` | `8.0` | Maximum cursor speed when the right stick is fully pushed |
+| `mouseMaxSpeed` | `7.0` | Maximum cursor speed when the right stick is fully pushed |
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed (Final Speed = MaxSpeed * Sensitivity) |
-| `rightStickDeadzone` | `0.03` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
+| `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
 | `rightStickCurveExponent` | `2.6` | Power curve exponent. Higher values = more precise at low deflection |
 | `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3. Clicking the stick often causes accidental nudges; this briefly ignores stick movement to ensure stable clicks |
 
@@ -188,7 +188,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | Parameter | Default | Description |
 |---|---|---|
 | `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
-| `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
+| `comboLayerWindowMs` | `25` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
 | `actionLayerSwitchGuardMs` | `35` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
 | `clutchLongPressMs` | `250` | Press duration that separates a clutch short press from a clutch long press |
 
@@ -198,8 +198,8 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 |---|---|---|
 | `repeatDelayMs` | `180` | Initial delay before Base Layer key repeat starts |
 | `repeatIntervalMs` | `20` | Fastest repeat interval at full speed |
-| `scrollSlowIntervalMs` | `100` | Initial scroll interval (ms) |
-| `scrollFastIntervalMs` | `6` | Fastest scroll interval when stick is held (ms) |
+| `scrollSlowIntervalMs` | `120` | Initial scroll interval (ms) |
+| `scrollFastIntervalMs` | `20` | Fastest scroll interval when stick is held (ms) |
 
 ### System
 
@@ -222,7 +222,7 @@ If a game receives both raw gamepad input and ShikiPad's keyboard input simultan
 > If you need to hide an Xbox-protocol controller, consider using a **third-party gamepad** from brands like **GameSir**, **Flydigi**, or **Betop** that support switching to **PS / DirectInput mode**. In DirectInput mode, the controller appears as a standard HID device and **can** be hidden by HidHide.
 
 ### Mouse Drifts When Idle
-Increase `rightStickDeadzone` in `shikipad.json` (e.g., from `0.03` to `0.05` or `0.08`).
+Increase `rightStickDeadzone` in `shikipad.json` (e.g., from `0.025` to `0.05` or `0.08`).
 
 ### Typing Accidentally Triggers Base Layer Keys
 Increase `actionLayerGraceMs` (e.g., from `35` to `50` or `80`) to give the layer detection more confirmation time.

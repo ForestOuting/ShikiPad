@@ -63,8 +63,8 @@ internal enum ControllerProfile {
 internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
-    public double MouseMaxSpeed = 8.0;
-    public double RightStickDeadzone = 0.03;
+    public double MouseMaxSpeed = 7.0;
+    public double RightStickDeadzone = 0.025;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.6;
     public double LeftStickEnterDeadzone = 0.35;
@@ -78,11 +78,11 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 35;
     public int LayerTakeoverWindowMs = 35;
     public int ActionLayerSwitchGuardMs = 35;
-    public int ComboLayerWindowMs = 35;
+    public int ComboLayerWindowMs = 25;
     public bool UseScanCode = true;
     public bool UseInterception = true;
-    public int ScrollSlowIntervalMs = 100;
-    public int ScrollFastIntervalMs = 6;
+    public int ScrollSlowIntervalMs = 120;
+    public int ScrollFastIntervalMs = 20;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
     public static Config Load(string path) {
@@ -130,9 +130,9 @@ internal sealed class Config {
             cfg.R3FreezeMs = GetInt(text, "r3FreezeMs", cfg.R3FreezeMs);
             cfg.ClutchLongPressMs = GetInt(text, "clutchLongPressMs", cfg.ClutchLongPressMs);
             
-            if (cfg.RightStickDeadzone == 0.0 || Math.Abs(cfg.RightStickDeadzone - 0.05) < 0.000001) {
-                Logger.Info("migrating rightStickDeadzone to 0.03");
-                cfg.RightStickDeadzone = 0.03;
+            if (cfg.RightStickDeadzone == 0.0 || Math.Abs(cfg.RightStickDeadzone - 0.05) < 0.000001 || Math.Abs(cfg.RightStickDeadzone - 0.03) < 0.000001) {
+                Logger.Info("migrating rightStickDeadzone to 0.025");
+                cfg.RightStickDeadzone = 0.025;
                 shouldSaveMigratedConfig = true;
             }
 
@@ -171,18 +171,18 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
-                Logger.Warn("invalid comboLayerWindowMs; using 35");
-                cfg.ComboLayerWindowMs = 35;
+                Logger.Warn("invalid comboLayerWindowMs; using 25");
+                cfg.ComboLayerWindowMs = 25;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
-                Logger.Info("migrating comboLayerWindowMs to 35");
-                cfg.ComboLayerWindowMs = 35;
+            if (cfg.ComboLayerWindowMs == 35 || cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
+                Logger.Info("migrating comboLayerWindowMs to 25");
+                cfg.ComboLayerWindowMs = 25;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 12.0) < 0.000001) {
-                Logger.Info("migrating mouseMaxSpeed to 8.0");
-                cfg.MouseMaxSpeed = 8.0;
+            if (Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 12.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 8.0) < 0.000001) {
+                Logger.Info("migrating mouseMaxSpeed to 7.0");
+                cfg.MouseMaxSpeed = 7.0;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
@@ -190,9 +190,14 @@ internal sealed class Config {
                 cfg.RightStickCurveExponent = 2.6;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ScrollFastIntervalMs == 12) {
-                Logger.Info("migrating scrollFastIntervalMs from 12 to 6");
-                cfg.ScrollFastIntervalMs = 6;
+            if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 12) {
+                Logger.Info("migrating scrollFastIntervalMs to 20");
+                cfg.ScrollFastIntervalMs = 20;
+                shouldSaveMigratedConfig = true;
+            }
+            if (cfg.ScrollSlowIntervalMs == 100) {
+                Logger.Info("migrating scrollSlowIntervalMs to 120");
+                cfg.ScrollSlowIntervalMs = 120;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ClutchLongPressMs < 80 || cfg.ClutchLongPressMs > 1000) {
@@ -767,6 +772,7 @@ internal sealed class DirectHidController {
         _running = true;
         _thread = new Thread(Loop);
         _thread.IsBackground = true;
+        _thread.Priority = ThreadPriority.AboveNormal;
         _thread.Start();
     }
 
@@ -1074,7 +1080,7 @@ internal sealed class DirectHidController {
         s.Triangle = (b & 0x80) != 0;
     }
 
-    private static double Axis(byte value) { return Clamp(((double)value - 128.0) / 127.0, -1.0, 1.0); }
+    private static double Axis(byte value) { return Clamp(((double)value - 127.5) / 127.5, -1.0, 1.0); }
     private static double Axis(short value) {
         return value < 0
             ? Clamp((double)value / 32768.0, -1.0, 0.0)
@@ -1240,6 +1246,7 @@ internal sealed class ClutchButtonStateMachine {
 }
 
 internal sealed class MapperForm : Form {
+    private const int PollSleepMs = 1;
     private readonly DirectHidController _hid;
     private readonly Config _config;
     private readonly ControllerProfile _controllerProfile;
@@ -1315,15 +1322,11 @@ internal sealed class MapperForm : Form {
     }
 
     private void PollLoop() {
-        Stopwatch sw = Stopwatch.StartNew();
         while (_pollRunning) {
             lock (_tickLock) {
                 try { OnTick(); } catch (Exception ex) { Logger.Error("Tick error: " + ex.Message); }
             }
-            double elapsed = sw.Elapsed.TotalMilliseconds;
-            sw.Restart();
-            int sleepMs = Math.Max(1, 2 - (int)elapsed);
-            Thread.Sleep(sleepMs);
+            Thread.Sleep(PollSleepMs);
         }
     }
 
@@ -1519,13 +1522,21 @@ internal sealed class MapperForm : Form {
         _injector.CurrentReason = "RepeatTimer " + _leftDirection;
         _injector.MouseWheel(_leftDirection == StickDirection.Up ? 1 : -1);
         
-        double normalized = Clamp((radius - _config.LeftStickEnterDeadzone) / (1.0 - _config.LeftStickEnterDeadzone), 0.0, 1.0);
-        double slowFreq = 1000.0 / Math.Max(1.0, (double)_config.ScrollSlowIntervalMs);
-        double fastFreq = 1000.0 / Math.Max(1.0, (double)_config.ScrollFastIntervalMs);
-        double freq = slowFreq + (fastFreq - slowFreq) * Math.Pow(normalized, 2.2);
-        double interval = 1000.0 / Math.Max(0.1, freq);
+        double interval = LeftStickScrollIntervalMs(radius);
         _scrollNextMs = now + Math.Max(1.0, interval);
     }
+
+    private double LeftStickScrollIntervalMs(double radius) {
+        double normalized = Clamp((radius - _config.LeftStickEnterDeadzone) / (1.0 - _config.LeftStickEnterDeadzone), 0.0, 1.0);
+        double slow = Math.Max(1.0, (double)_config.ScrollSlowIntervalMs);
+        double fast = Math.Max(1.0, Math.Min((double)_config.ScrollFastIntervalMs, slow));
+        if (normalized < 0.25) return slow;
+        if (normalized < 0.50) return Math.Max(fast, slow * 0.67);
+        if (normalized < 0.75) return Math.Max(fast, slow * 0.42);
+        if (normalized < 0.92) return Math.Max(fast, slow * 0.25);
+        return fast;
+    }
+
     private PhysicalKey TranslateToFKey(PhysicalKey numberKey) {
         switch (numberKey) {
             case PhysicalKey.Num1: return PhysicalKey.F1;
@@ -1895,11 +1906,15 @@ internal sealed class MapperForm : Form {
     private void UpdateRightStick(ControllerState s, double now, double deltaSec) {
         double cx = s.RX;
         double cy = s.RY;
-        if (now < _mouseFreezeUntilMs) return;
+        if (now < _mouseFreezeUntilMs) {
+            ResetRightStickRemainder();
+            return;
+        }
 
         double actualRadius = Math.Sqrt(cx * cx + cy * cy);
         double radius = Clamp(actualRadius, 0.0, 1.0);
         if (radius <= _config.RightStickDeadzone) {
+            ResetRightStickRemainder();
             return;
         }
 
@@ -1914,15 +1929,29 @@ internal sealed class MapperForm : Form {
         if (Math.Abs(dx) + Math.Abs(dy) < 0.000001) return;
         _mouseAccumX += dx;
         _mouseAccumY += dy;
-        int ix = (int)_mouseAccumX;
-        int iy = (int)_mouseAccumY;
+        int ix = TakeRoundedMouseDelta(ref _mouseAccumX);
+        int iy = TakeRoundedMouseDelta(ref _mouseAccumY);
         if (ix != 0 || iy != 0) {
             _injector.CurrentSource = "RightStick";
             _injector.CurrentReason = "Mouse Move";
             _injector.MouseMove(ix, iy);
-            _mouseAccumX -= ix;
-            _mouseAccumY -= iy;
         }
+    }
+
+    private void ResetRightStickRemainder() {
+        _mouseAccumX = 0.0;
+        _mouseAccumY = 0.0;
+    }
+
+    private static int TakeRoundedMouseDelta(ref double accumulator) {
+        int delta = 0;
+        if (accumulator >= 0.5) {
+            delta = (int)Math.Floor(accumulator + 0.5);
+        } else if (accumulator <= -0.5) {
+            delta = (int)Math.Ceiling(accumulator - 0.5);
+        }
+        accumulator -= delta;
+        return delta;
     }
 
     private void UpdateSystemButtons(ControllerState s) {
@@ -1991,8 +2020,7 @@ internal sealed class MapperForm : Form {
         _prevCreate = false;
         _prevOptions = false;
         _mouseFreezeUntilMs = 0;
-        _mouseAccumX = 0;
-        _mouseAccumY = 0;
+        ResetRightStickRemainder();
         _prevHome = false;
         _createKeyDown = false;
         _optionsKeyDown = false;
@@ -2859,8 +2887,9 @@ internal static class Program {
         }
 
         if (HasArg(args, "--layer-test")) {
+            Environment.ExitCode = 0;
             PrintLayerTest(config);
-            return 0;
+            return Environment.ExitCode;
         }
         if (HasArg(args, "--mouse-test")) {
             PrintMouseTest(config);
@@ -2874,19 +2903,10 @@ internal static class Program {
             PrintClutchTest(config);
             return Environment.ExitCode;
         }
-        if (HasArg(args, "--shift-test")) {
-            RunShiftTest(config);
-            return 0;
-        }
-        if (HasArg(args, "--test")) {
-            RunSelfTest(config);
-            return 0;
-        }
-
         ControllerProfile controllerProfile = SelectControllerProfile(args);
         Logger.Info("startup");
         Logger.Info("controller profile: " + ControllerProfileName(controllerProfile));
-        Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.0", CultureInfo.InvariantCulture) +
+        Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", rightStickCurve = " + config.RightStickCurve +
                     ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
@@ -3148,53 +3168,46 @@ internal static class Program {
     private static void PrintPendingTimingChecks(Config config, MappingEngine mapping) {
         Console.WriteLine("Pending timing checks:");
         bool ok = true;
-        ok = PrintCrossTakeoverCheck(config, mapping) && ok;
+        ok = PrintComboTakeoverCheck(config, mapping) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
         Console.WriteLine("Pending timing result = " + (ok ? "PASS" : "FAIL"));
         if (!ok) Environment.ExitCode = 1;
     }
 
-    private static bool PrintCrossTakeoverCheck(Config config, MappingEngine mapping) {
-        double l1Ms = 0.0;
-        double upMs = 0.0;
-        double crossMs = upMs + 100.0;
-        double quickR1Ms = crossMs + 30.0;
-        double lateR1Ms = crossMs + 70.0;
+    private static bool PrintComboTakeoverCheck(Config config, MappingEngine mapping) {
+        double r1Ms = 0.0;
+        double crossMs = 10.0;
+        double quickL1Ms = 20.0;
+        double lateL1Ms = config.ComboLayerWindowMs + 10.0;
 
-        Layer firstLayer = mapping.Resolve(true, false, false, false, l1Ms, 0, 0, 0, config.ComboLayerWindowMs);
-        PhysicalKey firstKey = mapping.Lookup(firstLayer, ActionButton.Up);
-        Layer crossStartLayer = mapping.Resolve(true, false, false, false, l1Ms, 0, 0, 0, config.ComboLayerWindowMs);
-        Layer afterQuickR1Layer = mapping.Resolve(true, true, false, false, l1Ms, quickR1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, l1Ms, crossMs, afterQuickR1Layer, quickR1Ms, config.LayerTakeoverWindowMs);
+        Layer crossStartLayer = mapping.Resolve(false, true, false, false, 0, r1Ms, 0, 0, config.ComboLayerWindowMs);
+        PhysicalKey crossStartKey = mapping.Lookup(crossStartLayer, ActionButton.Cross);
+        Layer afterQuickL1Layer = mapping.Resolve(true, true, false, false, quickL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
+        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, r1Ms, crossMs, afterQuickL1Layer, quickL1Ms, config.LayerTakeoverWindowMs);
         PhysicalKey quickSettledKey = mapping.Lookup(quickSettledLayer, ActionButton.Cross);
-        Layer afterLateR1Layer = mapping.Resolve(true, true, false, false, l1Ms, lateR1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, l1Ms, crossMs, afterLateR1Layer, lateR1Ms, config.LayerTakeoverWindowMs);
+        Layer afterLateL1Layer = mapping.Resolve(true, true, false, false, lateL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
+        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, r1Ms, crossMs, afterLateL1Layer, lateL1Ms, config.LayerTakeoverWindowMs);
         PhysicalKey lateSettledKey = mapping.Lookup(lateSettledLayer, ActionButton.Cross);
 
-        bool firstSettled = crossMs - upMs >= config.ActionLayerGraceMs;
-        bool quickInsideTakeover = quickR1Ms - crossMs <= config.LayerTakeoverWindowMs;
-        bool lateOutsideTakeover = lateR1Ms - crossMs > config.LayerTakeoverWindowMs;
-        bool lateStillInsideGrace = lateR1Ms - crossMs <= config.ActionLayerGraceMs;
-        bool ok = firstSettled
-            && quickInsideTakeover
-            && lateOutsideTakeover
-            && lateStillInsideGrace
-            && firstLayer == Layer.L1
-            && firstKey == PhysicalKey.S
-            && crossStartLayer == Layer.L1
-            && afterQuickR1Layer == Layer.R1
-            && quickSettledLayer == Layer.R1
-            && quickSettledKey == PhysicalKey.H
-            && afterLateR1Layer == Layer.R1
-            && lateSettledLayer == Layer.L1
-            && lateSettledKey == PhysicalKey.Y;
+        bool quickInsideCombo = quickL1Ms - r1Ms <= config.ComboLayerWindowMs;
+        bool lateOutsideCombo = lateL1Ms - r1Ms > config.ComboLayerWindowMs;
+        bool ok = quickInsideCombo
+            && lateOutsideCombo
+            && crossStartLayer == Layer.R1
+            && crossStartKey == PhysicalKey.H
+            && afterQuickL1Layer == Layer.R1L1
+            && quickSettledLayer == Layer.R1L1
+            && quickSettledKey == PhysicalKey.Comma
+            && afterLateL1Layer == Layer.L1
+            && lateSettledLayer == Layer.R1
+            && lateSettledKey == PhysicalKey.H;
 
-        Console.WriteLine("L1+Up -> s, then Cross + R1 after 30ms while L1 held = " +
+        Console.WriteLine("R1+Cross/A pending, L1 inside combo window = " +
                           LayerDisplayName(quickSettledLayer) + " / " + LayerTestKeyName(quickSettledKey) +
-                          (quickSettledKey == PhysicalKey.H ? " [PASS]" : " [FAIL]"));
-        Console.WriteLine("L1+Up -> s, then Cross + R1 after 70ms while L1 held = " +
+                          (quickSettledKey == PhysicalKey.Comma ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("R1+Cross/A pending, L1 after combo window = " +
                           LayerDisplayName(lateSettledLayer) + " / " + LayerTestKeyName(lateSettledKey) +
-                          (ok ? " [PASS]" : " [FAIL]"));
+                          (lateSettledKey == PhysicalKey.H ? " [PASS]" : " [FAIL]"));
         return ok;
     }
 
@@ -3219,12 +3232,12 @@ internal static class Program {
     }
 
     private static void PrintMouseTest(Config config) {
-        Console.WriteLine("rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.0", CultureInfo.InvariantCulture));
+        Console.WriteLine("rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture));
         Console.WriteLine("rightStickCurve = " + config.RightStickCurve);
         Console.WriteLine("rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture));
         Console.WriteLine("mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("neutralCalibration = enabled");
-        Logger.Info("mouse-test: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.0", CultureInfo.InvariantCulture) +
+        Logger.Info("mouse-test: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", rightStickCurve = " + config.RightStickCurve +
                     ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
@@ -3417,39 +3430,5 @@ internal static class Program {
         }
     }
 
-    private static void RunSelfTest(Config config) {
-        Console.WriteLine("Focus Notepad. Typing starts in 2 seconds.");
-        Thread.Sleep(2000);
-        InputInjector i = new InputInjector(config.UseScanCode, config.UseInterception);
-        PhysicalKey[] keys = new PhysicalKey[] {
-            PhysicalKey.A, PhysicalKey.I, PhysicalKey.N, PhysicalKey.T, PhysicalKey.S,
-            PhysicalKey.Num1, PhysicalKey.Num2, PhysicalKey.Num9, PhysicalKey.Num0,
-            PhysicalKey.Comma, PhysicalKey.Period, PhysicalKey.Minus, PhysicalKey.Equals,
-            PhysicalKey.Slash, PhysicalKey.Semicolon, PhysicalKey.Apostrophe,
-            PhysicalKey.LeftBracket, PhysicalKey.RightBracket, PhysicalKey.Backslash, PhysicalKey.Grave
-        };
-        for (int k = 0; k < keys.Length; k++) {
-            i.KeyTap(keys[k], false, false, false, false);
-            Thread.Sleep(25);
-        }
-        i.ReleaseAll();
-    }
-
-    private static void RunShiftTest(Config config) {
-        Console.WriteLine("Focus Notepad. Typing starts in 2 seconds.");
-        Thread.Sleep(2000);
-        InputInjector i = new InputInjector(config.UseScanCode, config.UseInterception);
-        PhysicalKey[] keys = new PhysicalKey[] {
-            PhysicalKey.A, PhysicalKey.Num1, PhysicalKey.Num9, PhysicalKey.Num0,
-            PhysicalKey.Comma, PhysicalKey.Period, PhysicalKey.Minus, PhysicalKey.Equals,
-            PhysicalKey.Slash, PhysicalKey.Semicolon, PhysicalKey.Apostrophe,
-            PhysicalKey.LeftBracket, PhysicalKey.RightBracket, PhysicalKey.Backslash, PhysicalKey.Grave
-        };
-        for (int k = 0; k < keys.Length; k++) {
-            i.KeyTap(keys[k], true, false, false, false);
-            Thread.Sleep(25);
-        }
-        i.ReleaseAll();
-    }
 }
 }
