@@ -67,7 +67,7 @@ internal sealed class Config {
     public double RightStickDeadzone = 0.025;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.5;
-    public double MouseWheelCurveExponent = 3.0;
+    public double MouseScrollCurveExponent = 3.0;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.25;
     public double TriggerPressThreshold = 0.35;
@@ -101,7 +101,6 @@ internal sealed class Config {
                                             !text.Contains("\"rightStickDeadzone\"") ||
                                             !text.Contains("\"rightStickCurve\"") ||
                                             !text.Contains("\"rightStickCurveExponent\"") ||
-                                            !text.Contains("\"mouseWheelCurveExponent\"") ||
                                             !text.Contains("\"rightStickEpsilon\"") ||
                                             !text.Contains("\"leftStickEnterDeadzone\"") ||
                                             !text.Contains("\"leftStickExitDeadzone\"") ||
@@ -113,7 +112,7 @@ internal sealed class Config {
             cfg.RightStickDeadzone = GetDouble(text, "rightStickDeadzone", cfg.RightStickDeadzone);
             cfg.RightStickCurve = GetString(text, "rightStickCurve", cfg.RightStickCurve);
             cfg.RightStickCurveExponent = GetDouble(text, "rightStickCurveExponent", cfg.RightStickCurveExponent);
-            cfg.MouseWheelCurveExponent = GetDouble(text, "mouseWheelCurveExponent", cfg.MouseWheelCurveExponent);
+            cfg.MouseScrollCurveExponent = GetDouble(text, "mouseScrollCurveExponent", cfg.MouseScrollCurveExponent);
             cfg.LeftStickEnterDeadzone = GetDouble(text, "leftStickEnterDeadzone", cfg.LeftStickEnterDeadzone);
             cfg.LeftStickExitDeadzone = GetDouble(text, "leftStickExitDeadzone", cfg.LeftStickExitDeadzone);
             cfg.TriggerPressThreshold = GetDouble(text, "triggerPressThreshold", cfg.TriggerPressThreshold);
@@ -235,7 +234,7 @@ internal sealed class Config {
         Write(sb, "rightStickDeadzone", RightStickDeadzone, true);
         Write(sb, "rightStickCurve", RightStickCurve, true);
         Write(sb, "rightStickCurveExponent", RightStickCurveExponent, true);
-        Write(sb, "mouseWheelCurveExponent", MouseWheelCurveExponent, true);
+        Write(sb, "mouseScrollCurveExponent", MouseScrollCurveExponent, true);
         Write(sb, "leftStickEnterDeadzone", LeftStickEnterDeadzone, true);
         Write(sb, "leftStickExitDeadzone", LeftStickExitDeadzone, true);
         Write(sb, "triggerPressThreshold", TriggerPressThreshold, true);
@@ -1545,7 +1544,7 @@ internal sealed class MapperForm : Form {
         double minSpeed = 1.0 / slow;
         double maxSpeed = 1.0 / fast;
         
-        double curve = Math.Pow(normalized, _config.MouseWheelCurveExponent);
+        double curve = Math.Pow(normalized, _config.MouseScrollCurveExponent);
         double currentSpeed = minSpeed + (maxSpeed - minSpeed) * curve;
         
         return Math.Max(fast, Math.Min(slow, 1.0 / currentSpeed));
@@ -1795,6 +1794,7 @@ internal sealed class MapperForm : Form {
         double pendingLayerUpMs = LayerUpTimestamp(hold.PendingLayer);
         Layer next = ResolvePendingLayer(
             hold.PendingLayer,
+            hold.OriginalPendingLayer,
             hold.PendingSinceMs,
             layer,
             layerMs,
@@ -1807,7 +1807,13 @@ internal sealed class MapperForm : Form {
         hold.PendingLayerMs = layerMs;
     }
 
-    internal static Layer ResolvePendingLayer(Layer pendingLayer, double pendingSinceMs, Layer layer, double layerMs, double pendingLayerUpMs, double actionLayerGraceMs, double takeoverWindowMs) {
+    private static bool IsComboComponent(Layer combo, Layer single) {
+        if (combo == Layer.R1L1 && (single == Layer.R1 || single == Layer.L1)) return true;
+        if (combo == Layer.R2L2 && (single == Layer.R2 || single == Layer.L2)) return true;
+        return false;
+    }
+
+    internal static Layer ResolvePendingLayer(Layer pendingLayer, Layer originalLayer, double pendingSinceMs, Layer layer, double layerMs, double pendingLayerUpMs, double actionLayerGraceMs, double takeoverWindowMs) {
         if (layer == Layer.Base || layer == Layer.Reserved) return pendingLayer;
         if (layer == pendingLayer) return pendingLayer;
         if (layerMs < pendingSinceMs) return pendingLayer;
@@ -1818,7 +1824,12 @@ internal sealed class MapperForm : Form {
             ? (layerMs - pendingSinceMs) 
             : (pendingLayerUpMs - pendingSinceMs);
             
-        if (overlap > takeoverWindowMs) return pendingLayer;
+        if (overlap > takeoverWindowMs) {
+            if (IsComboLayer(layer) && IsComboComponent(layer, pendingLayer)) {
+                return originalLayer;
+            }
+            return pendingLayer;
+        }
 
         bool pendingCombo = IsComboLayer(pendingLayer);
         bool layerCombo = IsComboLayer(layer);
@@ -2104,10 +2115,11 @@ internal sealed class MapperForm : Form {
         public bool KeyIsDown;
         public bool SuppressUntilRelease;
         public bool Pending;
-        public Layer PendingLayer;
-        public double PendingLayerMs;
         public bool PendingReleased;
         public double PendingSinceMs;
+        public Layer OriginalPendingLayer;
+        public Layer PendingLayer;
+        public double PendingLayerMs;
         public double KeyDownMs;
         public bool RepeatEnabled;
         public double RepeatStartedMs;
@@ -2940,7 +2952,6 @@ internal static class Program {
         Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", rightStickCurve = " + config.RightStickCurve +
                     ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
-                    ", mouseWheelCurveExponent = " + config.MouseWheelCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
                     ", neutralCalibration = enabled");
         Logger.Info("left stick modifiers = physical held keys");
@@ -3188,7 +3199,7 @@ internal static class Program {
         PrintResolutionCheck(config, m, "R1 then R2 + Square", false, true, false, true, 0, 10, 0, 20, ActionButton.Square);
         PrintResolutionCheck(config, m, "L1 then L2 + Square", true, false, true, false, 10, 0, 20, 0, ActionButton.Square);
         Console.WriteLine();
-        PrintExtremeTakeoverCheck(config, m);
+        PrintPendingTimingChecks(config, m);
     }
 
     private static void PrintResolutionCheck(Config config, MappingEngine mapping, string label, bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, ActionButton action) {
@@ -3202,6 +3213,7 @@ internal static class Program {
         bool ok = true;
         ok = PrintComboTakeoverCheck(config, mapping) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
+        ok = PrintUserScenarioCheck(config, mapping) && ok;
         Console.WriteLine("Pending timing result = " + (ok ? "PASS" : "FAIL"));
         if (!ok) Environment.ExitCode = 1;
     }
@@ -3215,10 +3227,10 @@ internal static class Program {
         Layer crossStartLayer = mapping.Resolve(false, true, false, false, 0, r1Ms, 0, 0, config.ComboLayerWindowMs);
         PhysicalKey crossStartKey = mapping.Lookup(crossStartLayer, ActionButton.Cross);
         Layer afterQuickL1Layer = mapping.Resolve(true, true, false, false, quickL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossMs, afterQuickL1Layer, quickL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterQuickL1Layer, quickL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey quickSettledKey = mapping.Lookup(quickSettledLayer, ActionButton.Cross);
         Layer afterLateL1Layer = mapping.Resolve(true, true, false, false, lateL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossMs, afterLateL1Layer, lateL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterLateL1Layer, lateL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey lateSettledKey = mapping.Lookup(lateSettledLayer, ActionButton.Cross);
 
         bool quickInsideCombo = quickL1Ms - r1Ms <= config.ComboLayerWindowMs;
@@ -3243,31 +3255,50 @@ internal static class Program {
         return ok;
     }
 
-    private static void PrintExtremeTakeoverCheck(Config config, MappingEngine mapping) {
-        Console.WriteLine("Extreme Takeover Check:");
-        // 0: L2
-        // 100: Square
-        // 105: L2 released
-        // 120: L1
-        // 125: Cross
-        // 135: R1
+    private static bool PrintUserScenarioCheck(Config config, MappingEngine mapping) {
+        Console.WriteLine("\n--- USER SCENARIO TEST ---");
+        // "按下 L2，100 毫秒后按下方块键，5ms之后松开l2，15毫秒之后按下 L1 键，然后 5毫秒之后按下 × 键，10 毫秒之后按下 R1 键"
+        
+        double l2Down = 0;
+        double sqDown = 100;
+        double l2Up = 105;
+        double l1Down = 120;
+        double crDown = 125;
+        double r1Down = 135;
 
-        Layer squareStart = mapping.Resolve(false, false, true, false, 0, 0, 0, 0, config.ComboLayerWindowMs); // L2
+        // T=100 (Sq down). Layer is L2.
+        Layer sqLayer = mapping.Resolve(false, false, true, false, 0, 0, l2Down, 0, config.ComboLayerWindowMs);
         
-        Layer layerAt120 = mapping.Resolve(true, false, false, false, 120, 0, 105, 0, config.ComboLayerWindowMs); // L1
+        // T=105 (L2 up). Layer is Base (since nothing else is down).
         
-        Layer squareAt120 = MapperForm.ResolvePendingLayer(squareStart, 100, layerAt120, 120, 105, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        // T=120 (L1 down). Layer is L1.
+        Layer l1Layer = mapping.Resolve(true, false, false, false, l1Down, 0, 0, 0, config.ComboLayerWindowMs);
         
-        Layer layerAt135 = mapping.Resolve(true, true, false, false, 120, 135, 105, 0, config.ComboLayerWindowMs); // R1L1
+        // Update Sq with L1
+        Layer sqAfterL1 = MapperForm.ResolvePendingLayer(sqLayer, sqLayer, sqDown, l1Layer, l1Down, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+
+        // T=125 (Cr down). Layer is L1.
+        Layer crLayer = l1Layer;
+
+        // T=135 (R1 down). Layer is R1L1.
+        Layer r1l1Layer = mapping.Resolve(true, true, false, false, l1Down, r1Down, 0, 0, config.ComboLayerWindowMs);
+
+        // Update Sq with R1L1
+        Layer sqFinal = MapperForm.ResolvePendingLayer(sqAfterL1, sqLayer, sqDown, r1l1Layer, r1Down, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        PhysicalKey sqKey = mapping.Lookup(sqFinal, ActionButton.Square);
+
+        // Update Cr with R1L1
+        Layer crFinal = MapperForm.ResolvePendingLayer(crLayer, crLayer, crDown, r1l1Layer, r1Down, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        PhysicalKey crKey = mapping.Lookup(crFinal, ActionButton.Cross);
+
+        Console.WriteLine("Square resolved layer: " + LayerDisplayName(sqFinal));
+        Console.WriteLine("Square resolved key: " + LayerTestKeyName(sqKey));
+        Console.WriteLine("Cross resolved layer: " + LayerDisplayName(crFinal));
+        Console.WriteLine("Cross resolved key: " + LayerTestKeyName(crKey));
         
-        // Now squareAt120 is L1. L1 is NOT released, so pendingLayerUpMs for L1 is 0.
-        Layer squareAt135 = MapperForm.ResolvePendingLayer(squareAt120, 100, layerAt135, 135, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
-        
-        Console.WriteLine("Square resolved to: " + LayerDisplayName(squareAt135) + " / " + LayerTestKeyName(mapping.Lookup(squareAt135, ActionButton.Square)));
-        
-        Layer crossAt120 = layerAt120;
-        Layer crossAt135 = MapperForm.ResolvePendingLayer(crossAt120, 125, layerAt135, 135, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
-        Console.WriteLine("Cross resolved to: " + LayerDisplayName(crossAt135) + " / " + LayerTestKeyName(mapping.Lookup(crossAt135, ActionButton.Cross)));
+        bool pass = (sqKey == PhysicalKey.Num1);
+        Console.WriteLine("User Scenario = " + (pass ? "PASS" : "FAIL"));
+        return pass;
     }
 
     private static bool PrintControllerParityCheck(Config config, MappingEngine mapping) {
