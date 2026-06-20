@@ -151,7 +151,7 @@ ShikiPad uses a precise timing system to correctly determine whether you intende
 | `actionLayerGraceMs` | 35ms | After pressing an action button, the system waits within this window for shoulder/trigger state changes to determine the final layer. Similarly, action buttons pressed within this window after releasing a shoulder/trigger are still attributed to that layer |
 | `comboLayerWindowMs` | 35ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
 
-In short: single-layer confirmation remains **35ms**, while combo layers use a tighter **25ms** pairing window.
+In short: single-layer confirmation remains **35ms**, and combo layers also use a **35ms** pairing window.
 
 ---
 
@@ -174,7 +174,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | Parameter | Default | Description |
 |---|---|---|
 | `leftStickEnterDeadzone` | `0.35` | Left stick must be pushed past this threshold to register a direction |
-| `leftStickExitDeadzone` | `0.15` | Left stick must return below this threshold to register as "centered" |
+| `leftStickExitDeadzone` | `0.25` | Left stick must return below this threshold to register as "centered" |
 
 ### Triggers / Shoulders
 
@@ -199,7 +199,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | `repeatDelayMs` | `180` | Initial delay before Base Layer key repeat starts |
 | `repeatIntervalMs` | `20` | Fastest repeat interval at full speed |
 | `scrollSlowIntervalMs` | `120` | Initial scroll interval (ms) |
-| `scrollFastIntervalMs` | `20` | Fastest scroll interval when stick is held (ms) |
+| `scrollFastIntervalMs` | `8` | Fastest scroll interval when stick is held (ms) |
 
 ### System
 

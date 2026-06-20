@@ -68,7 +68,7 @@ internal sealed class Config {
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.5;
     public double LeftStickEnterDeadzone = 0.35;
-    public double LeftStickExitDeadzone = 0.15;
+    public double LeftStickExitDeadzone = 0.25;
     public double TriggerPressThreshold = 0.35;
     public double TriggerReleaseThreshold = 0.25;
     public int RepeatDelayMs = 180;
@@ -82,7 +82,7 @@ internal sealed class Config {
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 120;
-    public int ScrollFastIntervalMs = 20;
+    public int ScrollFastIntervalMs = 8;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
     public static Config Load(string path) {
@@ -190,9 +190,9 @@ internal sealed class Config {
                 cfg.RightStickCurveExponent = 2.5;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 12) {
-                Logger.Info("migrating scrollFastIntervalMs to 20");
-                cfg.ScrollFastIntervalMs = 20;
+            if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 12 || cfg.ScrollFastIntervalMs == 20) {
+                Logger.Info("migrating scrollFastIntervalMs to 8");
+                cfg.ScrollFastIntervalMs = 8;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ScrollSlowIntervalMs == 100) {
@@ -210,9 +210,9 @@ internal sealed class Config {
                 cfg.LeftStickEnterDeadzone = 0.35;
                 shouldSaveLeftStickConfig = true;
             }
-            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.45) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.30) < 0.000001) {
-                Logger.Info("migrating leftStickExitDeadzone to 0.15");
-                cfg.LeftStickExitDeadzone = 0.15;
+            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.45) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.30) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.15) < 0.000001) {
+                Logger.Info("migrating leftStickExitDeadzone to 0.25");
+                cfg.LeftStickExitDeadzone = 0.25;
                 shouldSaveLeftStickConfig = true;
             }
             if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
@@ -1537,10 +1537,13 @@ internal sealed class MapperForm : Form {
         double normalized = Clamp((radius - _config.LeftStickEnterDeadzone) / (1.0 - _config.LeftStickEnterDeadzone), 0.0, 1.0);
         double slow = Math.Max(1.0, (double)_config.ScrollSlowIntervalMs);
         double fast = Math.Max(1.0, Math.Min((double)_config.ScrollFastIntervalMs, slow));
-        if (normalized < 0.25) return slow;
-        if (normalized < 0.50) return Math.Max(fast, slow * 0.67);
-        if (normalized < 0.75) return Math.Max(fast, slow * 0.42);
-        if (normalized < 0.92) return Math.Max(fast, slow * 0.25);
+        if (normalized < 0.15) return slow;
+        if (normalized < 0.30) return Math.Max(fast, slow * 0.80);
+        if (normalized < 0.45) return Math.Max(fast, slow * 0.60);
+        if (normalized < 0.60) return Math.Max(fast, slow * 0.40);
+        if (normalized < 0.75) return Math.Max(fast, slow * 0.25);
+        if (normalized < 0.85) return Math.Max(fast, slow * 0.15);
+        if (normalized < 0.95) return Math.Max(fast, slow * 0.08);
         return fast;
     }
 
