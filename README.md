@@ -149,7 +149,7 @@ ShikiPad uses a precise timing system to correctly determine whether you intende
 | Parameter | Default | Purpose |
 |---|---|---|
 | `actionLayerGraceMs` | 35ms | After pressing an action button, the system waits within this window for shoulder/trigger state changes to determine the final layer. Similarly, action buttons pressed within this window after releasing a shoulder/trigger are still attributed to that layer |
-| `comboLayerWindowMs` | 25ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
+| `comboLayerWindowMs` | 35ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
 
 In short: single-layer confirmation remains **35ms**, while combo layers use a tighter **25ms** pairing window.
 
@@ -166,7 +166,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | `mouseMaxSpeed` | `20.0` | Maximum cursor speed when the right stick is fully pushed |
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed (Final Speed = MaxSpeed * Sensitivity) |
 | `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
-| `rightStickCurveExponent` | `2.2` | Power curve exponent. Higher values = more precise at low deflection |
+| `rightStickCurveExponent` | `2.5` | Power curve exponent. Higher values = more precise at low deflection |
 | `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3. Clicking the stick often causes accidental nudges; this briefly ignores stick movement to ensure stable clicks |
 
 ### Left Stick / Modifiers
@@ -188,7 +188,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | Parameter | Default | Description |
 |---|---|---|
 | `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
-| `comboLayerWindowMs` | `25` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
+| `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
 | `actionLayerSwitchGuardMs` | `35` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
 | `clutchLongPressMs` | `250` | Press duration that separates a clutch short press from a clutch long press |
 

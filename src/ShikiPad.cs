@@ -66,7 +66,7 @@ internal sealed class Config {
     public double MouseMaxSpeed = 20.0;
     public double RightStickDeadzone = 0.025;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 2.2;
+    public double RightStickCurveExponent = 2.5;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.15;
     public double TriggerPressThreshold = 0.35;
@@ -76,9 +76,9 @@ internal sealed class Config {
     public int BaseRepeatSlowIntervalMs = 160;
     public int BaseRepeatRampMs = 1200;
     public int ActionLayerGraceMs = 35;
-    public int LayerTakeoverWindowMs = 35;
+    public int LayerTakeoverWindowMs = 25;
     public int ActionLayerSwitchGuardMs = 35;
-    public int ComboLayerWindowMs = 25;
+    public int ComboLayerWindowMs = 35;
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 120;
@@ -155,12 +155,12 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.LayerTakeoverWindowMs < 0 || cfg.LayerTakeoverWindowMs > cfg.ActionLayerGraceMs) {
-                int fallbackLayerTakeoverMs = Math.Min(50, Math.Max(0, cfg.ActionLayerGraceMs));
+                int fallbackLayerTakeoverMs = Math.Min(25, Math.Max(0, cfg.ActionLayerGraceMs));
                 Logger.Warn("invalid layerTakeoverWindowMs; using " + fallbackLayerTakeoverMs.ToString(CultureInfo.InvariantCulture));
                 cfg.LayerTakeoverWindowMs = fallbackLayerTakeoverMs;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ActionLayerGraceMs == 80) {
+            if (cfg.ActionLayerGraceMs == 80 || cfg.ActionLayerGraceMs == 20) {
                 Logger.Info("migrating actionLayerGraceMs to 35");
                 cfg.ActionLayerGraceMs = 35;
                 shouldSaveMigratedConfig = true;
@@ -171,13 +171,13 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
-                Logger.Warn("invalid comboLayerWindowMs; using 25");
-                cfg.ComboLayerWindowMs = 25;
+                Logger.Warn("invalid comboLayerWindowMs; using 35");
+                cfg.ComboLayerWindowMs = 35;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ComboLayerWindowMs == 35 || cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
-                Logger.Info("migrating comboLayerWindowMs to 25");
-                cfg.ComboLayerWindowMs = 25;
+            if (cfg.ComboLayerWindowMs == 25 || cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
+                Logger.Info("migrating comboLayerWindowMs to 35");
+                cfg.ComboLayerWindowMs = 35;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.MouseMaxSpeed - 18.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 15.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 12.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 8.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 7.0) < 0.000001) {
@@ -185,9 +185,9 @@ internal sealed class Config {
                 cfg.MouseMaxSpeed = 20.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent to 2.2");
-                cfg.RightStickCurveExponent = 2.2;
+            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
+                Logger.Info("migrating rightStickCurveExponent to 2.5");
+                cfg.RightStickCurveExponent = 2.5;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 12) {
@@ -213,10 +213,6 @@ internal sealed class Config {
             if (Math.Abs(cfg.LeftStickExitDeadzone - 0.45) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.30) < 0.000001) {
                 Logger.Info("migrating leftStickExitDeadzone to 0.15");
                 cfg.LeftStickExitDeadzone = 0.15;
-                shouldSaveLeftStickConfig = true;
-            }
-            if (Math.Abs(cfg.RightStickCurveExponent - 2.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001) {
-                cfg.RightStickCurveExponent = 2.2;
                 shouldSaveLeftStickConfig = true;
             }
             if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
@@ -1347,6 +1343,7 @@ internal sealed class MapperForm : Form {
 
     private bool _prevL1, _prevR1;
     private double _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs;
+    private double _l1UpMs, _r1UpMs, _l2UpMs, _r2UpMs;
 
     private void OnTick() {
         ControllerState s = _hid.State;
@@ -1358,8 +1355,10 @@ internal sealed class MapperForm : Form {
         bool preR1 = _prevR1;
         bool l1JustDown = s.L1 && !preL1;
         bool r1JustDown = s.R1 && !preR1;
-        if (l1JustDown) _l1DownMs = now;
-        if (r1JustDown) _r1DownMs = now;
+        if (l1JustDown) { _l1DownMs = now; _l1UpMs = 0; }
+        if (r1JustDown) { _r1DownMs = now; _r1UpMs = 0; }
+        if (!s.L1 && preL1) _l1UpMs = now;
+        if (!s.R1 && preR1) _r1UpMs = now;
         _prevL1 = s.L1;
         _prevR1 = s.R1;
 
@@ -1391,12 +1390,20 @@ internal sealed class MapperForm : Form {
         if (!_l2Pressed && s.L2 > _config.TriggerPressThreshold) {
             _l2Pressed = true;
             _l2DownMs = now;
-        } else if (_l2Pressed && s.L2 < _config.TriggerReleaseThreshold) _l2Pressed = false;
+            _l2UpMs = 0;
+        } else if (_l2Pressed && s.L2 < _config.TriggerReleaseThreshold) {
+            _l2Pressed = false;
+            _l2UpMs = now;
+        }
         
         if (!_r2Pressed && s.R2 > _config.TriggerPressThreshold) {
             _r2Pressed = true;
             _r2DownMs = now;
-        } else if (_r2Pressed && s.R2 < _config.TriggerReleaseThreshold) _r2Pressed = false;
+            _r2UpMs = 0;
+        } else if (_r2Pressed && s.R2 < _config.TriggerReleaseThreshold) {
+            _r2Pressed = false;
+            _r2UpMs = now;
+        }
     }
 
     private void UpdateClutchButton(ControllerState s, double now) {
@@ -1765,13 +1772,27 @@ internal sealed class MapperForm : Form {
         }
     }
 
+    private double LayerUpTimestamp(Layer layer) {
+        switch (layer) {
+            case Layer.L1: return _l1UpMs;
+            case Layer.R1: return _r1UpMs;
+            case Layer.L2: return _l2UpMs;
+            case Layer.R2: return _r2UpMs;
+            case Layer.R1L1: return Math.Max(_r1UpMs, _l1UpMs);
+            case Layer.R2L2: return Math.Max(_r2UpMs, _l2UpMs);
+            default: return 0.0;
+        }
+    }
+
     private void UpdatePendingLayer(ref ButtonHold hold, Layer layer, double layerMs) {
+        double pendingLayerUpMs = LayerUpTimestamp(hold.PendingLayer);
         Layer next = ResolvePendingLayer(
             hold.PendingLayer,
-            hold.PendingLayerMs,
             hold.PendingSinceMs,
             layer,
             layerMs,
+            pendingLayerUpMs,
+            _config.ActionLayerGraceMs,
             _config.LayerTakeoverWindowMs);
 
         if (next == hold.PendingLayer) return;
@@ -1779,11 +1800,18 @@ internal sealed class MapperForm : Form {
         hold.PendingLayerMs = layerMs;
     }
 
-    internal static Layer ResolvePendingLayer(Layer pendingLayer, double pendingLayerMs, double pendingSinceMs, Layer layer, double layerMs, double takeoverWindowMs) {
+    internal static Layer ResolvePendingLayer(Layer pendingLayer, double pendingSinceMs, Layer layer, double layerMs, double pendingLayerUpMs, double actionLayerGraceMs, double takeoverWindowMs) {
         if (layer == Layer.Base || layer == Layer.Reserved) return pendingLayer;
         if (layer == pendingLayer) return pendingLayer;
         if (layerMs < pendingSinceMs) return pendingLayer;
-        if (layerMs - pendingSinceMs > takeoverWindowMs) return pendingLayer;
+        
+        if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
+        
+        double overlap = (pendingLayerUpMs == 0 || pendingLayerUpMs < pendingSinceMs) 
+            ? (layerMs - pendingSinceMs) 
+            : (pendingLayerUpMs - pendingSinceMs);
+            
+        if (overlap > takeoverWindowMs) return pendingLayer;
 
         bool pendingCombo = IsComboLayer(pendingLayer);
         bool layerCombo = IsComboLayer(layer);
@@ -3183,10 +3211,10 @@ internal static class Program {
         Layer crossStartLayer = mapping.Resolve(false, true, false, false, 0, r1Ms, 0, 0, config.ComboLayerWindowMs);
         PhysicalKey crossStartKey = mapping.Lookup(crossStartLayer, ActionButton.Cross);
         Layer afterQuickL1Layer = mapping.Resolve(true, true, false, false, quickL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, r1Ms, crossMs, afterQuickL1Layer, quickL1Ms, config.LayerTakeoverWindowMs);
+        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossMs, afterQuickL1Layer, quickL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey quickSettledKey = mapping.Lookup(quickSettledLayer, ActionButton.Cross);
         Layer afterLateL1Layer = mapping.Resolve(true, true, false, false, lateL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, r1Ms, crossMs, afterLateL1Layer, lateL1Ms, config.LayerTakeoverWindowMs);
+        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossMs, afterLateL1Layer, lateL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey lateSettledKey = mapping.Lookup(lateSettledLayer, ActionButton.Cross);
 
         bool quickInsideCombo = quickL1Ms - r1Ms <= config.ComboLayerWindowMs;
