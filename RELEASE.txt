@@ -1,0 +1,8 @@
+﻿ShikiPad release build
+Date: 2026-06-20
+Commit: 8e64350
+
+Changes:
+- PS touchpad: short press toggles clutch; long press holds clutch until release.
+- PS Share/Create = Right Alt, Options/Menu = Right Ctrl, Home = Right Shift.
+- Xbox View/Back and Menu/Start both use the same short/long clutch behavior.
