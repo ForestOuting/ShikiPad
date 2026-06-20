@@ -161,7 +161,7 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 
 | 参数名 | 默认值 | 说明 |
 |---|---|---|
-| `mouseMaxSpeed` | `7.0` | 右摇杆推满时的鼠标最大移动速度 |
+| `mouseMaxSpeed` | `10.0` | 右摇杆推满时的鼠标最大移动速度 |
 | `mouseSensitivity` | `1.0` | 鼠标灵敏度的全局乘数倍率（最终速度 = MaxSpeed * Sensitivity） |
 | `rightStickDeadzone` | `0.025` | 右摇杆死区（低于此值的输入会被忽略）。如果静止时鼠标自行漂移，请适当调大 |
 | `rightStickCurveExponent` | `2.6` | 幂函数曲线指数。值越大，轻推时越精准，推满时速度不变 |
