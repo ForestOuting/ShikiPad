@@ -84,6 +84,7 @@ internal sealed class Config {
     public int ScrollSlowIntervalMs = 100;
     public int ScrollFastIntervalMs = 6;
     public int R3FreezeMs = 60;
+    public int ClutchLongPressMs = 250;
     public static Config Load(string path) {
         Config cfg = new Config();
         if (!File.Exists(path)) {
@@ -101,7 +102,8 @@ internal sealed class Config {
                                             !text.Contains("\"rightStickCurveExponent\"") ||
                                             !text.Contains("\"rightStickEpsilon\"") ||
                                             !text.Contains("\"leftStickEnterDeadzone\"") ||
-                                            !text.Contains("\"leftStickExitDeadzone\"");
+                                            !text.Contains("\"leftStickExitDeadzone\"") ||
+                                            !text.Contains("\"clutchLongPressMs\"");
             bool shouldSaveLeftStickConfig = false;
             cfg.Enabled = GetBool(text, "enabled", cfg.Enabled);
             cfg.MouseSensitivity = GetDouble(text, "mouseSensitivity", cfg.MouseSensitivity);
@@ -126,6 +128,7 @@ internal sealed class Config {
             cfg.ScrollSlowIntervalMs = GetInt(text, "scrollSlowIntervalMs", cfg.ScrollSlowIntervalMs);
             cfg.ScrollFastIntervalMs = GetInt(text, "scrollFastIntervalMs", cfg.ScrollFastIntervalMs);
             cfg.R3FreezeMs = GetInt(text, "r3FreezeMs", cfg.R3FreezeMs);
+            cfg.ClutchLongPressMs = GetInt(text, "clutchLongPressMs", cfg.ClutchLongPressMs);
             
             if (cfg.RightStickDeadzone == 0.0 || Math.Abs(cfg.RightStickDeadzone - 0.05) < 0.000001) {
                 Logger.Info("migrating rightStickDeadzone to 0.03");
@@ -192,6 +195,11 @@ internal sealed class Config {
                 cfg.ScrollFastIntervalMs = 6;
                 shouldSaveMigratedConfig = true;
             }
+            if (cfg.ClutchLongPressMs < 80 || cfg.ClutchLongPressMs > 1000) {
+                Logger.Warn("invalid clutchLongPressMs; using 250");
+                cfg.ClutchLongPressMs = 250;
+                shouldSaveMigratedConfig = true;
+            }
             if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.50) < 0.000001 || Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
                 Logger.Info("migrating leftStickEnterDeadzone to 0.35");
                 cfg.LeftStickEnterDeadzone = 0.35;
@@ -239,7 +247,8 @@ internal sealed class Config {
         Write(sb, "useInterception", UseInterception, true);
         Write(sb, "scrollSlowIntervalMs", ScrollSlowIntervalMs, true);
         Write(sb, "scrollFastIntervalMs", ScrollFastIntervalMs, true);
-        Write(sb, "r3FreezeMs", R3FreezeMs, false);
+        Write(sb, "r3FreezeMs", R3FreezeMs, true);
+        Write(sb, "clutchLongPressMs", ClutchLongPressMs, false);
         
         sb.AppendLine("}");
         File.WriteAllText(path, sb.ToString());
@@ -1180,7 +1189,55 @@ internal static class NativeMethods {
             public short sThumbRX;
             public short sThumbRY;
         }
+}
+
+internal sealed class ClutchButtonStateMachine {
+    public bool Toggled;
+    public bool Held;
+
+    private bool _prevDown;
+    private bool _longPress;
+    private bool _startedToggled;
+    private double _downMs;
+
+    public bool Active {
+        get { return Held || Toggled; }
     }
+
+    public void Update(bool down, double nowMs, int longPressMs) {
+        int thresholdMs = Math.Max(1, longPressMs);
+
+        if (down && !_prevDown) {
+            Held = true;
+            _longPress = false;
+            _startedToggled = Toggled;
+            _downMs = nowMs;
+        } else if (down && _prevDown) {
+            if (!_longPress && nowMs - _downMs >= thresholdMs) _longPress = true;
+        } else if (!down && _prevDown) {
+            double heldMs = nowMs - _downMs;
+            if (!_longPress && heldMs < thresholdMs) {
+                Toggled = !_startedToggled;
+            } else {
+                Toggled = false;
+            }
+            Held = false;
+            _longPress = false;
+            _downMs = 0;
+        }
+
+        _prevDown = down;
+    }
+
+    public void Reset() {
+        Toggled = false;
+        Held = false;
+        _prevDown = false;
+        _longPress = false;
+        _startedToggled = false;
+        _downMs = 0;
+    }
+}
 
 internal sealed class MapperForm : Form {
     private readonly DirectHidController _hid;
@@ -1211,11 +1268,13 @@ internal sealed class MapperForm : Form {
     private bool _rightMouseDown;
     private List<PhysicalKey> _accumulatedModifiers = new List<PhysicalKey>();
     private List<PhysicalKey> _heldLeftStickKeys = new List<PhysicalKey>();
-    private bool _prevTouchClick;
-    private bool _clutchToggled;
+    private readonly ClutchButtonStateMachine _clutchButton = new ClutchButtonStateMachine();
+    private bool _prevClutchActive;
     private bool _prevCreate;
     private bool _prevOptions;
     private bool _prevHome;
+    private bool _createKeyDown;
+    private bool _optionsKeyDown;
     private bool _homeKeyDown;
     private double _disableStartMs;
     private bool _disableArmed = true;
@@ -1316,12 +1375,13 @@ internal sealed class MapperForm : Form {
             _printedConnectedGuide = true;
         }
         UpdateTriggers(s, now);
+        UpdateClutchButton(s, now);
 
         UpdateLeftStick(s, now);
         UpdateActionButtons(s, now);
         UpdateMouseButtons(s, now);
         UpdateRightStick(s, now, deltaSec);
-        UpdateHomeButton(s);
+        UpdateSystemButtons(s);
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
@@ -1334,6 +1394,31 @@ internal sealed class MapperForm : Form {
             _r2Pressed = true;
             _r2DownMs = now;
         } else if (_r2Pressed && s.R2 < _config.TriggerReleaseThreshold) _r2Pressed = false;
+    }
+
+    private void UpdateClutchButton(ControllerState s, double now) {
+        bool down = IsXboxController()
+            ? (s.Create || s.Options)
+            : s.TouchClick;
+        _clutchButton.Update(down, now, _config.ClutchLongPressMs);
+    }
+
+    private bool IsClutchActive() {
+        return _clutchButton.Active;
+    }
+
+    private bool IsSonyController() {
+        return _controllerProfile == ControllerProfile.DualSense ||
+               _controllerProfile == ControllerProfile.DualSenseBT ||
+               _controllerProfile == ControllerProfile.DualShock4 ||
+               _controllerProfile == ControllerProfile.DualShock4BT;
+    }
+
+    private bool IsXboxController() {
+        return _controllerProfile == ControllerProfile.Xbox360 ||
+               _controllerProfile == ControllerProfile.Xbox360BT ||
+               _controllerProfile == ControllerProfile.XboxSeries ||
+               _controllerProfile == ControllerProfile.XboxSeriesBT;
     }
 
     private PhysicalKey GetLeftStickKey(StickDirection dir) {
@@ -1373,21 +1458,18 @@ internal sealed class MapperForm : Form {
             }
         }
 
-        // Toggle clutch: Options click = ON, Create click = OFF
-        if (s.Options && !_prevOptions) _clutchToggled = true;
-        if (s.Create && !_prevCreate) _clutchToggled = false;
-        _prevCreate = s.Create;
-        _prevOptions = s.Options;
-
-        // Effective clutch = physical touchpad hold OR toggle state
-        bool clutch = s.TouchClick || _clutchToggled;
-
-        bool touchJustPressed = clutch && !_prevTouchClick;
-        _prevTouchClick = clutch;
+        bool clutch = IsClutchActive();
+        bool clutchJustPressed = clutch && !_prevClutchActive;
+        bool clutchJustReleased = !clutch && _prevClutchActive;
+        _prevClutchActive = clutch;
 
         List<PhysicalKey> desiredKeys = new List<PhysicalKey>();
 
-        if (touchJustPressed) {
+        if (clutchJustReleased) {
+            _accumulatedModifiers.Clear();
+        }
+
+        if (clutchJustPressed) {
             foreach (var key in _heldLeftStickKeys) {
                 AccumulateLeftStickKey(key);
             }
@@ -1399,12 +1481,7 @@ internal sealed class MapperForm : Form {
                 AccumulateLeftStickKey(rawStickKey);
                 desiredKeys.AddRange(_accumulatedModifiers);
             } else {
-                if (_accumulatedModifiers.Count > 0) {
-                    AccumulateLeftStickKey(rawStickKey);
-                    desiredKeys.AddRange(_accumulatedModifiers);
-                } else {
-                    AddUnique(desiredKeys, rawStickKey);
-                }
+                AddUnique(desiredKeys, rawStickKey);
             }
         } else {
             if (clutch) {
@@ -1848,20 +1925,27 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private void UpdateHomeButton(ControllerState s) {
-        bool home = s.Home;
-        if (home && !_prevHome) {
-            _injector.CurrentSource = "Home";
-            _injector.CurrentReason = "Home button press";
-            _injector.KeyDown(PhysicalKey.RAlt);
-            _homeKeyDown = true;
-        } else if (!home && _prevHome && _homeKeyDown) {
-            _injector.CurrentSource = "Home";
-            _injector.CurrentReason = "Home button release";
-            _injector.KeyUp(PhysicalKey.RAlt);
-            _homeKeyDown = false;
+    private void UpdateSystemButtons(ControllerState s) {
+        if (!IsSonyController()) return;
+
+        UpdateMappedSystemButton("Share/Create", s.Create, PhysicalKey.RAlt, ref _prevCreate, ref _createKeyDown);
+        UpdateMappedSystemButton("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
+        UpdateMappedSystemButton("Home", s.Home, PhysicalKey.RShift, ref _prevHome, ref _homeKeyDown);
+    }
+
+    private void UpdateMappedSystemButton(string source, bool down, PhysicalKey key, ref bool prev, ref bool keyDown) {
+        if (down && !prev) {
+            _injector.CurrentSource = source;
+            _injector.CurrentReason = source + " press";
+            _injector.KeyDown(key);
+            keyDown = true;
+        } else if (!down && prev && keyDown) {
+            _injector.CurrentSource = source;
+            _injector.CurrentReason = source + " release";
+            _injector.KeyUp(key);
+            keyDown = false;
         }
-        _prevHome = home;
+        prev = down;
     }
 
     private void UpdateEmergency(ControllerState s, double now) {
@@ -1902,14 +1986,16 @@ internal sealed class MapperForm : Form {
         _r2DownMs = 0;
         _l2Pressed = false;
         _r2Pressed = false;
-        _prevTouchClick = false;
-        _clutchToggled = false;
+        _clutchButton.Reset();
+        _prevClutchActive = false;
         _prevCreate = false;
         _prevOptions = false;
         _mouseFreezeUntilMs = 0;
         _mouseAccumX = 0;
         _mouseAccumY = 0;
         _prevHome = false;
+        _createKeyDown = false;
+        _optionsKeyDown = false;
         _homeKeyDown = false;
     }
 
@@ -2080,7 +2166,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/L1 \u6216 R2/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u5c42\u786e\u8ba4", "\u52a8\u4f5c\u952e\u540e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u786e\u8ba4", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u84c4\u529b", "\u89e6\u63a7\u677f\u6309\u4f4f=\u84c4\u529b; \u70b9\u51fb\u8bbe\u7f6e\u952e=\u5f00\u542f\u84c4\u529b, \u70b9\u51fb\u5206\u4eab\u952e=\u89e3\u9664\u84c4\u529b", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Menu \u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b" : "\u89e6\u63a7\u677f\u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         } else {
             WritePanelLine(width, panelWidth, "  Connected", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
@@ -2092,7 +2178,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combo window", "R1/L1 or R2/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Layer settle", "Action looks forward/back " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Clutch", "Touchpad hold=clutch; Menu/Start click=ON, View/Back click=OFF", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Clutch", xbox ? "View/Menu short press=toggle clutch, long press=hold clutch" : "Touchpad short press=toggle clutch, long press=hold clutch; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         }
 
@@ -2785,7 +2871,7 @@ internal static class Program {
             return 0;
         }
         if (HasArg(args, "--clutch-test")) {
-            PrintClutchTest();
+            PrintClutchTest(config);
             return Environment.ExitCode;
         }
         if (HasArg(args, "--shift-test")) {
@@ -3168,8 +3254,9 @@ internal static class Program {
         SimulateLeftStickLatch(config, ref latched, "release below exit", 0.1, 0.1);
     }
 
-    private static void PrintClutchTest() {
+    private static void PrintClutchTest(Config config) {
         bool ok = true;
+        int thresholdMs = Math.Max(1, config.ClutchLongPressMs);
 
         byte[] dualSensePressed = NeutralDualSenseReport();
         dualSensePressed[10] = 0x02;
@@ -3184,17 +3271,67 @@ internal static class Program {
 
         NativeMethods.XINPUT_GAMEPAD xboxBack = new NativeMethods.XINPUT_GAMEPAD();
         xboxBack.wButtons = NativeMethods.XINPUT_GAMEPAD_BACK;
-        ok = PrintClutchCheck("Xbox View/Back = clutch", DirectHidController.ParseXInputState(xboxBack).TouchClick) && ok;
+        ok = PrintClutchCheck("Xbox View/Back parsed as clutch button", DirectHidController.ParseXInputState(xboxBack).Create) && ok;
 
         NativeMethods.XINPUT_GAMEPAD xboxStart = new NativeMethods.XINPUT_GAMEPAD();
         xboxStart.wButtons = NativeMethods.XINPUT_GAMEPAD_START;
-        ok = PrintClutchCheck("Xbox Menu/Start = clutch", DirectHidController.ParseXInputState(xboxStart).TouchClick) && ok;
+        ok = PrintClutchCheck("Xbox Menu/Start parsed as clutch button", DirectHidController.ParseXInputState(xboxStart).Options) && ok;
 
         NativeMethods.XINPUT_GAMEPAD xboxReleased = new NativeMethods.XINPUT_GAMEPAD();
-        ok = PrintClutchCheck("Xbox View/Menu released = no clutch", !DirectHidController.ParseXInputState(xboxReleased).TouchClick) && ok;
+        ControllerState xboxReleasedState = DirectHidController.ParseXInputState(xboxReleased);
+        ok = PrintClutchCheck("Xbox View/Menu released = no clutch button", !xboxReleasedState.Create && !xboxReleasedState.Options) && ok;
+
+        ok = PrintClutchCheck("Short press toggles clutch on", SimulateShortClutchTapStarts(thresholdMs)) && ok;
+        ok = PrintClutchCheck("Second short press toggles clutch off", SimulateSecondShortClutchTapStops(thresholdMs)) && ok;
+        ok = PrintClutchCheck("Long press holds only until release", SimulateLongClutchPressStopsOnRelease(thresholdMs)) && ok;
+        ok = PrintClutchCheck("Short press then long press stops on release", SimulateShortThenLongClutchStops(thresholdMs)) && ok;
 
         Console.WriteLine("Clutch mapping result = " + (ok ? "PASS" : "FAIL"));
         if (!ok) Environment.ExitCode = 1;
+    }
+
+    private static bool SimulateShortClutchTapStarts(int thresholdMs) {
+        ClutchButtonStateMachine clutch = new ClutchButtonStateMachine();
+        double shortMs = Math.Max(1.0, thresholdMs / 2.0);
+        clutch.Update(true, 0.0, thresholdMs);
+        clutch.Update(false, shortMs, thresholdMs);
+        return clutch.Active && clutch.Toggled && !clutch.Held;
+    }
+
+    private static bool SimulateSecondShortClutchTapStops(int thresholdMs) {
+        ClutchButtonStateMachine clutch = new ClutchButtonStateMachine();
+        double shortMs = Math.Max(1.0, thresholdMs / 2.0);
+        clutch.Update(true, 0.0, thresholdMs);
+        clutch.Update(false, shortMs, thresholdMs);
+        clutch.Update(true, 1000.0, thresholdMs);
+        clutch.Update(false, 1000.0 + shortMs, thresholdMs);
+        return !clutch.Active && !clutch.Toggled && !clutch.Held;
+    }
+
+    private static bool SimulateLongClutchPressStopsOnRelease(int thresholdMs) {
+        ClutchButtonStateMachine clutch = new ClutchButtonStateMachine();
+        double longMs = thresholdMs + 10.0;
+        clutch.Update(true, 0.0, thresholdMs);
+        bool activeAtPress = clutch.Active && clutch.Held;
+        clutch.Update(true, longMs, thresholdMs);
+        bool activeWhileHeld = clutch.Active && clutch.Held;
+        clutch.Update(false, longMs + 1.0, thresholdMs);
+        return activeAtPress && activeWhileHeld && !clutch.Active && !clutch.Toggled && !clutch.Held;
+    }
+
+    private static bool SimulateShortThenLongClutchStops(int thresholdMs) {
+        ClutchButtonStateMachine clutch = new ClutchButtonStateMachine();
+        double shortMs = Math.Max(1.0, thresholdMs / 2.0);
+        double longMs = thresholdMs + 10.0;
+        clutch.Update(true, 0.0, thresholdMs);
+        clutch.Update(false, shortMs, thresholdMs);
+        bool toggledAfterShort = clutch.Active && clutch.Toggled && !clutch.Held;
+        clutch.Update(true, 1000.0, thresholdMs);
+        bool activeAtSecondPress = clutch.Active;
+        clutch.Update(true, 1000.0 + longMs, thresholdMs);
+        bool activeWhileHeld = clutch.Active;
+        clutch.Update(false, 1000.0 + longMs + 1.0, thresholdMs);
+        return toggledAfterShort && activeAtSecondPress && activeWhileHeld && !clutch.Active && !clutch.Toggled && !clutch.Held;
     }
 
     private static byte[] NeutralDualSenseReport() {

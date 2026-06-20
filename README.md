@@ -58,7 +58,9 @@ While running, **hold Share/Create/View + Options/Menu simultaneously for 2 seco
 | **Right Stick** movement | Mouse cursor movement | Power-curve acceleration: gentle for fine control, fast when pushed hard |
 | **R3** (Right Stick click) | Right Mouse Button | Cursor freezes briefly on click to prevent accidental movement |
 | **L3** (Left Stick click) | Left Mouse Button | — |
-| **PS Home Button** (DS4/DS5) | `Right Alt` | Hold to press, release to let go. Xbox Home button is intercepted by Windows for Xbox Game Bar and cannot be mapped |
+| **PS Share/Create** (DS4/DS5) | `Right Alt` | Hold to press, release to let go |
+| **PS Options/Menu** (DS4/DS5) | `Right Ctrl` | Hold to press, release to let go |
+| **PS Home Button** (DS4/DS5) | `Right Shift` | Hold to press, release to let go. Xbox Home button is intercepted by Windows for Xbox Game Bar and cannot be mapped |
 
 ---
 
@@ -85,11 +87,12 @@ By default, the Left Stick can only hold one modifier at a time. When you need m
 
 | Controller Type | Clutch ON | Clutch OFF |
 |---|---|---|
-| DS4 / DS5 | Hold **Touchpad** *or* click **Options** | Release Touchpad *or* click **Share/Create** |
-| Xbox | Click **Menu / Start** | Click **View / Back** |
+| DS4 / DS5 | Short press **Touchpad** to toggle on, or long press to hold | Short press Touchpad again, or release after a long press |
+| Xbox | Short press **View / Back** or **Menu / Start** to toggle on, or long press either button to hold | Short press the same clutch button again, or release after a long press |
 
-- **Touchpad** = "hold-to-clutch" — releases automatically when you let go.
-- **Options / Menu** = "click-toggle" — stays active until you click Share / View to cancel.
+- **Short press** = click-toggle clutch on/off.
+- **Long press** = hold-to-clutch; releasing the button always ends clutch, even if a previous short press had toggled it on.
+- On PS controllers, **Share/Create**, **Options/Menu**, and **Home** are free physical-key outputs: `Right Alt`, `Right Ctrl`, and `Right Shift`.
 
 **How to use:** While the Clutch is active, freely move the Left Stick to "collect" modifiers one by one. For example: push Left (collect `Shift`), then push Down-Left (collect `Ctrl`), then push Up-Left (collect `Esc`) — all three keys are now held simultaneously, just like pressing `Ctrl + Shift + Esc` on a real keyboard! Releasing the Clutch releases all collected modifiers at once.
 
@@ -187,6 +190,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
 | `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
 | `actionLayerSwitchGuardMs` | `35` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
+| `clutchLongPressMs` | `250` | Press duration that separates a clutch short press from a clutch long press |
 
 ### Repeat / Scroll
 
@@ -222,4 +226,3 @@ Increase `rightStickDeadzone` in `shikipad.json` (e.g., from `0.03` to `0.05` or
 
 ### Typing Accidentally Triggers Base Layer Keys
 Increase `actionLayerGraceMs` (e.g., from `35` to `50` or `80`) to give the layer detection more confirmation time.
-
