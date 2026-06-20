@@ -66,7 +66,7 @@ internal sealed class Config {
     public double MouseMaxSpeed = 20.0;
     public double RightStickDeadzone = 0.025;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 2.6;
+    public double RightStickCurveExponent = 2.2;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.15;
     public double TriggerPressThreshold = 0.35;
@@ -185,9 +185,9 @@ internal sealed class Config {
                 cfg.MouseMaxSpeed = 20.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent to 2.6");
-                cfg.RightStickCurveExponent = 2.6;
+            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
+                Logger.Info("migrating rightStickCurveExponent to 2.2");
+                cfg.RightStickCurveExponent = 2.2;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 12) {
@@ -215,8 +215,8 @@ internal sealed class Config {
                 cfg.LeftStickExitDeadzone = 0.15;
                 shouldSaveLeftStickConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 2.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                cfg.RightStickCurveExponent = 2.6;
+            if (Math.Abs(cfg.RightStickCurveExponent - 2.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001) {
+                cfg.RightStickCurveExponent = 2.2;
                 shouldSaveLeftStickConfig = true;
             }
             if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
