@@ -63,10 +63,10 @@ internal enum ControllerProfile {
 internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
-    public double MouseMaxSpeed = 20.0;
+    public double MouseMaxSpeed = 22.0;
     public double RightStickDeadzone = 0.025;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 2.5;
+    public double RightStickCurveExponent = 3.0;
     public double MouseScrollCurveExponent = 3.0;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.25;
@@ -101,7 +101,8 @@ internal sealed class Config {
                                             !text.Contains("\"rightStickDeadzone\"") ||
                                             !text.Contains("\"rightStickCurve\"") ||
                                             !text.Contains("\"rightStickCurveExponent\"") ||
-                                            !text.Contains("\"rightStickEpsilon\"") ||
+                                            text.Contains("\"rightStickEpsilon\"") ||
+                                            !text.Contains("\"mouseScrollCurveExponent\"") ||
                                             !text.Contains("\"leftStickEnterDeadzone\"") ||
                                             !text.Contains("\"leftStickExitDeadzone\"") ||
                                             !text.Contains("\"clutchLongPressMs\"");
@@ -144,8 +145,8 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.RightStickCurveExponent <= 0.0 || Double.IsNaN(cfg.RightStickCurveExponent) || Double.IsInfinity(cfg.RightStickCurveExponent)) {
-                Logger.Warn("invalid rightStickCurveExponent; using 2.0");
-                cfg.RightStickCurveExponent = 2.0;
+                Logger.Warn("invalid rightStickCurveExponent; using 3.0");
+                cfg.RightStickCurveExponent = 3.0;
                 shouldSaveMigratedConfig = true;
             }
             if (!text.Contains("\"baseRepeatSlowIntervalMs\"") ||
@@ -182,14 +183,14 @@ internal sealed class Config {
                 cfg.ComboLayerWindowMs = 35;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.MouseMaxSpeed - 18.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 15.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 12.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 8.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 7.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 28.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 22.4) < 0.000001) {
-                Logger.Info("migrating mouseMaxSpeed to 20.0");
-                cfg.MouseMaxSpeed = 20.0;
+            if (Math.Abs(cfg.MouseMaxSpeed - 20.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 18.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 15.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 12.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 8.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 7.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 28.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 22.4) < 0.000001) {
+                Logger.Info("migrating mouseMaxSpeed to 22.0");
+                cfg.MouseMaxSpeed = 22.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 3.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent to 2.5");
-                cfg.RightStickCurveExponent = 2.5;
+            if (Math.Abs(cfg.RightStickCurveExponent - 2.5) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
+                Logger.Info("migrating rightStickCurveExponent to 3.0");
+                cfg.RightStickCurveExponent = 3.0;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 8 || cfg.ScrollFastIntervalMs == 20) {
@@ -759,7 +760,10 @@ internal sealed class DirectHidController {
         get {
             switch (_profile) {
                 case ControllerProfile.Xbox360: return "Xbox 360 Controller / XInput";
+                case ControllerProfile.Xbox360BT: return "Xbox 360 Controller / XInput (BT)";
                 case ControllerProfile.XboxSeries: return "Xbox Series X|S Controller / XInput";
+                case ControllerProfile.XboxSeriesBT: return "Xbox Series X|S Controller / XInput (BT)";
+                case ControllerProfile.DualSenseBT: return "DualSense / Direct HID (BT)";
                 case ControllerProfile.DualShock4: return "DualShock 4 / Direct HID";
                 case ControllerProfile.DualShock4BT: return "DualShock 4 / Direct HID (BT)";
                 default: return "DualSense / Direct HID";
@@ -1663,6 +1667,7 @@ internal sealed class MapperForm : Form {
                 if (ShouldDeferInitialAction()) {
                     hold = new ButtonHold();
                     hold.Pending = true;
+                    hold.OriginalPendingLayer = layer;
                     hold.PendingLayer = layer;
                     hold.PendingLayerMs = layerMs;
                     hold.PendingSinceMs = now;
