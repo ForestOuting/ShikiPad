@@ -1791,6 +1791,10 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdatePendingLayer(ref ButtonHold hold, Layer layer, double layerMs) {
+        if (hold.OriginalPendingLayerUpMs == 0 && hold.OriginalPendingLayer != hold.PendingLayer) {
+            hold.OriginalPendingLayerUpMs = LayerUpTimestamp(hold.OriginalPendingLayer);
+        }
+        double originalLayerUpMs = hold.OriginalPendingLayerUpMs == 0 ? LayerUpTimestamp(hold.OriginalPendingLayer) : hold.OriginalPendingLayerUpMs;
         double pendingLayerUpMs = LayerUpTimestamp(hold.PendingLayer);
         Layer next = ResolvePendingLayer(
             hold.PendingLayer,
@@ -1799,6 +1803,7 @@ internal sealed class MapperForm : Form {
             layer,
             layerMs,
             pendingLayerUpMs,
+            originalLayerUpMs,
             _config.ActionLayerGraceMs,
             _config.LayerTakeoverWindowMs);
 
@@ -1813,19 +1818,28 @@ internal sealed class MapperForm : Form {
         return false;
     }
 
-    internal static Layer ResolvePendingLayer(Layer pendingLayer, Layer originalLayer, double pendingSinceMs, Layer layer, double layerMs, double pendingLayerUpMs, double actionLayerGraceMs, double takeoverWindowMs) {
+    internal static Layer ResolvePendingLayer(Layer pendingLayer, Layer originalLayer, double pendingSinceMs, Layer layer, double layerMs, double pendingLayerUpMs, double originalLayerUpMs, double actionLayerGraceMs, double takeoverWindowMs) {
         if (layer == Layer.Base || layer == Layer.Reserved) return pendingLayer;
         if (layer == pendingLayer) return pendingLayer;
         if (layerMs < pendingSinceMs) return pendingLayer;
         
         if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
         
-        double overlap = (pendingLayerUpMs == 0 || pendingLayerUpMs < pendingSinceMs) 
-            ? (layerMs - pendingSinceMs) 
-            : (pendingLayerUpMs - pendingSinceMs);
+        double overlap = 0;
+        if (pendingLayerUpMs > pendingSinceMs) overlap = pendingLayerUpMs - pendingSinceMs;
+        else if (pendingLayerUpMs == 0) overlap = double.PositiveInfinity;
             
         if (overlap > takeoverWindowMs) {
             if (IsComboLayer(layer) && IsComboComponent(layer, pendingLayer)) {
+                double originalOverlap = 0;
+                if (!IsComboComponent(layer, originalLayer)) {
+                    if (originalLayerUpMs > pendingSinceMs) originalOverlap = originalLayerUpMs - pendingSinceMs;
+                    else if (originalLayerUpMs == 0 && originalLayer != Layer.Base) originalOverlap = double.PositiveInfinity;
+                }
+
+                if (originalOverlap <= takeoverWindowMs) {
+                    return layer; // Fallback succeeded, the combo layer actually covers it!
+                }
                 return originalLayer;
             }
             return pendingLayer;
@@ -2118,6 +2132,7 @@ internal sealed class MapperForm : Form {
         public bool PendingReleased;
         public double PendingSinceMs;
         public Layer OriginalPendingLayer;
+        public double OriginalPendingLayerUpMs;
         public Layer PendingLayer;
         public double PendingLayerMs;
         public double KeyDownMs;
@@ -3227,10 +3242,10 @@ internal static class Program {
         Layer crossStartLayer = mapping.Resolve(false, true, false, false, 0, r1Ms, 0, 0, config.ComboLayerWindowMs);
         PhysicalKey crossStartKey = mapping.Lookup(crossStartLayer, ActionButton.Cross);
         Layer afterQuickL1Layer = mapping.Resolve(true, true, false, false, quickL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterQuickL1Layer, quickL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterQuickL1Layer, quickL1Ms, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey quickSettledKey = mapping.Lookup(quickSettledLayer, ActionButton.Cross);
         Layer afterLateL1Layer = mapping.Resolve(true, true, false, false, lateL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
-        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterLateL1Layer, lateL1Ms, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterLateL1Layer, lateL1Ms, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey lateSettledKey = mapping.Lookup(lateSettledLayer, ActionButton.Cross);
 
         bool quickInsideCombo = quickL1Ms - r1Ms <= config.ComboLayerWindowMs;
@@ -3275,20 +3290,20 @@ internal static class Program {
         Layer l1Layer = mapping.Resolve(true, false, false, false, l1Down, 0, 0, 0, config.ComboLayerWindowMs);
         
         // Update Sq with L1
-        Layer sqAfterL1 = MapperForm.ResolvePendingLayer(sqLayer, sqLayer, sqDown, l1Layer, l1Down, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer sqAfterL1 = MapperForm.ResolvePendingLayer(sqLayer, sqLayer, sqDown, l1Layer, l1Down, l2Up, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
 
         // T=125 (Cr down). Layer is L1.
         Layer crLayer = l1Layer;
 
-        // T=135 (R1 down). Layer is R1L1.
+        // T=134 (R1 down). Layer is R1L1.
         Layer r1l1Layer = mapping.Resolve(true, true, false, false, l1Down, r1Down, 0, 0, config.ComboLayerWindowMs);
 
         // Update Sq with R1L1
-        Layer sqFinal = MapperForm.ResolvePendingLayer(sqAfterL1, sqLayer, sqDown, r1l1Layer, r1Down, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer sqFinal = MapperForm.ResolvePendingLayer(sqAfterL1, sqLayer, sqDown, r1l1Layer, r1Down, 0, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey sqKey = mapping.Lookup(sqFinal, ActionButton.Square);
 
         // Update Cr with R1L1
-        Layer crFinal = MapperForm.ResolvePendingLayer(crLayer, crLayer, crDown, r1l1Layer, r1Down, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer crFinal = MapperForm.ResolvePendingLayer(crLayer, crLayer, crDown, r1l1Layer, r1Down, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         PhysicalKey crKey = mapping.Lookup(crFinal, ActionButton.Cross);
 
         Console.WriteLine("Square resolved layer: " + LayerDisplayName(sqFinal));
@@ -3296,7 +3311,7 @@ internal static class Program {
         Console.WriteLine("Cross resolved layer: " + LayerDisplayName(crFinal));
         Console.WriteLine("Cross resolved key: " + LayerTestKeyName(crKey));
         
-        bool pass = (sqKey == PhysicalKey.Num1);
+        bool pass = (sqKey == PhysicalKey.Num9);
         Console.WriteLine("User Scenario = " + (pass ? "PASS" : "FAIL"));
         return pass;
     }
