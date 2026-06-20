@@ -1537,14 +1537,14 @@ internal sealed class MapperForm : Form {
         double normalized = Clamp((radius - _config.LeftStickEnterDeadzone) / (1.0 - _config.LeftStickEnterDeadzone), 0.0, 1.0);
         double slow = Math.Max(1.0, (double)_config.ScrollSlowIntervalMs);
         double fast = Math.Max(1.0, Math.Min((double)_config.ScrollFastIntervalMs, slow));
-        if (normalized < 0.15) return slow;
-        if (normalized < 0.30) return Math.Max(fast, slow * 0.80);
-        if (normalized < 0.45) return Math.Max(fast, slow * 0.60);
-        if (normalized < 0.60) return Math.Max(fast, slow * 0.40);
-        if (normalized < 0.75) return Math.Max(fast, slow * 0.25);
-        if (normalized < 0.85) return Math.Max(fast, slow * 0.15);
-        if (normalized < 0.95) return Math.Max(fast, slow * 0.08);
-        return fast;
+        
+        double minSpeed = 1.0 / slow;
+        double maxSpeed = 1.0 / fast;
+        
+        double curve = Math.Pow(normalized, _config.RightStickCurveExponent);
+        double currentSpeed = minSpeed + (maxSpeed - minSpeed) * curve;
+        
+        return Math.Max(fast, Math.Min(slow, 1.0 / currentSpeed));
     }
 
     private PhysicalKey TranslateToFKey(PhysicalKey numberKey) {
