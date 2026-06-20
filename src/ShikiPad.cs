@@ -3198,6 +3198,8 @@ internal static class Program {
             Console.WriteLine();
         }
         Console.WriteLine("Layer priority: latest triggered layer wins; R1+L1 and R2+L2 activate only inside comboLayerWindowMs.");
+        Console.WriteLine("actionLayerGraceMs = " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture));
+        Console.WriteLine("layerTakeoverWindowMs = " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("comboLayerWindowMs = " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine();
         Console.WriteLine("Resolution checks:");
