@@ -1541,7 +1541,7 @@ internal sealed class MapperForm : Form {
         double minSpeed = 1.0 / slow;
         double maxSpeed = 1.0 / fast;
         
-        double curve = Math.Pow(normalized, _config.RightStickCurveExponent);
+        double curve = Math.Pow(normalized, 2.8);
         double currentSpeed = minSpeed + (maxSpeed - minSpeed) * curve;
         
         return Math.Max(fast, Math.Min(slow, 1.0 / currentSpeed));
