@@ -1820,10 +1820,6 @@ internal sealed class MapperForm : Form {
         bool layerCombo = IsComboLayer(layer);
         if (pendingCombo && !layerCombo) return pendingLayer;
 
-        bool pendingSingle = pendingLayer != Layer.Base && pendingLayer != Layer.Reserved && !pendingCombo;
-        bool layerSingle = layer != Layer.Base && layer != Layer.Reserved && !layerCombo;
-        if (pendingSingle && layerSingle) return pendingLayer;
-
         return layer;
     }
 
