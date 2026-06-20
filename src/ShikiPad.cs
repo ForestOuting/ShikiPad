@@ -67,6 +67,7 @@ internal sealed class Config {
     public double RightStickDeadzone = 0.025;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 2.5;
+    public double MouseWheelCurveExponent = 3.0;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.25;
     public double TriggerPressThreshold = 0.35;
@@ -100,6 +101,7 @@ internal sealed class Config {
                                             !text.Contains("\"rightStickDeadzone\"") ||
                                             !text.Contains("\"rightStickCurve\"") ||
                                             !text.Contains("\"rightStickCurveExponent\"") ||
+                                            !text.Contains("\"mouseWheelCurveExponent\"") ||
                                             !text.Contains("\"rightStickEpsilon\"") ||
                                             !text.Contains("\"leftStickEnterDeadzone\"") ||
                                             !text.Contains("\"leftStickExitDeadzone\"") ||
@@ -111,6 +113,7 @@ internal sealed class Config {
             cfg.RightStickDeadzone = GetDouble(text, "rightStickDeadzone", cfg.RightStickDeadzone);
             cfg.RightStickCurve = GetString(text, "rightStickCurve", cfg.RightStickCurve);
             cfg.RightStickCurveExponent = GetDouble(text, "rightStickCurveExponent", cfg.RightStickCurveExponent);
+            cfg.MouseWheelCurveExponent = GetDouble(text, "mouseWheelCurveExponent", cfg.MouseWheelCurveExponent);
             cfg.LeftStickEnterDeadzone = GetDouble(text, "leftStickEnterDeadzone", cfg.LeftStickEnterDeadzone);
             cfg.LeftStickExitDeadzone = GetDouble(text, "leftStickExitDeadzone", cfg.LeftStickExitDeadzone);
             cfg.TriggerPressThreshold = GetDouble(text, "triggerPressThreshold", cfg.TriggerPressThreshold);
@@ -232,6 +235,7 @@ internal sealed class Config {
         Write(sb, "rightStickDeadzone", RightStickDeadzone, true);
         Write(sb, "rightStickCurve", RightStickCurve, true);
         Write(sb, "rightStickCurveExponent", RightStickCurveExponent, true);
+        Write(sb, "mouseWheelCurveExponent", MouseWheelCurveExponent, true);
         Write(sb, "leftStickEnterDeadzone", LeftStickEnterDeadzone, true);
         Write(sb, "leftStickExitDeadzone", LeftStickExitDeadzone, true);
         Write(sb, "triggerPressThreshold", TriggerPressThreshold, true);
@@ -1541,7 +1545,7 @@ internal sealed class MapperForm : Form {
         double minSpeed = 1.0 / slow;
         double maxSpeed = 1.0 / fast;
         
-        double curve = Math.Pow(normalized, 2.8);
+        double curve = Math.Pow(normalized, _config.MouseWheelCurveExponent);
         double currentSpeed = minSpeed + (maxSpeed - minSpeed) * curve;
         
         return Math.Max(fast, Math.Min(slow, 1.0 / currentSpeed));
@@ -2936,6 +2940,7 @@ internal static class Program {
         Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", rightStickCurve = " + config.RightStickCurve +
                     ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
+                    ", mouseWheelCurveExponent = " + config.MouseWheelCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
                     ", neutralCalibration = enabled");
         Logger.Info("left stick modifiers = physical held keys");
@@ -3183,7 +3188,7 @@ internal static class Program {
         PrintResolutionCheck(config, m, "R1 then R2 + Square", false, true, false, true, 0, 10, 0, 20, ActionButton.Square);
         PrintResolutionCheck(config, m, "L1 then L2 + Square", true, false, true, false, 10, 0, 20, 0, ActionButton.Square);
         Console.WriteLine();
-        PrintPendingTimingChecks(config, m);
+        PrintExtremeTakeoverCheck(config, m);
     }
 
     private static void PrintResolutionCheck(Config config, MappingEngine mapping, string label, bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, ActionButton action) {
@@ -3236,6 +3241,33 @@ internal static class Program {
                           LayerDisplayName(lateSettledLayer) + " / " + LayerTestKeyName(lateSettledKey) +
                           (lateSettledKey == PhysicalKey.H ? " [PASS]" : " [FAIL]"));
         return ok;
+    }
+
+    private static void PrintExtremeTakeoverCheck(Config config, MappingEngine mapping) {
+        Console.WriteLine("Extreme Takeover Check:");
+        // 0: L2
+        // 100: Square
+        // 105: L2 released
+        // 120: L1
+        // 125: Cross
+        // 135: R1
+
+        Layer squareStart = mapping.Resolve(false, false, true, false, 0, 0, 0, 0, config.ComboLayerWindowMs); // L2
+        
+        Layer layerAt120 = mapping.Resolve(true, false, false, false, 120, 0, 105, 0, config.ComboLayerWindowMs); // L1
+        
+        Layer squareAt120 = MapperForm.ResolvePendingLayer(squareStart, 100, layerAt120, 120, 105, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        
+        Layer layerAt135 = mapping.Resolve(true, true, false, false, 120, 135, 105, 0, config.ComboLayerWindowMs); // R1L1
+        
+        // Now squareAt120 is L1. L1 is NOT released, so pendingLayerUpMs for L1 is 0.
+        Layer squareAt135 = MapperForm.ResolvePendingLayer(squareAt120, 100, layerAt135, 135, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        
+        Console.WriteLine("Square resolved to: " + LayerDisplayName(squareAt135) + " / " + LayerTestKeyName(mapping.Lookup(squareAt135, ActionButton.Square)));
+        
+        Layer crossAt120 = layerAt120;
+        Layer crossAt135 = MapperForm.ResolvePendingLayer(crossAt120, 125, layerAt135, 135, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Console.WriteLine("Cross resolved to: " + LayerDisplayName(crossAt135) + " / " + LayerTestKeyName(mapping.Lookup(crossAt135, ActionButton.Cross)));
     }
 
     private static bool PrintControllerParityCheck(Config config, MappingEngine mapping) {
