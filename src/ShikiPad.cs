@@ -188,7 +188,7 @@ internal sealed class Config {
                 cfg.MouseMaxSpeed = 22.0;
                 shouldSaveMigratedConfig = true;
             }
-            if (Math.Abs(cfg.RightStickCurveExponent - 2.5) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
+            if (Math.Abs(cfg.RightStickCurveExponent - 2.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.5) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
                 Logger.Info("migrating rightStickCurveExponent to 3.0");
                 cfg.RightStickCurveExponent = 3.0;
                 shouldSaveMigratedConfig = true;
