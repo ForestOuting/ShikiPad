@@ -82,7 +82,7 @@ internal sealed class Config {
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 120;
-    public int ScrollFastIntervalMs = 8;
+    public int ScrollFastIntervalMs = 12;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
     public static Config Load(string path) {
@@ -190,9 +190,9 @@ internal sealed class Config {
                 cfg.RightStickCurveExponent = 2.5;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 12 || cfg.ScrollFastIntervalMs == 20) {
-                Logger.Info("migrating scrollFastIntervalMs to 8");
-                cfg.ScrollFastIntervalMs = 8;
+            if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 8 || cfg.ScrollFastIntervalMs == 20) {
+                Logger.Info("migrating scrollFastIntervalMs to 12");
+                cfg.ScrollFastIntervalMs = 12;
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ScrollSlowIntervalMs == 100) {

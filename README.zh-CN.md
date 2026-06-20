@@ -197,7 +197,7 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 | `repeatDelayMs` | `180` | 基础层按住后开始连发前的初始延迟 |
 | `repeatIntervalMs` | `20` | 基础层连发到最快速度时的间隔 |
 | `scrollSlowIntervalMs` | `120` | 滚轮初始滚动间隔（毫秒） |
-| `scrollFastIntervalMs` | `8` | 滚轮长推时的最快滚动间隔（毫秒） |
+| `scrollFastIntervalMs` | `12` | 滚轮长推时的最快滚动间隔（毫秒） |
 
 ### 系统
 

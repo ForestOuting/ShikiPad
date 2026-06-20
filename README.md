@@ -199,7 +199,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 | `repeatDelayMs` | `180` | Initial delay before Base Layer key repeat starts |
 | `repeatIntervalMs` | `20` | Fastest repeat interval at full speed |
 | `scrollSlowIntervalMs` | `120` | Initial scroll interval (ms) |
-| `scrollFastIntervalMs` | `8` | Fastest scroll interval when stick is held (ms) |
+| `scrollFastIntervalMs` | `12` | Fastest scroll interval when stick is held (ms) |
 
 ### System
 
