@@ -163,8 +163,11 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 |---|---|---|
 | `mouseMaxSpeed` | `20.0` | 右摇杆推满时的鼠标最大移动速度 |
 | `mouseSensitivity` | `1.0` | 鼠标灵敏度的全局乘数倍率（最终速度 = MaxSpeed * Sensitivity） |
+| `rightStickCurve` | `"power"` | 右摇杆响应曲线。填 `"power"` (指数曲线) 或 `"linear"` (线性)。 |
+| `rightStickCurveExponent` | `2.5` | 当曲线为 `"power"` 时，此指数控制精度（越高 = 中心越平缓，边缘越快）。 |
+| `mouseWheelCurveExponent` | `3.0` | 控制鼠标滚轮（左摇杆上下）加速度的指数。 |
+| `leftStickEnterDeadzone` | `0.35` | 左摇杆的内部死区，推过该阈值才开始触发滚轮或组合键。 |
 | `rightStickDeadzone` | `0.025` | 右摇杆死区（低于此值的输入会被忽略）。如果静止时鼠标自行漂移，请适当调大 |
-| `rightStickCurveExponent` | `2.5` | 幂函数曲线指数。值越大，轻推时越精准，推满时速度不变 |
 | `r3FreezeMs` | `60` | 按下 R3（右键点击）后冻结光标的毫秒数。因为按下摇杆时很容易产生微小的位移导致点击失误，此参数可在按下瞬间屏蔽移动，保证点击稳定 |
 
 ### 左摇杆 / 修饰键
