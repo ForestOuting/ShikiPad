@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 
 internal sealed class Config {
-    private const int CurrentConfigVersion = 4;
+    private const int CurrentConfigVersion = 5;
     private const double DefaultMouseScrollCurveExponent = 3.0;
     private const int DefaultScrollSlowIntervalMs = 120;
     private const int DefaultScrollFastIntervalMs = 12;
@@ -13,12 +13,13 @@ internal sealed class Config {
     private const int DefaultRepeatIntervalMs = 32;
     private const int DefaultBaseRepeatSlowIntervalMs = 240;
     private const int DefaultBaseRepeatRampMs = 2500;
+    private const double DefaultRightStickDeadzone = 0.055;
 
     public int ConfigVersion = CurrentConfigVersion;
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
     public double MouseMaxSpeed = 20.0;
-    public double RightStickDeadzone = 0.025;
+    public double RightStickDeadzone = DefaultRightStickDeadzone;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 3.0;
     public double MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
@@ -108,8 +109,8 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (Double.IsNaN(cfg.RightStickDeadzone) || Double.IsInfinity(cfg.RightStickDeadzone) || cfg.RightStickDeadzone < 0.0 || cfg.RightStickDeadzone >= 0.95) {
-                Logger.Warn("invalid rightStickDeadzone; using 0.025");
-                cfg.RightStickDeadzone = 0.025;
+                Logger.Warn("invalid rightStickDeadzone; using " + DefaultRightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture));
+                cfg.RightStickDeadzone = DefaultRightStickDeadzone;
                 shouldSaveConfig = true;
             }
             if (IsInvalidPositive(cfg.MouseScrollCurveExponent)) {
@@ -328,6 +329,9 @@ internal sealed class Config {
         }
         if (cfg.BaseRepeatRampMs == 1200) {
             cfg.BaseRepeatRampMs = DefaultBaseRepeatRampMs;
+        }
+        if (Math.Abs(cfg.RightStickDeadzone - 0.025) < 0.000001) {
+            cfg.RightStickDeadzone = DefaultRightStickDeadzone;
         }
         Logger.Info("migrated config defaults to version " + CurrentConfigVersion.ToString(CultureInfo.InvariantCulture));
     }

@@ -171,7 +171,7 @@ See `shikipad.example.json` for a clean default template.
 |---|---|---|
 | `mouseMaxSpeed` | `20.0` | Maximum cursor speed unit when the right stick is fully pushed. Effective maximum is `mouseMaxSpeed * 120 * mouseSensitivity` pixels/second |
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed |
-| `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
+| `rightStickDeadzone` | `0.055` | Right stick idle-noise deadzone. This filters hardware rest drift while preserving light intentional movement above the idle band |
 | `rightStickCurveExponent` | `3.0` | Power curve exponent. Higher values = more precise at low deflection |
 | `mouseScrollCurveExponent`| `3.0` | Left stick scroll curve exponent. Higher values = more precise at low deflection |
 | `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3. Clicking the stick often causes accidental nudges; this briefly ignores stick movement to ensure stable clicks |

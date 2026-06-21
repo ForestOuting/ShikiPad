@@ -1,9 +1,9 @@
 {
-  "configVersion": 4,
+  "configVersion": 5,
   "enabled": true,
   "mouseSensitivity": 1,
   "mouseMaxSpeed": 20,
-  "rightStickDeadzone": 0.025,
+  "rightStickDeadzone": 0.055,
   "rightStickCurve": "power",
   "rightStickCurveExponent": 3,
   "mouseScrollCurveExponent": 3,

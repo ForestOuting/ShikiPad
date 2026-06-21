@@ -1158,6 +1158,9 @@ internal static class Program {
         bool deadzoneMoved = integrator.TryUpdate(testConfig.RightStickDeadzone * 0.5, 0.0, 0.001, testConfig, out dx, out dy);
         bool deadzoneOk = !deadzoneMoved && dx == 0 && dy == 0;
 
+        bool idleNoiseOk = SimulateRightStickMotion(testConfig, testConfig.RightStickDeadzone * 0.95, 2000) == 0;
+        bool boundaryNoiseOk = SimulateRightStickMotion(testConfig, testConfig.RightStickDeadzone + 0.03 * (1.0 - testConfig.RightStickDeadzone), 300) == 0;
+
         double smallOutsideDeadzone = testConfig.RightStickDeadzone + 0.10 * (1.0 - testConfig.RightStickDeadzone);
         bool firstTickMoved = integrator.TryUpdate(smallOutsideDeadzone, 0.0, 0.001, testConfig, out dx, out dy);
         int accumulatedX = dx;
@@ -1170,11 +1173,24 @@ internal static class Program {
 
         int firstMoveMs = SimulateRightStickFirstMoveMs(testConfig, smallOutsideDeadzone);
         bool accumulationOk = !firstTickMoved && accumulatedX > 0 && accumulatedY == 0;
-        bool responsivenessOk = firstMoveMs > 0 && firstMoveMs <= 80;
-        bool ok = deadzoneOk && accumulationOk && responsivenessOk;
+        bool responsivenessOk = firstMoveMs > 0 && firstMoveMs <= 100;
+        bool ok = deadzoneOk && idleNoiseOk && boundaryNoiseOk && accumulationOk && responsivenessOk;
+        Console.WriteLine("rightStickIdleNoise = " + (idleNoiseOk ? "PASS" : "FAIL"));
+        Console.WriteLine("rightStickBoundaryNoise = " + (boundaryNoiseOk ? "PASS" : "FAIL"));
         Console.WriteLine("rightStickFirstMoveMs = " + firstMoveMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("rightStickMotion = " + (ok ? "PASS" : "FAIL"));
         return ok;
+    }
+
+    private static int SimulateRightStickMotion(Config config, double x, int ms) {
+        RightStickMouseIntegrator integrator = new RightStickMouseIntegrator();
+        int total = 0;
+        int dx;
+        int dy;
+        for (int i = 0; i < ms; i++) {
+            if (integrator.TryUpdate(x, 0.0, 0.001, config, out dx, out dy)) total += Math.Abs(dx) + Math.Abs(dy);
+        }
+        return total;
     }
 
     private static int SimulateRightStickFirstMoveMs(Config config, double x) {
