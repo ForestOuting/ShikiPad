@@ -164,7 +164,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 
 | Parameter | Default | Description |
 |---|---|---|
-| `mouseMaxSpeed` | `22.0` | Maximum cursor speed when the right stick is fully pushed |
+| `mouseMaxSpeed` | `20.0` | Maximum cursor speed when the right stick is fully pushed |
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed (Final Speed = MaxSpeed * Sensitivity) |
 | `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
 | `rightStickCurveExponent` | `3.0` | Power curve exponent. Higher values = more precise at low deflection |
@@ -223,9 +223,3 @@ If a game receives both raw gamepad input and ShikiPad's keyboard input simultan
 > ⚠️ **WARNING — Xbox controllers CANNOT be hidden by HidHide.** Xbox controllers use the XInput API (an API-level interface), while HidHide only operates at the HID device layer and has no effect on XInput devices.
 >
 > If you need to hide an Xbox-protocol controller, consider using a **third-party gamepad** from brands like **GameSir**, **Flydigi**, or **Betop** that support switching to **PS / DirectInput mode**. In DirectInput mode, the controller appears as a standard HID device and **can** be hidden by HidHide.
-
-### Mouse Drifts When Idle
-Increase `rightStickDeadzone` in `shikipad.json` (e.g., from `0.025` to `0.05` or `0.08`).
-
-### Typing Accidentally Triggers Base Layer Keys
-Increase `actionLayerGraceMs` (e.g., from `35` to `50` or `80`) to give the layer detection more confirmation time.

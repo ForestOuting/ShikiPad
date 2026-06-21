@@ -162,7 +162,7 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 
 | 参数名 | 默认值 | 说明 |
 |---|---|---|
-| `mouseMaxSpeed` | `22.0` | 右摇杆推满时的鼠标最大移动速度 |
+| `mouseMaxSpeed` | `20.0` | 右摇杆推满时的鼠标最大移动速度 |
 | `mouseSensitivity` | `1.0` | 鼠标灵敏度的全局乘数倍率（最终速度 = MaxSpeed * Sensitivity） |
 | `rightStickDeadzone` | `0.025` | 右摇杆死区（低于此值的输入会被忽略）。如果静止时鼠标自行漂移，请适当调大 |
 | `rightStickCurveExponent` | `3.0` | 幂函数曲线指数。值越大，轻推时越精准，推满时速度不变 |
@@ -221,10 +221,4 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 > ⚠️ **注意 — Xbox 手柄无法被 HidHide 隐藏。** Xbox 手柄使用 XInput API（位于 API 层），而 HidHide 仅作用于 HID 设备层，对 XInput 设备完全无效。
 >
 > 如果你需要隐藏 Xbox 协议的手柄，建议选用支持切换至 **PS / DirectInput 模式**的第三方手柄，例如 **盖世小鸡 (GameSir)**、**飞智 (Flydigi)**、**北通 (Betop)** 等。切换到 DirectInput 模式后，手柄会被系统识别为标准 HID 设备，即可被 HidHide 正常隐藏。
-
-### 鼠标静止时自行漂移
-将 `shikipad.json` 中的 `rightStickDeadzone` 值适当调大（例如从 `0.025` 改为 `0.05` 或 `0.08`）。
-
-### 打字总是误触基础层按键
-将 `actionLayerGraceMs` 适当调大（例如从 `35` 改为 `50` 或 `80`），给键层判定更多确认时间。
 
