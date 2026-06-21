@@ -21,14 +21,12 @@ internal sealed class LeftStickScrollIntegrator {
 
         _accumulatedWheelDelta += direction * WheelDeltaPerSecond(normalized, config) * deltaSec;
 
-        double pending = Math.Abs(_accumulatedWheelDelta);
-        if (pending < WheelDelta) return false;
+        int amount = (int)Math.Truncate(_accumulatedWheelDelta);
+        if (amount == 0) return false;
 
-        int amount = (int)Math.Floor(pending / WheelDelta) * WheelDelta;
-
-        wheelDelta = _accumulatedWheelDelta > 0.0 ? amount : -amount;
+        wheelDelta = amount;
         _accumulatedWheelDelta -= wheelDelta;
-        return wheelDelta != 0;
+        return true;
     }
 
     internal static double NormalizeRadius(double radius, Config config) {
