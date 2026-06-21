@@ -19,6 +19,13 @@ internal static class Program {
     [DllImport("kernel32.dll")]
     public static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
 
+    private delegate bool ConsoleCtrlHandler(int ctrlType);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
+
+    private static ConsoleCtrlHandler _consoleCtrlHandler;
+
     public static void PrintGradientBanner() {
         EnableAnsi();
 
@@ -697,7 +704,13 @@ internal static class Program {
                     ", rightStickCurve = " + config.RightStickCurve +
                     ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
                     ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
+                    ", mouseSensitivity = " + config.MouseSensitivity.ToString(CultureInfo.InvariantCulture) +
                     ", neutralCalibration = enabled");
+        Logger.Info("scroll settings: mouseScrollCurveExponent = " + config.MouseScrollCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
+                    ", leftStickEnterDeadzone = " + config.LeftStickEnterDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
+                    ", leftStickExitDeadzone = " + config.LeftStickExitDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
+                    ", scrollSlowIntervalMs = " + config.ScrollSlowIntervalMs.ToString(CultureInfo.InvariantCulture) +
+                    ", scrollFastIntervalMs = " + config.ScrollFastIntervalMs.ToString(CultureInfo.InvariantCulture));
         Logger.Info("left stick modifiers = physical held keys");
         if (debugSources) Logger.Info("debug-sources enabled");
         if (traceInput) Logger.Info("trace-input enabled");
@@ -714,19 +727,31 @@ internal static class Program {
         if (_shutdownReleaseRegistered) return;
         _shutdownReleaseRegistered = true;
         Application.ApplicationExit += delegate(object sender, EventArgs e) {
-            InputInjector.ReleaseAllRegistered();
-            InterceptionDriver.Cleanup();
+            ReleaseAllRuntimeInput();
         };
         AppDomain.CurrentDomain.ProcessExit += delegate(object sender, EventArgs e) {
-            InputInjector.ReleaseAllRegistered();
-            InterceptionDriver.Cleanup();
+            ReleaseAllRuntimeInput();
         };
         Application.ThreadException += delegate(object sender, ThreadExceptionEventArgs e) {
-            InputInjector.ReleaseAllRegistered();
+            ReleaseAllRuntimeInput();
         };
         AppDomain.CurrentDomain.UnhandledException += delegate(object sender, UnhandledExceptionEventArgs e) {
-            InputInjector.ReleaseAllRegistered();
+            ReleaseAllRuntimeInput();
         };
+
+        _consoleCtrlHandler = delegate(int ctrlType) {
+            ReleaseAllRuntimeInput();
+            return false;
+        };
+        try {
+            SetConsoleCtrlHandler(_consoleCtrlHandler, true);
+        } catch {
+        }
+    }
+
+    private static void ReleaseAllRuntimeInput() {
+        InputInjector.ReleaseAllRegistered();
+        InterceptionDriver.Cleanup();
     }
 
     private static ControllerProfile SelectControllerProfile(string[] args) {

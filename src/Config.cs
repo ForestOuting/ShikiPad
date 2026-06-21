@@ -1,10 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
 
 internal sealed class Config {
+    public int ConfigVersion = 1;
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
     public double MouseMaxSpeed = 20.0;
@@ -39,150 +40,157 @@ internal sealed class Config {
 
         try {
             string text = File.ReadAllText(path);
-            bool shouldSaveMigratedConfig = text.Contains("\"mouseDeadzone\"") ||
-                                            text.Contains("\"touchpadSwipeThreshold\"") ||
-                                            text.Contains("\"touchpadMaxSwipeMs\"") ||
-                                            !text.Contains("\"rightStickDeadzone\"") ||
-                                            !text.Contains("\"rightStickCurve\"") ||
-                                            !text.Contains("\"rightStickCurveExponent\"") ||
-                                            text.Contains("\"rightStickEpsilon\"") ||
-                                            !text.Contains("\"mouseScrollCurveExponent\"") ||
-                                            !text.Contains("\"leftStickEnterDeadzone\"") ||
-                                            !text.Contains("\"leftStickExitDeadzone\"") ||
-                                            !text.Contains("\"clutchLongPressMs\"");
-            bool shouldSaveLeftStickConfig = false;
-            cfg.Enabled = GetBool(text, "enabled", cfg.Enabled);
-            cfg.MouseSensitivity = GetDouble(text, "mouseSensitivity", cfg.MouseSensitivity);
-            cfg.MouseMaxSpeed = GetDouble(text, "mouseMaxSpeed", cfg.MouseMaxSpeed);
-            cfg.RightStickDeadzone = GetDouble(text, "rightStickDeadzone", cfg.RightStickDeadzone);
-            cfg.RightStickCurve = GetString(text, "rightStickCurve", cfg.RightStickCurve);
-            cfg.RightStickCurveExponent = GetDouble(text, "rightStickCurveExponent", cfg.RightStickCurveExponent);
-            cfg.MouseScrollCurveExponent = GetDouble(text, "mouseScrollCurveExponent", cfg.MouseScrollCurveExponent);
-            cfg.LeftStickEnterDeadzone = GetDouble(text, "leftStickEnterDeadzone", cfg.LeftStickEnterDeadzone);
-            cfg.LeftStickExitDeadzone = GetDouble(text, "leftStickExitDeadzone", cfg.LeftStickExitDeadzone);
-            cfg.TriggerPressThreshold = GetDouble(text, "triggerPressThreshold", cfg.TriggerPressThreshold);
-            cfg.TriggerReleaseThreshold = GetDouble(text, "triggerReleaseThreshold", cfg.TriggerReleaseThreshold);
-            cfg.RepeatDelayMs = GetInt(text, "repeatDelayMs", cfg.RepeatDelayMs);
-            cfg.RepeatIntervalMs = GetInt(text, "repeatIntervalMs", cfg.RepeatIntervalMs);
-            cfg.BaseRepeatSlowIntervalMs = GetInt(text, "baseRepeatSlowIntervalMs", cfg.BaseRepeatSlowIntervalMs);
-            cfg.BaseRepeatRampMs = GetInt(text, "baseRepeatRampMs", cfg.BaseRepeatRampMs);
-            cfg.ActionLayerGraceMs = GetInt(text, "actionLayerGraceMs", cfg.ActionLayerGraceMs);
-            cfg.LayerTakeoverWindowMs = GetInt(text, "layerTakeoverWindowMs", cfg.LayerTakeoverWindowMs);
-            cfg.ActionLayerSwitchGuardMs = GetInt(text, "actionLayerSwitchGuardMs", cfg.ActionLayerSwitchGuardMs);
-            cfg.ComboLayerWindowMs = GetInt(text, "comboLayerWindowMs", cfg.ComboLayerWindowMs);
-            cfg.UseScanCode = GetBool(text, "useScanCode", cfg.UseScanCode);
-            cfg.UseInterception = GetBool(text, "useInterception", cfg.UseInterception);
-            cfg.ScrollSlowIntervalMs = GetInt(text, "scrollSlowIntervalMs", cfg.ScrollSlowIntervalMs);
-            cfg.ScrollFastIntervalMs = GetInt(text, "scrollFastIntervalMs", cfg.ScrollFastIntervalMs);
-            cfg.R3FreezeMs = GetInt(text, "r3FreezeMs", cfg.R3FreezeMs);
-            cfg.ClutchLongPressMs = GetInt(text, "clutchLongPressMs", cfg.ClutchLongPressMs);
+            JsonObject json = JsonObject.Parse(text);
+            bool shouldSaveConfig = false;
+
+            cfg.ConfigVersion = GetInt(json, "configVersion", cfg.ConfigVersion);
+            cfg.Enabled = GetBool(json, "enabled", cfg.Enabled);
+            cfg.MouseSensitivity = GetDouble(json, "mouseSensitivity", cfg.MouseSensitivity);
+            cfg.MouseMaxSpeed = GetDouble(json, "mouseMaxSpeed", cfg.MouseMaxSpeed);
+            cfg.RightStickDeadzone = GetDouble(json, "rightStickDeadzone", cfg.RightStickDeadzone);
+            cfg.RightStickCurve = GetString(json, "rightStickCurve", cfg.RightStickCurve);
+            cfg.RightStickCurveExponent = GetDouble(json, "rightStickCurveExponent", cfg.RightStickCurveExponent);
+            cfg.MouseScrollCurveExponent = GetDouble(json, "mouseScrollCurveExponent", cfg.MouseScrollCurveExponent);
+            cfg.LeftStickEnterDeadzone = GetDouble(json, "leftStickEnterDeadzone", cfg.LeftStickEnterDeadzone);
+            cfg.LeftStickExitDeadzone = GetDouble(json, "leftStickExitDeadzone", cfg.LeftStickExitDeadzone);
+            cfg.TriggerPressThreshold = GetDouble(json, "triggerPressThreshold", cfg.TriggerPressThreshold);
+            cfg.TriggerReleaseThreshold = GetDouble(json, "triggerReleaseThreshold", cfg.TriggerReleaseThreshold);
+            cfg.RepeatDelayMs = GetInt(json, "repeatDelayMs", cfg.RepeatDelayMs);
+            cfg.RepeatIntervalMs = GetInt(json, "repeatIntervalMs", cfg.RepeatIntervalMs);
+            cfg.BaseRepeatSlowIntervalMs = GetInt(json, "baseRepeatSlowIntervalMs", cfg.BaseRepeatSlowIntervalMs);
+            cfg.BaseRepeatRampMs = GetInt(json, "baseRepeatRampMs", cfg.BaseRepeatRampMs);
+            cfg.ActionLayerGraceMs = GetInt(json, "actionLayerGraceMs", cfg.ActionLayerGraceMs);
+            cfg.LayerTakeoverWindowMs = GetInt(json, "layerTakeoverWindowMs", cfg.LayerTakeoverWindowMs);
+            cfg.ActionLayerSwitchGuardMs = GetInt(json, "actionLayerSwitchGuardMs", cfg.ActionLayerSwitchGuardMs);
+            cfg.ComboLayerWindowMs = GetInt(json, "comboLayerWindowMs", cfg.ComboLayerWindowMs);
+            cfg.UseScanCode = GetBool(json, "useScanCode", cfg.UseScanCode);
+            cfg.UseInterception = GetBool(json, "useInterception", cfg.UseInterception);
+            cfg.ScrollSlowIntervalMs = GetInt(json, "scrollSlowIntervalMs", cfg.ScrollSlowIntervalMs);
+            cfg.ScrollFastIntervalMs = GetInt(json, "scrollFastIntervalMs", cfg.ScrollFastIntervalMs);
+            cfg.R3FreezeMs = GetInt(json, "r3FreezeMs", cfg.R3FreezeMs);
+            cfg.ClutchLongPressMs = GetInt(json, "clutchLongPressMs", cfg.ClutchLongPressMs);
+
+            if (!json.ContainsKey("rightStickDeadzone") && TryGetDouble(json, "mouseDeadzone", out cfg.RightStickDeadzone)) {
+                Logger.Info("migrating mouseDeadzone to rightStickDeadzone");
+                shouldSaveConfig = true;
+            }
+
+            if (HasRemovedLegacyKeys(json) || HasMissingCurrentKeys(json)) {
+                shouldSaveConfig = true;
+            }
 
             if (IsInvalidPositive(cfg.MouseSensitivity)) {
                 Logger.Warn("invalid mouseSensitivity; using 1.0");
                 cfg.MouseSensitivity = 1.0;
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
             if (IsInvalidPositive(cfg.MouseMaxSpeed)) {
                 Logger.Warn("invalid mouseMaxSpeed; using 20.0");
                 cfg.MouseMaxSpeed = 20.0;
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
             if (Double.IsNaN(cfg.RightStickDeadzone) || Double.IsInfinity(cfg.RightStickDeadzone) || cfg.RightStickDeadzone < 0.0 || cfg.RightStickDeadzone >= 0.95) {
                 Logger.Warn("invalid rightStickDeadzone; using 0.025");
                 cfg.RightStickDeadzone = 0.025;
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
             if (IsInvalidPositive(cfg.MouseScrollCurveExponent)) {
                 Logger.Warn("invalid mouseScrollCurveExponent; using 3.0");
                 cfg.MouseScrollCurveExponent = 3.0;
-                shouldSaveMigratedConfig = true;
-            }
-            if (cfg.RightStickDeadzone == 0.0 || Math.Abs(cfg.RightStickDeadzone - 0.05) < 0.000001 || Math.Abs(cfg.RightStickDeadzone - 0.03) < 0.000001) {
-                Logger.Info("migrating rightStickDeadzone to 0.025");
-                cfg.RightStickDeadzone = 0.025;
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
 
-            if (!String.Equals(cfg.RightStickCurve, "power", StringComparison.Ordinal)) {
+            if (String.Equals(cfg.RightStickCurve, "power", StringComparison.OrdinalIgnoreCase)) {
+                cfg.RightStickCurve = "power";
+            } else {
                 Logger.Warn("unsupported rightStickCurve '" + cfg.RightStickCurve + "'; using power");
                 cfg.RightStickCurve = "power";
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
             if (cfg.RightStickCurveExponent <= 0.0 || Double.IsNaN(cfg.RightStickCurveExponent) || Double.IsInfinity(cfg.RightStickCurveExponent)) {
                 Logger.Warn("invalid rightStickCurveExponent; using 3.0");
                 cfg.RightStickCurveExponent = 3.0;
-                shouldSaveMigratedConfig = true;
-            }
-            if (!text.Contains("\"baseRepeatSlowIntervalMs\"") ||
-                !text.Contains("\"baseRepeatRampMs\"") ||
-                !text.Contains("\"actionLayerGraceMs\"") ||
-                !text.Contains("\"layerTakeoverWindowMs\"") ||
-                !text.Contains("\"actionLayerSwitchGuardMs\"") ||
-                !text.Contains("\"comboLayerWindowMs\"")) {
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
             if (cfg.LayerTakeoverWindowMs < 0 || cfg.LayerTakeoverWindowMs > cfg.ActionLayerGraceMs) {
                 int fallbackLayerTakeoverMs = Math.Min(25, Math.Max(0, cfg.ActionLayerGraceMs));
                 Logger.Warn("invalid layerTakeoverWindowMs; using " + fallbackLayerTakeoverMs.ToString(CultureInfo.InvariantCulture));
                 cfg.LayerTakeoverWindowMs = fallbackLayerTakeoverMs;
-                shouldSaveMigratedConfig = true;
-            }
-            if (cfg.ActionLayerGraceMs == 80 || cfg.ActionLayerGraceMs == 20) {
-                Logger.Info("migrating actionLayerGraceMs to 35");
-                cfg.ActionLayerGraceMs = 35;
-                shouldSaveMigratedConfig = true;
-            }
-            if (cfg.ActionLayerSwitchGuardMs == 120) {
-                Logger.Info("migrating actionLayerSwitchGuardMs to 35");
-                cfg.ActionLayerSwitchGuardMs = 35;
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
                 Logger.Warn("invalid comboLayerWindowMs; using 35");
                 cfg.ComboLayerWindowMs = 35;
-                shouldSaveMigratedConfig = true;
-            }
-            if (cfg.ComboLayerWindowMs == 25 || cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
-                Logger.Info("migrating comboLayerWindowMs to 35");
-                cfg.ComboLayerWindowMs = 35;
-                shouldSaveMigratedConfig = true;
-            }
-            if (Math.Abs(cfg.MouseMaxSpeed - 18.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 15.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 12.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 8.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 7.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 28.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 22.4) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 25.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 22.0) < 0.000001) {
-                Logger.Info("migrating mouseMaxSpeed to 20.0");
-                cfg.MouseMaxSpeed = 20.0;
-                shouldSaveMigratedConfig = true;
-            }
-            if (Math.Abs(cfg.RightStickCurveExponent - 2.0) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.5) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.6) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.2) < 0.000001 || Math.Abs(cfg.RightStickCurveExponent - 2.4) < 0.000001) {
-                Logger.Info("migrating rightStickCurveExponent to 3.0");
-                cfg.RightStickCurveExponent = 3.0;
-                shouldSaveMigratedConfig = true;
-            }
-            if (cfg.ScrollFastIntervalMs == 6 || cfg.ScrollFastIntervalMs == 8 || cfg.ScrollFastIntervalMs == 20) {
-                Logger.Info("migrating scrollFastIntervalMs to 12");
-                cfg.ScrollFastIntervalMs = 12;
-                shouldSaveMigratedConfig = true;
-            }
-            if (cfg.ScrollSlowIntervalMs == 100) {
-                Logger.Info("migrating scrollSlowIntervalMs to 120");
-                cfg.ScrollSlowIntervalMs = 120;
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
             if (cfg.ClutchLongPressMs < 80 || cfg.ClutchLongPressMs > 1000) {
                 Logger.Warn("invalid clutchLongPressMs; using 250");
                 cfg.ClutchLongPressMs = 250;
-                shouldSaveMigratedConfig = true;
+                shouldSaveConfig = true;
             }
-            if (Math.Abs(cfg.LeftStickEnterDeadzone - 0.50) < 0.000001 || Math.Abs(cfg.LeftStickEnterDeadzone - 0.30) < 0.000001) {
-                Logger.Info("migrating leftStickEnterDeadzone to 0.35");
+            if (Double.IsNaN(cfg.LeftStickEnterDeadzone) || Double.IsInfinity(cfg.LeftStickEnterDeadzone) || cfg.LeftStickEnterDeadzone <= 0.0 || cfg.LeftStickEnterDeadzone >= 1.0) {
+                Logger.Warn("invalid leftStickEnterDeadzone; using 0.35");
                 cfg.LeftStickEnterDeadzone = 0.35;
-                shouldSaveLeftStickConfig = true;
+                shouldSaveConfig = true;
             }
-            if (Math.Abs(cfg.LeftStickExitDeadzone - 0.45) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.20) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.30) < 0.000001 || Math.Abs(cfg.LeftStickExitDeadzone - 0.15) < 0.000001) {
-                Logger.Info("migrating leftStickExitDeadzone to 0.25");
+            if (Double.IsNaN(cfg.LeftStickExitDeadzone) || Double.IsInfinity(cfg.LeftStickExitDeadzone) || cfg.LeftStickExitDeadzone < 0.0 || cfg.LeftStickExitDeadzone >= cfg.LeftStickEnterDeadzone) {
+                Logger.Warn("invalid leftStickExitDeadzone; using 0.25");
                 cfg.LeftStickExitDeadzone = 0.25;
-                shouldSaveLeftStickConfig = true;
+                shouldSaveConfig = true;
             }
-            if (shouldSaveMigratedConfig || shouldSaveLeftStickConfig) cfg.Save(path);
+            if (cfg.TriggerPressThreshold <= 0.0 || cfg.TriggerPressThreshold > 1.0 || cfg.TriggerReleaseThreshold < 0.0 || cfg.TriggerReleaseThreshold >= cfg.TriggerPressThreshold) {
+                Logger.Warn("invalid trigger thresholds; using 0.1 / 0.05");
+                cfg.TriggerPressThreshold = 0.1;
+                cfg.TriggerReleaseThreshold = 0.05;
+                shouldSaveConfig = true;
+            }
+            if (cfg.RepeatDelayMs < 0) {
+                Logger.Warn("invalid repeatDelayMs; using 180");
+                cfg.RepeatDelayMs = 180;
+                shouldSaveConfig = true;
+            }
+            if (cfg.RepeatIntervalMs <= 0) {
+                Logger.Warn("invalid repeatIntervalMs; using 20");
+                cfg.RepeatIntervalMs = 20;
+                shouldSaveConfig = true;
+            }
+            if (cfg.BaseRepeatSlowIntervalMs <= 0) {
+                Logger.Warn("invalid baseRepeatSlowIntervalMs; using 160");
+                cfg.BaseRepeatSlowIntervalMs = 160;
+                shouldSaveConfig = true;
+            }
+            if (cfg.BaseRepeatRampMs <= 0) {
+                Logger.Warn("invalid baseRepeatRampMs; using 1200");
+                cfg.BaseRepeatRampMs = 1200;
+                shouldSaveConfig = true;
+            }
+            if (cfg.ActionLayerGraceMs < 0) {
+                Logger.Warn("invalid actionLayerGraceMs; using 35");
+                cfg.ActionLayerGraceMs = 35;
+                shouldSaveConfig = true;
+            }
+            if (cfg.ActionLayerSwitchGuardMs < 0) {
+                Logger.Warn("invalid actionLayerSwitchGuardMs; using 35");
+                cfg.ActionLayerSwitchGuardMs = 35;
+                shouldSaveConfig = true;
+            }
+            if (cfg.ScrollSlowIntervalMs <= 0) {
+                Logger.Warn("invalid scrollSlowIntervalMs; using 120");
+                cfg.ScrollSlowIntervalMs = 120;
+                shouldSaveConfig = true;
+            }
+            if (cfg.ScrollFastIntervalMs <= 0) {
+                Logger.Warn("invalid scrollFastIntervalMs; using 12");
+                cfg.ScrollFastIntervalMs = 12;
+                shouldSaveConfig = true;
+            }
+            if (cfg.R3FreezeMs < 0) {
+                Logger.Warn("invalid r3FreezeMs; using 60");
+                cfg.R3FreezeMs = 60;
+                shouldSaveConfig = true;
+            }
+
+            if (shouldSaveConfig) cfg.Save(path);
         } catch (Exception ex) {
             Logger.Error("config load failed: " + ex.Message);
         }
@@ -193,6 +201,7 @@ internal sealed class Config {
     public void Save(string path) {
         StringBuilder sb = new StringBuilder();
         sb.AppendLine("{");
+        Write(sb, "configVersion", ConfigVersion, true);
         Write(sb, "enabled", Enabled, true);
         Write(sb, "mouseSensitivity", MouseSensitivity, true);
         Write(sb, "mouseMaxSpeed", MouseMaxSpeed, true);
@@ -247,29 +256,321 @@ internal sealed class Config {
         sb.AppendLine();
     }
 
-    private static bool GetBool(string text, string key, bool fallback) {
-        Match m = Regex.Match(text, "\"" + Regex.Escape(key) + "\"\\s*:\\s*(true|false)", RegexOptions.IgnoreCase);
-        return m.Success ? String.Equals(m.Groups[1].Value, "true", StringComparison.OrdinalIgnoreCase) : fallback;
+    private static bool GetBool(JsonObject json, string key, bool fallback) {
+        bool value;
+        return json.TryGetBool(key, out value) ? value : fallback;
     }
 
-    private static int GetInt(string text, string key, int fallback) {
-        Match m = Regex.Match(text, "\"" + Regex.Escape(key) + "\"\\s*:\\s*(-?\\d+)");
+    private static int GetInt(JsonObject json, string key, int fallback) {
         int value;
-        return m.Success && Int32.TryParse(m.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) ? value : fallback;
+        return json.TryGetInt(key, out value) ? value : fallback;
     }
 
-    private static double GetDouble(string text, string key, double fallback) {
-        Match m = Regex.Match(text, "\"" + Regex.Escape(key) + "\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)");
+    private static double GetDouble(JsonObject json, string key, double fallback) {
         double value;
-        return m.Success && Double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out value) ? value : fallback;
+        return json.TryGetDouble(key, out value) ? value : fallback;
     }
 
-    private static string GetString(string text, string key, string fallback) {
-        Match m = Regex.Match(text, "\"" + Regex.Escape(key) + "\"\\s*:\\s*\"([^\"]*)\"");
-        return m.Success ? m.Groups[1].Value : fallback;
+    private static bool TryGetDouble(JsonObject json, string key, out double value) {
+        return json.TryGetDouble(key, out value);
+    }
+
+    private static string GetString(JsonObject json, string key, string fallback) {
+        string value;
+        return json.TryGetString(key, out value) ? value : fallback;
     }
 
     private static bool IsInvalidPositive(double value) {
         return value <= 0.0 || Double.IsNaN(value) || Double.IsInfinity(value);
+    }
+
+    private static bool HasRemovedLegacyKeys(JsonObject json) {
+        return json.ContainsKey("mouseDeadzone") ||
+               json.ContainsKey("touchpadSwipeThreshold") ||
+               json.ContainsKey("touchpadMaxSwipeMs") ||
+               json.ContainsKey("rightStickEpsilon");
+    }
+
+    private static bool HasMissingCurrentKeys(JsonObject json) {
+        string[] keys = new string[] {
+            "configVersion",
+            "enabled",
+            "mouseSensitivity",
+            "mouseMaxSpeed",
+            "rightStickDeadzone",
+            "rightStickCurve",
+            "rightStickCurveExponent",
+            "mouseScrollCurveExponent",
+            "leftStickEnterDeadzone",
+            "leftStickExitDeadzone",
+            "triggerPressThreshold",
+            "triggerReleaseThreshold",
+            "repeatDelayMs",
+            "repeatIntervalMs",
+            "baseRepeatSlowIntervalMs",
+            "baseRepeatRampMs",
+            "actionLayerGraceMs",
+            "layerTakeoverWindowMs",
+            "actionLayerSwitchGuardMs",
+            "comboLayerWindowMs",
+            "useScanCode",
+            "useInterception",
+            "scrollSlowIntervalMs",
+            "scrollFastIntervalMs",
+            "r3FreezeMs",
+            "clutchLongPressMs"
+        };
+        for (int i = 0; i < keys.Length; i++) {
+            if (!json.ContainsKey(keys[i])) return true;
+        }
+        return false;
+    }
+
+    private sealed class JsonObject {
+        private readonly Dictionary<string, JsonValue> _values = new Dictionary<string, JsonValue>(StringComparer.Ordinal);
+
+        public bool ContainsKey(string key) {
+            return _values.ContainsKey(key);
+        }
+
+        public bool TryGetBool(string key, out bool value) {
+            JsonValue item;
+            if (_values.TryGetValue(key, out item) && item.Kind == JsonValueKind.Bool) {
+                value = item.BoolValue;
+                return true;
+            }
+            value = false;
+            return false;
+        }
+
+        public bool TryGetInt(string key, out int value) {
+            JsonValue item;
+            if (_values.TryGetValue(key, out item) && item.Kind == JsonValueKind.Number) {
+                double rounded = Math.Round(item.NumberValue);
+                if (Math.Abs(item.NumberValue - rounded) < 0.000001 &&
+                    rounded >= Int32.MinValue &&
+                    rounded <= Int32.MaxValue) {
+                    value = (int)rounded;
+                    return true;
+                }
+            }
+            value = 0;
+            return false;
+        }
+
+        public bool TryGetDouble(string key, out double value) {
+            JsonValue item;
+            if (_values.TryGetValue(key, out item) && item.Kind == JsonValueKind.Number) {
+                value = item.NumberValue;
+                return true;
+            }
+            value = 0.0;
+            return false;
+        }
+
+        public bool TryGetString(string key, out string value) {
+            JsonValue item;
+            if (_values.TryGetValue(key, out item) && item.Kind == JsonValueKind.String) {
+                value = item.StringValue;
+                return true;
+            }
+            value = null;
+            return false;
+        }
+
+        public static JsonObject Parse(string text) {
+            JsonObject obj = new JsonObject();
+            int index = 0;
+            SkipWhite(text, ref index);
+            Expect(text, ref index, '{');
+            SkipWhite(text, ref index);
+            if (TryConsume(text, ref index, '}')) return obj;
+
+            while (index < text.Length) {
+                SkipWhite(text, ref index);
+                string key = ParseString(text, ref index);
+                SkipWhite(text, ref index);
+                Expect(text, ref index, ':');
+                SkipWhite(text, ref index);
+                obj._values[key] = ParseValue(text, ref index);
+                SkipWhite(text, ref index);
+                if (TryConsume(text, ref index, '}')) return obj;
+                Expect(text, ref index, ',');
+            }
+
+            throw new FormatException("unterminated JSON object");
+        }
+
+        private static JsonValue ParseValue(string text, ref int index) {
+            if (index >= text.Length) throw new FormatException("unexpected end of JSON");
+            char c = text[index];
+            if (c == '"') return JsonValue.ForString(ParseString(text, ref index));
+            if (c == 't') {
+                ExpectLiteral(text, ref index, "true");
+                return JsonValue.ForBool(true);
+            }
+            if (c == 'f') {
+                ExpectLiteral(text, ref index, "false");
+                return JsonValue.ForBool(false);
+            }
+            if (c == 'n') {
+                ExpectLiteral(text, ref index, "null");
+                return JsonValue.ForNull();
+            }
+            if (c == '{' || c == '[') {
+                SkipComposite(text, ref index);
+                return JsonValue.ForNull();
+            }
+            return JsonValue.ForNumber(ParseNumber(text, ref index));
+        }
+
+        private static void SkipComposite(string text, ref int index) {
+            char open = text[index];
+            char close = open == '{' ? '}' : ']';
+            int depth = 0;
+            while (index < text.Length) {
+                char c = text[index];
+                if (c == '"') {
+                    ParseString(text, ref index);
+                    continue;
+                }
+                if (c == open) depth++;
+                if (c == close) {
+                    depth--;
+                    index++;
+                    if (depth == 0) return;
+                    continue;
+                }
+                index++;
+            }
+            throw new FormatException("unterminated JSON composite value");
+        }
+
+        private static double ParseNumber(string text, ref int index) {
+            int start = index;
+            if (index < text.Length && text[index] == '-') index++;
+            while (index < text.Length && Char.IsDigit(text[index])) index++;
+            if (index < text.Length && text[index] == '.') {
+                index++;
+                while (index < text.Length && Char.IsDigit(text[index])) index++;
+            }
+            if (index < text.Length && (text[index] == 'e' || text[index] == 'E')) {
+                index++;
+                if (index < text.Length && (text[index] == '+' || text[index] == '-')) index++;
+                while (index < text.Length && Char.IsDigit(text[index])) index++;
+            }
+            if (index == start) throw new FormatException("expected JSON value");
+
+            double value;
+            string raw = text.Substring(start, index - start);
+            if (!Double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value)) {
+                throw new FormatException("invalid JSON number '" + raw + "'");
+            }
+            return value;
+        }
+
+        private static string ParseString(string text, ref int index) {
+            Expect(text, ref index, '"');
+            StringBuilder sb = new StringBuilder();
+            while (index < text.Length) {
+                char c = text[index++];
+                if (c == '"') return sb.ToString();
+                if (c != '\\') {
+                    sb.Append(c);
+                    continue;
+                }
+                if (index >= text.Length) throw new FormatException("unterminated JSON escape");
+                char esc = text[index++];
+                switch (esc) {
+                    case '"': sb.Append('"'); break;
+                    case '\\': sb.Append('\\'); break;
+                    case '/': sb.Append('/'); break;
+                    case 'b': sb.Append('\b'); break;
+                    case 'f': sb.Append('\f'); break;
+                    case 'n': sb.Append('\n'); break;
+                    case 'r': sb.Append('\r'); break;
+                    case 't': sb.Append('\t'); break;
+                    case 'u':
+                        if (index + 4 > text.Length) throw new FormatException("invalid JSON unicode escape");
+                        string hex = text.Substring(index, 4);
+                        int code;
+                        if (!Int32.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out code)) {
+                            throw new FormatException("invalid JSON unicode escape");
+                        }
+                        sb.Append((char)code);
+                        index += 4;
+                        break;
+                    default:
+                        throw new FormatException("invalid JSON escape '\\" + esc + "'");
+                }
+            }
+            throw new FormatException("unterminated JSON string");
+        }
+
+        private static void SkipWhite(string text, ref int index) {
+            while (index < text.Length && Char.IsWhiteSpace(text[index])) index++;
+        }
+
+        private static bool TryConsume(string text, ref int index, char expected) {
+            if (index < text.Length && text[index] == expected) {
+                index++;
+                return true;
+            }
+            return false;
+        }
+
+        private static void Expect(string text, ref int index, char expected) {
+            if (!TryConsume(text, ref index, expected)) {
+                throw new FormatException("expected '" + expected + "'");
+            }
+        }
+
+        private static void ExpectLiteral(string text, ref int index, string expected) {
+            if (index + expected.Length > text.Length || String.CompareOrdinal(text, index, expected, 0, expected.Length) != 0) {
+                throw new FormatException("expected '" + expected + "'");
+            }
+            index += expected.Length;
+        }
+    }
+
+    private enum JsonValueKind {
+        Null,
+        Bool,
+        Number,
+        String
+    }
+
+    private struct JsonValue {
+        public JsonValueKind Kind;
+        public bool BoolValue;
+        public double NumberValue;
+        public string StringValue;
+
+        public static JsonValue ForNull() {
+            JsonValue value = new JsonValue();
+            value.Kind = JsonValueKind.Null;
+            return value;
+        }
+
+        public static JsonValue ForBool(bool data) {
+            JsonValue value = new JsonValue();
+            value.Kind = JsonValueKind.Bool;
+            value.BoolValue = data;
+            return value;
+        }
+
+        public static JsonValue ForNumber(double data) {
+            JsonValue value = new JsonValue();
+            value.Kind = JsonValueKind.Number;
+            value.NumberValue = data;
+            return value;
+        }
+
+        public static JsonValue ForString(string data) {
+            JsonValue value = new JsonValue();
+            value.Kind = JsonValueKind.String;
+            value.StringValue = data;
+            return value;
+        }
     }
 }

@@ -9,7 +9,7 @@ Key features:
 - 🖱️ Right stick mouse control with adjustable acceleration curve and deadzone
 - ⚡ Original "Clutch" system for effortless multi-modifier shortcuts like `Ctrl + Shift + Esc`
 - 🛡️ Interception kernel driver support — works inside VMs and some anti-cheat games
-- ⚙️ Every parameter is tunable via a JSON config file
+- ⚙️ Every runtime parameter is tunable via a JSON config file
 
 Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
@@ -161,14 +161,16 @@ In short: single-layer confirmation remains **35ms**, and combo layers use a **3
 
 ## ⚙️ Advanced Configuration
 
-On first launch, ShikiPad auto-generates a `shikipad.json` config file in the same directory. Edit it with any text editor (e.g., Notepad), save, and restart ShikiPad.
+On first launch, ShikiPad auto-generates a `shikipad.json` config file in the same directory. Edit it with any text editor (e.g., Notepad), save, and restart ShikiPad. Valid user values are preserved across launches; ShikiPad only falls back to defaults for missing, obsolete, or invalid entries.
+
+See `shikipad.example.json` for a clean default template.
 
 ### Mouse
 
 | Parameter | Default | Description |
 |---|---|---|
-| `mouseMaxSpeed` | `20.0` | Maximum cursor speed when the right stick is fully pushed |
-| `mouseSensitivity` | `1.0` | Global multiplier for mouse speed (Final Speed = MaxSpeed * Sensitivity) |
+| `mouseMaxSpeed` | `20.0` | Maximum cursor speed unit when the right stick is fully pushed. Effective maximum is `mouseMaxSpeed * 120 * mouseSensitivity` pixels/second |
+| `mouseSensitivity` | `1.0` | Global multiplier for mouse speed |
 | `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
 | `rightStickCurveExponent` | `3.0` | Power curve exponent. Higher values = more precise at low deflection |
 | `mouseScrollCurveExponent`| `3.0` | Left stick scroll curve exponent. Higher values = more precise at low deflection |
@@ -211,6 +213,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 
 | Parameter | Default | Description |
 |---|---|---|
+| `configVersion` | `1` | Config file schema marker. Keep this value unless release notes say otherwise |
 | `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
 | `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
 

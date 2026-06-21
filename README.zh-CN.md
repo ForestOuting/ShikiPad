@@ -9,7 +9,7 @@ ShikiPad 是一款为 **"用手柄高效打字"** 而深度优化的 Windows 原
 - 🖱️ 右摇杆控制鼠标光标，支持可调节的加速曲线和死区
 - ⚡ 独创"蓄力 (Clutch)"系统，轻松输入 `Ctrl + Shift + Esc` 等多重修饰键组合
 - 🛡️ 基于 Interception 内核驱动，可在虚拟机和部分反作弊游戏中正常工作
-- ⚙️ 所有参数均可通过 JSON 配置文件微调
+- ⚙️ 所有运行时参数均可通过 JSON 配置文件微调
 
 ---
 
@@ -159,14 +159,16 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 
 ## ⚙️ 进阶配置
 
-程序首次运行后，会在同目录下自动生成 `shikipad.json` 配置文件。使用任意文本编辑器（如记事本）打开修改，保存后重启 ShikiPad 即可生效。
+程序首次运行后，会在同目录下自动生成 `shikipad.json` 配置文件。使用任意文本编辑器（如记事本）打开修改，保存后重启 ShikiPad 即可生效。合法的用户自定义数值会被保留；只有缺失、废弃或非法的配置项才会回退到默认值。
+
+可参考 `shikipad.example.json` 作为干净的默认配置模板。
 
 ### 鼠标相关
 
 | 参数名 | 默认值 | 说明 |
 |---|---|---|
-| `mouseMaxSpeed` | `20.0` | 右摇杆推满时的鼠标最大移动速度 |
-| `mouseSensitivity` | `1.0` | 鼠标灵敏度的全局乘数倍率（最终速度 = MaxSpeed * Sensitivity） |
+| `mouseMaxSpeed` | `20.0` | 右摇杆推满时的鼠标最大速度单位。实际最大速度约为 `mouseMaxSpeed * 120 * mouseSensitivity` 像素/秒 |
+| `mouseSensitivity` | `1.0` | 鼠标灵敏度的全局乘数倍率 |
 | `rightStickDeadzone` | `0.025` | 右摇杆死区（低于此值的输入会被忽略）。如果静止时鼠标自行漂移，请适当调大 |
 | `rightStickCurveExponent` | `3.0` | 幂函数曲线指数。值越大，轻推时越精准，推满时速度不变 |
 | `mouseScrollCurveExponent`| `3.0` | 左摇杆鼠标滚轮的分层速度精细度指数。值越大，轻推滚轮越精细 |
@@ -209,6 +211,7 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 
 | 参数名 | 默认值 | 说明 |
 |---|---|---|
+| `configVersion` | `1` | 配置文件结构版本标记。除非发布说明要求，否则保持此值不变 |
 | `useInterception` | `true` | 是否使用 Interception 内核驱动注入。设为 `false` 将降级为 `SendInput` 模式 |
 | `useScanCode` | `true` | 是否发送硬件扫描码（对部分游戏和虚拟机兼容性更好） |
 
