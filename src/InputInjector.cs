@@ -124,15 +124,20 @@ internal sealed class InputInjector {
     }
 
     public void MouseWheel(int delta) {
+        MouseWheelDelta(delta * WHEEL_DELTA);
+    }
+
+    public void MouseWheelDelta(int wheelDelta) {
+        if (wheelDelta == 0) return;
         INPUT input = new INPUT();
         input.type = INPUT_MOUSE;
         MOUSEINPUT mouse = new MOUSEINPUT();
         mouse.dwFlags = MOUSEEVENTF_WHEEL;
-        mouse.mouseData = delta * WHEEL_DELTA;
+        mouse.mouseData = wheelDelta;
         input.mi = mouse;
         List<INPUT> inputs = new List<INPUT>();
         inputs.Add(input);
-        Send(inputs, "MouseWheel(" + delta + ")");
+        Send(inputs, "MouseWheelDelta(" + wheelDelta + ")");
     }
 
     public void ReleaseAll() {

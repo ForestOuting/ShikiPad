@@ -27,7 +27,7 @@ internal sealed class MapperForm : Form {
     private bool _l2Pressed;
     private bool _r2Pressed;
     private StickDirection _leftDirection = StickDirection.None;
-    private double _scrollNextMs;
+    private readonly LeftStickScrollIntegrator _leftStickScroll = new LeftStickScrollIntegrator();
     private readonly RightStickMouseIntegrator _rightStickMouse = new RightStickMouseIntegrator();
     private double _mouseFreezeUntilMs;
     private bool _fnArmed;
@@ -143,7 +143,7 @@ internal sealed class MapperForm : Form {
         UpdateTriggers(s, now);
         UpdateClutchButton(s, now);
 
-        UpdateLeftStick(s, now);
+        UpdateLeftStick(s, deltaSec);
         UpdateActionButtons(s, now);
         UpdateMouseButtons(s, now);
         UpdateRightStick(s, now, deltaSec);
@@ -209,7 +209,7 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private void UpdateLeftStick(ControllerState s, double now) {
+    private void UpdateLeftStick(ControllerState s, double deltaSec) {
         double radius = Math.Sqrt(s.LX * s.LX + s.LY * s.LY);
         StickDirection previous = _leftDirection;
         StickDirection next = previous;
@@ -226,7 +226,7 @@ internal sealed class MapperForm : Form {
 
         if (next != previous) {
             _leftDirection = next;
-            _scrollNextMs = 0;
+            _leftStickScroll.Reset();
             if (_leftDirection == StickDirection.UpRight) {
                 _fnArmed = true;
             }
@@ -284,31 +284,17 @@ internal sealed class MapperForm : Form {
         _heldLeftStickKeys.AddRange(desiredKeys);
 
         if (_leftDirection != StickDirection.Up && _leftDirection != StickDirection.Down) {
-            _scrollNextMs = 0;
+            _leftStickScroll.Reset();
             return;
         }
-        if (now < _scrollNextMs) return;
 
-        _injector.CurrentSource = "LeftStick";
-        _injector.CurrentReason = "RepeatTimer " + _leftDirection;
-        _injector.MouseWheel(_leftDirection == StickDirection.Up ? 1 : -1);
-
-        double interval = LeftStickScrollIntervalMs(radius);
-        _scrollNextMs = now + Math.Max(1.0, interval);
-    }
-
-    private double LeftStickScrollIntervalMs(double radius) {
-        double normalized = Clamp((radius - _config.LeftStickEnterDeadzone) / (1.0 - _config.LeftStickEnterDeadzone), 0.0, 1.0);
-        double slow = Math.Max(1.0, (double)_config.ScrollSlowIntervalMs);
-        double fast = Math.Max(1.0, Math.Min((double)_config.ScrollFastIntervalMs, slow));
-
-        double minSpeed = 1.0 / slow;
-        double maxSpeed = 1.0 / fast;
-
-        double curve = Math.Pow(normalized, _config.MouseScrollCurveExponent);
-        double currentSpeed = minSpeed + (maxSpeed - minSpeed) * curve;
-
-        return Math.Max(fast, Math.Min(slow, 1.0 / currentSpeed));
+        int wheelDelta;
+        int direction = _leftDirection == StickDirection.Up ? 1 : -1;
+        if (_leftStickScroll.TryUpdate(radius, deltaSec, _config, direction, out wheelDelta)) {
+            _injector.CurrentSource = "LeftStick";
+            _injector.CurrentReason = "AnalogScroll " + _leftDirection;
+            _injector.MouseWheelDelta(wheelDelta);
+        }
     }
 
     private PhysicalKey TranslateToFKey(PhysicalKey numberKey) {
@@ -783,7 +769,7 @@ internal sealed class MapperForm : Form {
         _leftMouseDown = false;
         _rightMouseDown = false;
         _leftDirection = StickDirection.None;
-        _scrollNextMs = 0;
+        _leftStickScroll.Reset();
         _heldLeftStickKeys.Clear();
         _accumulatedModifiers.Clear();
         _fnArmed = false;

@@ -114,7 +114,7 @@ Push the Left Stick to **Up-Right (↗)** to activate the Fn layer. While held, 
 | **✕ Cross** (Xbox: A) | `Enter` | Hold to repeat |
 | **○ Circle** (Xbox: B) | `Tab` | Hold to repeat |
 
-> Base Layer keys **auto-repeat when held** — starting after 180ms with gradual acceleration, mimicking real keyboard behavior.
+> Base Layer keys **auto-repeat when held** — starting after 300ms with gradual acceleration, mimicking real keyboard behavior.
 
 #### Character Layers (Hold Shoulder/Trigger — Fast Typing)
 
@@ -173,7 +173,7 @@ See `shikipad.example.json` for a clean default template.
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed |
 | `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
 | `rightStickCurveExponent` | `3.0` | Power curve exponent. Higher values = more precise at low deflection |
-| `mouseScrollCurveExponent`| `3.0` | Left stick scroll curve exponent. Higher values = more precise at low deflection |
+| `mouseScrollCurveExponent`| `3.5` | Left stick scroll curve exponent. Higher values = more precise at low deflection |
 | `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3. Clicking the stick often causes accidental nudges; this briefly ignores stick movement to ensure stable clicks |
 
 ### Left Stick / Modifiers
@@ -204,16 +204,16 @@ See `shikipad.example.json` for a clean default template.
 
 | Parameter | Default | Description |
 |---|---|---|
-| `repeatDelayMs` | `180` | Initial delay before Base Layer key repeat starts |
+| `repeatDelayMs` | `300` | Initial delay before Base Layer key repeat starts |
 | `repeatIntervalMs` | `20` | Fastest repeat interval at full speed |
-| `scrollSlowIntervalMs` | `120` | Initial scroll interval (ms) |
-| `scrollFastIntervalMs` | `12` | Fastest scroll interval when stick is held (ms) |
+| `scrollSlowIntervalMs` | `180` | Reference slow scroll interval (ms). Scroll now ramps up from zero near the deadzone instead of starting with a full wheel notch |
+| `scrollFastIntervalMs` | `18` | Fastest scroll interval when the stick is fully held (ms) |
 
 ### System
 
 | Parameter | Default | Description |
 |---|---|---|
-| `configVersion` | `1` | Config file schema marker. Keep this value unless release notes say otherwise |
+| `configVersion` | `2` | Config file schema marker. Keep this value unless release notes say otherwise |
 | `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
 | `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
 

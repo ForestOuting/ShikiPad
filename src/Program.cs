@@ -686,12 +686,14 @@ internal static class Program {
             return Environment.ExitCode;
         }
         if (HasArg(args, "--mouse-test")) {
+            Environment.ExitCode = 0;
             PrintMouseTest(config);
-            return 0;
+            return Environment.ExitCode;
         }
         if (HasArg(args, "--left-stick-test")) {
+            Environment.ExitCode = 0;
             PrintLeftStickTest(config);
-            return 0;
+            return Environment.ExitCode;
         }
         if (HasArg(args, "--clutch-test")) {
             PrintClutchTest(config);
@@ -1137,6 +1139,7 @@ internal static class Program {
     private static void PrintLeftStickTest(Config config) {
         Console.WriteLine("leftStickEnterDeadzone = " + config.LeftStickEnterDeadzone.ToString("0.00", CultureInfo.InvariantCulture));
         Console.WriteLine("leftStickExitDeadzone = " + config.LeftStickExitDeadzone.ToString("0.00", CultureInfo.InvariantCulture));
+        Console.WriteLine("mouseScrollCurveExponent = " + config.MouseScrollCurveExponent.ToString("0.###", CultureInfo.InvariantCulture));
         Console.WriteLine("exclusive8Way = enabled");
         Console.WriteLine();
         PrintLeftStickSample(config, "Center", 0.0, 0.0);
@@ -1155,6 +1158,37 @@ internal static class Program {
         SimulateLeftStickLatch(config, ref latched, "jitter toward Down while held", 0.0, 1.0);
         SimulateLeftStickLatch(config, ref latched, "jitter toward Right while held", 1.0, 0.0);
         SimulateLeftStickLatch(config, ref latched, "release below exit", 0.1, 0.1);
+        Console.WriteLine();
+        if (!PrintLeftStickScrollCheck()) Environment.ExitCode = 1;
+    }
+
+    private static bool PrintLeftStickScrollCheck() {
+        Config testConfig = new Config();
+        int gentle = SimulateLeftStickScroll(testConfig, 0.20, 1000);
+        int medium = SimulateLeftStickScroll(testConfig, 0.60, 1000);
+        int full = SimulateLeftStickScroll(testConfig, 1.00, 1000);
+        bool firstTickQuiet = SimulateLeftStickScroll(testConfig, 0.20, 1) == 0;
+        bool monotonic = gentle > 0 && medium > gentle && full > medium;
+        Console.WriteLine("Scroll gentle 1s wheelDelta = " + gentle.ToString(CultureInfo.InvariantCulture));
+        Console.WriteLine("Scroll medium 1s wheelDelta = " + medium.ToString(CultureInfo.InvariantCulture));
+        Console.WriteLine("Scroll full 1s wheelDelta = " + full.ToString(CultureInfo.InvariantCulture));
+        Console.WriteLine("Scroll curve result = " + (firstTickQuiet && monotonic ? "PASS" : "FAIL"));
+        return firstTickQuiet && monotonic;
+    }
+
+    private static int SimulateLeftStickScroll(Config config, double normalizedRadius, int ms) {
+        LeftStickScrollIntegrator scroll = new LeftStickScrollIntegrator();
+        double radius = config.LeftStickEnterDeadzone + Clamp(normalizedRadius, 0.0, 1.0) * (1.0 - config.LeftStickEnterDeadzone);
+        int total = 0;
+        int wheelDelta;
+        for (int i = 0; i < ms; i++) {
+            if (scroll.TryUpdate(radius, 0.001, config, 1, out wheelDelta)) total += wheelDelta;
+        }
+        return total;
+    }
+
+    private static double Clamp(double value, double min, double max) {
+        return value < min ? min : (value > max ? max : value);
     }
 
     private static void PrintClutchTest(Config config) {

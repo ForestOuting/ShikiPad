@@ -5,14 +5,19 @@ using System.IO;
 using System.Text;
 
 internal sealed class Config {
-    public int ConfigVersion = 1;
+    private const int CurrentConfigVersion = 2;
+    private const double DefaultMouseScrollCurveExponent = 3.5;
+    private const int DefaultScrollSlowIntervalMs = 180;
+    private const int DefaultScrollFastIntervalMs = 18;
+
+    public int ConfigVersion = CurrentConfigVersion;
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
     public double MouseMaxSpeed = 20.0;
     public double RightStickDeadzone = 0.025;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 3.0;
-    public double MouseScrollCurveExponent = 3.0;
+    public double MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.25;
     public double TriggerPressThreshold = 0.1;
@@ -27,8 +32,8 @@ internal sealed class Config {
     public int ComboLayerWindowMs = 35;
     public bool UseScanCode = true;
     public bool UseInterception = true;
-    public int ScrollSlowIntervalMs = 120;
-    public int ScrollFastIntervalMs = 12;
+    public int ScrollSlowIntervalMs = DefaultScrollSlowIntervalMs;
+    public int ScrollFastIntervalMs = DefaultScrollFastIntervalMs;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
     public static Config Load(string path) {
@@ -43,7 +48,7 @@ internal sealed class Config {
             JsonObject json = JsonObject.Parse(text);
             bool shouldSaveConfig = false;
 
-            cfg.ConfigVersion = GetInt(json, "configVersion", cfg.ConfigVersion);
+            cfg.ConfigVersion = GetInt(json, "configVersion", 1);
             cfg.Enabled = GetBool(json, "enabled", cfg.Enabled);
             cfg.MouseSensitivity = GetDouble(json, "mouseSensitivity", cfg.MouseSensitivity);
             cfg.MouseMaxSpeed = GetDouble(json, "mouseMaxSpeed", cfg.MouseMaxSpeed);
@@ -70,6 +75,15 @@ internal sealed class Config {
             cfg.R3FreezeMs = GetInt(json, "r3FreezeMs", cfg.R3FreezeMs);
             cfg.ClutchLongPressMs = GetInt(json, "clutchLongPressMs", cfg.ClutchLongPressMs);
 
+            if (cfg.ConfigVersion < CurrentConfigVersion) {
+                MigrateDefaultsFromV1(cfg);
+                shouldSaveConfig = true;
+            }
+            if (cfg.ConfigVersion != CurrentConfigVersion) {
+                cfg.ConfigVersion = CurrentConfigVersion;
+                shouldSaveConfig = true;
+            }
+
             if (!json.ContainsKey("rightStickDeadzone") && TryGetDouble(json, "mouseDeadzone", out cfg.RightStickDeadzone)) {
                 Logger.Info("migrating mouseDeadzone to rightStickDeadzone");
                 shouldSaveConfig = true;
@@ -95,8 +109,8 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (IsInvalidPositive(cfg.MouseScrollCurveExponent)) {
-                Logger.Warn("invalid mouseScrollCurveExponent; using 3.0");
-                cfg.MouseScrollCurveExponent = 3.0;
+                Logger.Warn("invalid mouseScrollCurveExponent; using " + DefaultMouseScrollCurveExponent.ToString("0.###", CultureInfo.InvariantCulture));
+                cfg.MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
                 shouldSaveConfig = true;
             }
 
@@ -175,13 +189,18 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (cfg.ScrollSlowIntervalMs <= 0) {
-                Logger.Warn("invalid scrollSlowIntervalMs; using 120");
-                cfg.ScrollSlowIntervalMs = 120;
+                Logger.Warn("invalid scrollSlowIntervalMs; using " + DefaultScrollSlowIntervalMs.ToString(CultureInfo.InvariantCulture));
+                cfg.ScrollSlowIntervalMs = DefaultScrollSlowIntervalMs;
                 shouldSaveConfig = true;
             }
             if (cfg.ScrollFastIntervalMs <= 0) {
-                Logger.Warn("invalid scrollFastIntervalMs; using 12");
-                cfg.ScrollFastIntervalMs = 12;
+                Logger.Warn("invalid scrollFastIntervalMs; using " + DefaultScrollFastIntervalMs.ToString(CultureInfo.InvariantCulture));
+                cfg.ScrollFastIntervalMs = DefaultScrollFastIntervalMs;
+                shouldSaveConfig = true;
+            }
+            if (cfg.ScrollFastIntervalMs > cfg.ScrollSlowIntervalMs) {
+                Logger.Warn("scrollFastIntervalMs is slower than scrollSlowIntervalMs; clamping to slow interval");
+                cfg.ScrollFastIntervalMs = cfg.ScrollSlowIntervalMs;
                 shouldSaveConfig = true;
             }
             if (cfg.R3FreezeMs < 0) {
@@ -282,6 +301,19 @@ internal sealed class Config {
 
     private static bool IsInvalidPositive(double value) {
         return value <= 0.0 || Double.IsNaN(value) || Double.IsInfinity(value);
+    }
+
+    private static void MigrateDefaultsFromV1(Config cfg) {
+        if (Math.Abs(cfg.MouseScrollCurveExponent - 3.0) < 0.000001) {
+            cfg.MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
+        }
+        if (cfg.ScrollSlowIntervalMs == 120) {
+            cfg.ScrollSlowIntervalMs = DefaultScrollSlowIntervalMs;
+        }
+        if (cfg.ScrollFastIntervalMs == 12) {
+            cfg.ScrollFastIntervalMs = DefaultScrollFastIntervalMs;
+        }
+        Logger.Info("migrated config defaults to version " + CurrentConfigVersion.ToString(CultureInfo.InvariantCulture));
     }
 
     private static bool HasRemovedLegacyKeys(JsonObject json) {
