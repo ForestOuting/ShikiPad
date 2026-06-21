@@ -683,7 +683,7 @@ internal sealed class MapperForm : Form {
         double slowFreq = 1000.0 / Math.Max(5.0, (double)_config.BaseRepeatSlowIntervalMs);
         double ramp = Math.Max(1.0, (double)_config.BaseRepeatRampMs);
         double t = Clamp((heldMs - _config.RepeatDelayMs) / ramp, 0.0, 1.0);
-        double freq = slowFreq + (fastFreq - slowFreq) * Math.Pow(t, 2.5);
+        double freq = slowFreq + (fastFreq - slowFreq) * Math.Pow(t, 3.0);
         return 1000.0 / Math.Max(0.1, freq);
     }
 

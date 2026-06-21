@@ -17,9 +17,9 @@ internal sealed class Config {
     public double LeftStickExitDeadzone = 0.25;
     public double TriggerPressThreshold = 0.1;
     public double TriggerReleaseThreshold = 0.05;
-    public int RepeatDelayMs = 180;
+    public int RepeatDelayMs = 300;
     public int RepeatIntervalMs = 20;
-    public int BaseRepeatSlowIntervalMs = 160;
+    public int BaseRepeatSlowIntervalMs = 220;
     public int BaseRepeatRampMs = 1200;
     public int ActionLayerGraceMs = 35;
     public int LayerTakeoverWindowMs = 25;
@@ -145,8 +145,8 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (cfg.RepeatDelayMs < 0) {
-                Logger.Warn("invalid repeatDelayMs; using 180");
-                cfg.RepeatDelayMs = 180;
+                Logger.Warn("invalid repeatDelayMs; using 300");
+                cfg.RepeatDelayMs = 300;
                 shouldSaveConfig = true;
             }
             if (cfg.RepeatIntervalMs <= 0) {
@@ -155,8 +155,8 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (cfg.BaseRepeatSlowIntervalMs <= 0) {
-                Logger.Warn("invalid baseRepeatSlowIntervalMs; using 160");
-                cfg.BaseRepeatSlowIntervalMs = 160;
+                Logger.Warn("invalid baseRepeatSlowIntervalMs; using 220");
+                cfg.BaseRepeatSlowIntervalMs = 220;
                 shouldSaveConfig = true;
             }
             if (cfg.BaseRepeatRampMs <= 0) {
