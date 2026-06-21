@@ -14,8 +14,8 @@ internal sealed class Config {
     public double MouseScrollCurveExponent = 3.0;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.25;
-    public double TriggerPressThreshold = 0.35;
-    public double TriggerReleaseThreshold = 0.25;
+    public double TriggerPressThreshold = 0.1;
+    public double TriggerReleaseThreshold = 0.05;
     public int RepeatDelayMs = 180;
     public int RepeatIntervalMs = 20;
     public int BaseRepeatSlowIntervalMs = 160;

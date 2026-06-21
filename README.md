@@ -182,8 +182,8 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 
 | Parameter | Default | Description |
 |---|---|---|
-| `triggerPressThreshold` | `0.35` | L2/R2 "pressed" threshold |
-| `triggerReleaseThreshold` | `0.25` | L2/R2 "released" threshold (lower than press to create hysteresis and prevent jitter) |
+| `triggerPressThreshold` | `0.1` | L2/R2 "pressed" threshold |
+| `triggerReleaseThreshold` | `0.05` | L2/R2 "released" threshold (lower than press to create hysteresis and prevent jitter) |
 
 ### Typing & Layers
 

@@ -180,8 +180,8 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 
 | 参数名 | 默认值 | 说明 |
 |---|---|---|
-| `triggerPressThreshold` | `0.35` | L2/R2 扳机被判定为"按下"的阈值 |
-| `triggerReleaseThreshold` | `0.25` | L2/R2 扳机被判定为"释放"的阈值（低于按下阈值以形成滞后，防止抖动） |
+| `triggerPressThreshold` | `0.1` | L2/R2 扳机被判定为"按下"的阈值 |
+| `triggerReleaseThreshold` | `0.05` | L2/R2 扳机被判定为"释放"的阈值（低于按下阈值以形成滞后，防止抖动） |
 
 ### 打字与键层
 
