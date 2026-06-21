@@ -23,7 +23,7 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 35;
     public int LayerTakeoverWindowMs = 25;
     public int ActionLayerSwitchGuardMs = 35;
-    public int ComboLayerWindowMs = 25;
+    public int ComboLayerWindowMs = 35;
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = 120;
@@ -138,13 +138,13 @@ internal sealed class Config {
                 shouldSaveMigratedConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
-                Logger.Warn("invalid comboLayerWindowMs; using 25");
-                cfg.ComboLayerWindowMs = 25;
+                Logger.Warn("invalid comboLayerWindowMs; using 35");
+                cfg.ComboLayerWindowMs = 35;
                 shouldSaveMigratedConfig = true;
             }
-            if (cfg.ComboLayerWindowMs == 35 || cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
-                Logger.Info("migrating comboLayerWindowMs to 25");
-                cfg.ComboLayerWindowMs = 25;
+            if (cfg.ComboLayerWindowMs == 25 || cfg.ComboLayerWindowMs == 50 || cfg.ComboLayerWindowMs == 100 || cfg.ComboLayerWindowMs == 80) {
+                Logger.Info("migrating comboLayerWindowMs to 35");
+                cfg.ComboLayerWindowMs = 35;
                 shouldSaveMigratedConfig = true;
             }
             if (Math.Abs(cfg.MouseMaxSpeed - 18.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 16.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 15.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 13.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 12.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 10.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 8.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 7.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 28.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 22.4) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 25.0) < 0.000001 || Math.Abs(cfg.MouseMaxSpeed - 22.0) < 0.000001) {

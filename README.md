@@ -146,13 +146,16 @@ To prevent accidental repeats during fast typing, **all Character Layer inputs a
 
 ShikiPad uses a precise timing system to correctly determine whether you intended to press a "base key" or a "character key":
 
+> **Note: The combo layer window has been changed from 25ms to 35ms.**
+
+
 | Parameter | Default | Purpose |
 |---|---|---|
 | `actionLayerGraceMs` | 35ms | After pressing an action button, the system waits within this window for shoulder/trigger state changes to determine the final layer. Similarly, action buttons pressed within this window after releasing a shoulder/trigger are still attributed to that layer |
 | `layerTakeoverWindowMs` | 25ms | The maximum overlap allowed for a new layer to take over an action key that was pressed while a previous layer modifier was held. Limits how deep into the previous layer the new layer can reach |
-| `comboLayerWindowMs` | 25ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
+| `comboLayerWindowMs` | 35ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
 
-In short: single-layer confirmation remains **35ms**, and combo layers use a **25ms** pairing window.
+In short: single-layer confirmation remains **35ms**, and combo layers use a **35ms** pairing window.
 
 ---
 
@@ -191,7 +194,7 @@ On first launch, ShikiPad auto-generates a `shikipad.json` config file in the sa
 |---|---|---|
 | `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
 | `layerTakeoverWindowMs` | `25` | New layer takeover window (ms) for resolving cross-layer action presses |
-| `comboLayerWindowMs` | `25` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
+| `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
 | `actionLayerSwitchGuardMs` | `35` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
 | `clutchLongPressMs` | `250` | Press duration that separates a clutch short press from a clutch long press |
 
