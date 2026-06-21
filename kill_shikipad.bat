@@ -1,1 +1,1 @@
-taskkill /F /PID 29804 /T
+taskkill /F /IM ShikiPad.exe /T
