@@ -203,7 +203,9 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 | 参数名 | 默认值 | 说明 |
 |---|---|---|
 | `repeatDelayMs` | `300` | 基础层按住后开始连发前的初始延迟 |
-| `repeatIntervalMs` | `20` | 基础层连发到最快速度时的间隔 |
+| `repeatIntervalMs` | `32` | 基础层连发到最快速度时的间隔，接近键盘长按的高档速度 |
+| `baseRepeatSlowIntervalMs` | `240` | 连发加速前的起始重复间隔 |
+| `baseRepeatRampMs` | `2500` | 从慢速连发渐变到最高连发速度所需的时间 |
 | `scrollSlowIntervalMs` | `120` | 滚轮慢速参考间隔（毫秒）。滚动会从死区边缘附近的 0 平滑起步，不再一开始就打一整格滚轮 |
 | `scrollFastIntervalMs` | `12` | 摇杆推满时的最快滚动间隔（毫秒） |
 
@@ -211,7 +213,7 @@ ShikiPad 使用一套精密的时序判定系统来确保你"按下字母键"还
 
 | 参数名 | 默认值 | 说明 |
 |---|---|---|
-| `configVersion` | `3` | 配置文件结构版本标记。除非发布说明要求，否则保持此值不变 |
+| `configVersion` | `4` | 配置文件结构版本标记。除非发布说明要求，否则保持此值不变 |
 | `useInterception` | `true` | 是否使用 Interception 内核驱动注入。设为 `false` 将降级为 `SendInput` 模式 |
 | `useScanCode` | `true` | 是否发送硬件扫描码（对部分游戏和虚拟机兼容性更好） |
 

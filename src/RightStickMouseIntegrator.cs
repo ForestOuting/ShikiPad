@@ -1,6 +1,9 @@
 using System;
 
 internal sealed class RightStickMouseIntegrator {
+    private const double StartupCurveEnd = 0.25;
+    private const double StartupSpeedRatio = 0.015;
+
     private double _accumX;
     private double _accumY;
 
@@ -23,7 +26,9 @@ internal sealed class RightStickMouseIntegrator {
         double normalizedRadius = (radius - config.RightStickDeadzone) / (1.0 - config.RightStickDeadzone);
         double dirX = x / actualRadius;
         double dirY = y / actualRadius;
-        double speedRatio = Math.Pow(normalizedRadius, config.RightStickCurveExponent);
+        double powerRatio = Math.Pow(normalizedRadius, config.RightStickCurveExponent);
+        double startupRatio = StartupSpeedRatio * SmoothStep(Clamp(normalizedRadius / StartupCurveEnd, 0.0, 1.0)) * (1.0 - normalizedRadius);
+        double speedRatio = Math.Max(powerRatio, startupRatio);
         double speed = config.MouseMaxSpeed * deltaSec * 120.0 * config.MouseSensitivity;
         double rawDx = dirX * speedRatio * speed;
         double rawDy = dirY * speedRatio * speed;
@@ -49,5 +54,9 @@ internal sealed class RightStickMouseIntegrator {
 
     private static double Clamp(double value, double min, double max) {
         return value < min ? min : (value > max ? max : value);
+    }
+
+    private static double SmoothStep(double value) {
+        return value * value * (3.0 - 2.0 * value);
     }
 }

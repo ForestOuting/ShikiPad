@@ -5,11 +5,14 @@ using System.IO;
 using System.Text;
 
 internal sealed class Config {
-    private const int CurrentConfigVersion = 3;
+    private const int CurrentConfigVersion = 4;
     private const double DefaultMouseScrollCurveExponent = 3.0;
     private const int DefaultScrollSlowIntervalMs = 120;
     private const int DefaultScrollFastIntervalMs = 12;
     private const int DefaultComboLayerWindowMs = 30;
+    private const int DefaultRepeatIntervalMs = 32;
+    private const int DefaultBaseRepeatSlowIntervalMs = 240;
+    private const int DefaultBaseRepeatRampMs = 2500;
 
     public int ConfigVersion = CurrentConfigVersion;
     public bool Enabled = true;
@@ -24,9 +27,9 @@ internal sealed class Config {
     public double TriggerPressThreshold = 0.1;
     public double TriggerReleaseThreshold = 0.05;
     public int RepeatDelayMs = 300;
-    public int RepeatIntervalMs = 20;
-    public int BaseRepeatSlowIntervalMs = 220;
-    public int BaseRepeatRampMs = 1200;
+    public int RepeatIntervalMs = DefaultRepeatIntervalMs;
+    public int BaseRepeatSlowIntervalMs = DefaultBaseRepeatSlowIntervalMs;
+    public int BaseRepeatRampMs = DefaultBaseRepeatRampMs;
     public int ActionLayerGraceMs = 35;
     public int LayerTakeoverWindowMs = 25;
     public int ActionLayerSwitchGuardMs = 35;
@@ -165,18 +168,18 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (cfg.RepeatIntervalMs <= 0) {
-                Logger.Warn("invalid repeatIntervalMs; using 20");
-                cfg.RepeatIntervalMs = 20;
+                Logger.Warn("invalid repeatIntervalMs; using " + DefaultRepeatIntervalMs.ToString(CultureInfo.InvariantCulture));
+                cfg.RepeatIntervalMs = DefaultRepeatIntervalMs;
                 shouldSaveConfig = true;
             }
             if (cfg.BaseRepeatSlowIntervalMs <= 0) {
-                Logger.Warn("invalid baseRepeatSlowIntervalMs; using 220");
-                cfg.BaseRepeatSlowIntervalMs = 220;
+                Logger.Warn("invalid baseRepeatSlowIntervalMs; using " + DefaultBaseRepeatSlowIntervalMs.ToString(CultureInfo.InvariantCulture));
+                cfg.BaseRepeatSlowIntervalMs = DefaultBaseRepeatSlowIntervalMs;
                 shouldSaveConfig = true;
             }
             if (cfg.BaseRepeatRampMs <= 0) {
-                Logger.Warn("invalid baseRepeatRampMs; using 1200");
-                cfg.BaseRepeatRampMs = 1200;
+                Logger.Warn("invalid baseRepeatRampMs; using " + DefaultBaseRepeatRampMs.ToString(CultureInfo.InvariantCulture));
+                cfg.BaseRepeatRampMs = DefaultBaseRepeatRampMs;
                 shouldSaveConfig = true;
             }
             if (cfg.ActionLayerGraceMs < 0) {
@@ -316,6 +319,15 @@ internal sealed class Config {
         }
         if (cfg.ComboLayerWindowMs == 35) {
             cfg.ComboLayerWindowMs = DefaultComboLayerWindowMs;
+        }
+        if (cfg.RepeatIntervalMs == 20) {
+            cfg.RepeatIntervalMs = DefaultRepeatIntervalMs;
+        }
+        if (cfg.BaseRepeatSlowIntervalMs == 220) {
+            cfg.BaseRepeatSlowIntervalMs = DefaultBaseRepeatSlowIntervalMs;
+        }
+        if (cfg.BaseRepeatRampMs == 1200) {
+            cfg.BaseRepeatRampMs = DefaultBaseRepeatRampMs;
         }
         Logger.Info("migrated config defaults to version " + CurrentConfigVersion.ToString(CultureInfo.InvariantCulture));
     }

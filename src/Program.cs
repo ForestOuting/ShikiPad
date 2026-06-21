@@ -989,6 +989,7 @@ internal static class Program {
         ok = PrintComboTakeoverCheck(config, mapping) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
         ok = PrintUserScenarioCheck(config, mapping) && ok;
+        ok = PrintRequestedLayerScenarioCheck(config, mapping) && ok;
         Console.WriteLine("Pending timing result = " + (ok ? "PASS" : "FAIL"));
         if (!ok) Environment.ExitCode = 1;
     }
@@ -1076,6 +1077,43 @@ internal static class Program {
         return pass;
     }
 
+    private static bool PrintRequestedLayerScenarioCheck(Config config, MappingEngine mapping) {
+        Console.WriteLine("\n--- REQUESTED LAYER SCENARIO TEST ---");
+        // L2 down; +25ms Square; +6ms Triangle; +9ms L1; +5ms Cross and L2 up; +10ms R1.
+        double l2Down = 0;
+        double sqDown = 25;
+        double triDown = 31;
+        double l1Down = 40;
+        double l2Up = 45;
+        double crossDown = 45;
+        double r1Down = 55;
+
+        Layer l2Layer = mapping.Resolve(false, false, true, false, 0, 0, l2Down, 0, config.ComboLayerWindowMs);
+        Layer l1LayerAfterL2Up = mapping.Resolve(true, false, false, false, l1Down, 0, 0, 0, config.ComboLayerWindowMs);
+        Layer comboLayer = mapping.Resolve(true, true, false, false, l1Down, r1Down, 0, 0, config.ComboLayerWindowMs);
+
+        Layer sqAfterL1 = MapperForm.ResolvePendingLayer(l2Layer, l2Layer, sqDown, l1LayerAfterL2Up, l1Down, l2Up, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer triAfterL1 = MapperForm.ResolvePendingLayer(l2Layer, l2Layer, triDown, l1LayerAfterL2Up, l1Down, l2Up, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+
+        Layer sqFinal = MapperForm.ResolvePendingLayer(sqAfterL1, l2Layer, sqDown, comboLayer, r1Down, 0, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer triFinal = MapperForm.ResolvePendingLayer(triAfterL1, l2Layer, triDown, comboLayer, r1Down, 0, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+        Layer crossFinal = MapperForm.ResolvePendingLayer(l1LayerAfterL2Up, l1LayerAfterL2Up, crossDown, comboLayer, r1Down, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+
+        PhysicalKey sqKey = mapping.Lookup(sqFinal, ActionButton.Square);
+        PhysicalKey triKey = mapping.Lookup(triFinal, ActionButton.Triangle);
+        PhysicalKey crossKey = mapping.Lookup(crossFinal, ActionButton.Cross);
+
+        Console.WriteLine("Square resolved layer/key: " + LayerDisplayName(sqFinal) + " / " + LayerTestKeyName(sqKey));
+        Console.WriteLine("Triangle resolved layer/key: " + LayerDisplayName(triFinal) + " / " + LayerTestKeyName(triKey));
+        Console.WriteLine("Cross resolved layer/key: " + LayerDisplayName(crossFinal) + " / " + LayerTestKeyName(crossKey));
+
+        bool pass = sqKey == PhysicalKey.Num9 &&
+                    triKey == PhysicalKey.Num0 &&
+                    crossKey == PhysicalKey.Comma;
+        Console.WriteLine("Requested Scenario = " + (pass ? "PASS" : "FAIL"));
+        return pass;
+    }
+
     private static bool PrintControllerParityCheck(Config config, MappingEngine mapping) {
         ControllerProfile[] profiles = new ControllerProfile[] {
             ControllerProfile.DualSense,
@@ -1130,10 +1168,23 @@ internal static class Program {
             accumulatedY += dy;
         }
 
+        int firstMoveMs = SimulateRightStickFirstMoveMs(testConfig, smallOutsideDeadzone);
         bool accumulationOk = !firstTickMoved && accumulatedX > 0 && accumulatedY == 0;
-        bool ok = deadzoneOk && accumulationOk;
+        bool responsivenessOk = firstMoveMs > 0 && firstMoveMs <= 80;
+        bool ok = deadzoneOk && accumulationOk && responsivenessOk;
+        Console.WriteLine("rightStickFirstMoveMs = " + firstMoveMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("rightStickMotion = " + (ok ? "PASS" : "FAIL"));
         return ok;
+    }
+
+    private static int SimulateRightStickFirstMoveMs(Config config, double x) {
+        RightStickMouseIntegrator integrator = new RightStickMouseIntegrator();
+        int dx;
+        int dy;
+        for (int i = 1; i <= 500; i++) {
+            if (integrator.TryUpdate(x, 0.0, 0.001, config, out dx, out dy)) return i;
+        }
+        return -1;
     }
 
     private static void PrintLeftStickTest(Config config) {
@@ -1167,13 +1218,16 @@ internal static class Program {
         int gentle = SimulateLeftStickScroll(testConfig, 0.20, 1000);
         int medium = SimulateLeftStickScroll(testConfig, 0.60, 1000);
         int full = SimulateLeftStickScroll(testConfig, 1.00, 1000);
+        int firstScrollMs = SimulateLeftStickFirstScrollMs(testConfig, 0.10);
         bool firstTickQuiet = SimulateLeftStickScroll(testConfig, 0.20, 1) == 0;
         bool monotonic = gentle > 0 && medium > gentle && full > medium;
+        bool responsivenessOk = firstScrollMs > 0 && firstScrollMs <= 40;
         Console.WriteLine("Scroll gentle 1s wheelDelta = " + gentle.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("Scroll medium 1s wheelDelta = " + medium.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("Scroll full 1s wheelDelta = " + full.ToString(CultureInfo.InvariantCulture));
-        Console.WriteLine("Scroll curve result = " + (firstTickQuiet && monotonic ? "PASS" : "FAIL"));
-        return firstTickQuiet && monotonic;
+        Console.WriteLine("Scroll first delta ms = " + firstScrollMs.ToString(CultureInfo.InvariantCulture));
+        Console.WriteLine("Scroll curve result = " + (firstTickQuiet && monotonic && responsivenessOk ? "PASS" : "FAIL"));
+        return firstTickQuiet && monotonic && responsivenessOk;
     }
 
     private static int SimulateLeftStickScroll(Config config, double normalizedRadius, int ms) {
@@ -1185,6 +1239,16 @@ internal static class Program {
             if (scroll.TryUpdate(radius, 0.001, config, 1, out wheelDelta)) total += wheelDelta;
         }
         return total;
+    }
+
+    private static int SimulateLeftStickFirstScrollMs(Config config, double normalizedRadius) {
+        LeftStickScrollIntegrator scroll = new LeftStickScrollIntegrator();
+        double radius = config.LeftStickEnterDeadzone + Clamp(normalizedRadius, 0.0, 1.0) * (1.0 - config.LeftStickEnterDeadzone);
+        int wheelDelta;
+        for (int i = 1; i <= 500; i++) {
+            if (scroll.TryUpdate(radius, 0.001, config, 1, out wheelDelta)) return i;
+        }
+        return -1;
     }
 
     private static double Clamp(double value, double min, double max) {

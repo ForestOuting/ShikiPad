@@ -2,6 +2,8 @@ using System;
 
 internal sealed class LeftStickScrollIntegrator {
     internal const int WheelDelta = 120;
+    private const double StartupCurveEnd = 0.20;
+    private const double StartupWheelDeltaPerSecond = 500.0;
 
     private double _accumulatedWheelDelta;
 
@@ -42,10 +44,15 @@ internal sealed class LeftStickScrollIntegrator {
         double fastSpeed = WheelDelta * 1000.0 / fastInterval;
         double smoothStart = normalized * normalized * (3.0 - 2.0 * normalized);
         double power = Math.Pow(normalized, config.MouseScrollCurveExponent);
-        return slowSpeed * smoothStart + (fastSpeed - slowSpeed) * power;
+        double startupSpeed = StartupWheelDeltaPerSecond * SmoothStep(Clamp(normalized / StartupCurveEnd, 0.0, 1.0)) * (1.0 - normalized);
+        return startupSpeed + slowSpeed * smoothStart + (fastSpeed - slowSpeed) * power;
     }
 
     private static double Clamp(double value, double min, double max) {
         return value < min ? min : (value > max ? max : value);
+    }
+
+    private static double SmoothStep(double value) {
+        return value * value * (3.0 - 2.0 * value);
     }
 }

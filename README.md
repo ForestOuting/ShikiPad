@@ -205,7 +205,9 @@ See `shikipad.example.json` for a clean default template.
 | Parameter | Default | Description |
 |---|---|---|
 | `repeatDelayMs` | `300` | Initial delay before Base Layer key repeat starts |
-| `repeatIntervalMs` | `20` | Fastest repeat interval at full speed |
+| `repeatIntervalMs` | `32` | Fastest repeat interval at full speed, matching a high keyboard repeat rate |
+| `baseRepeatSlowIntervalMs` | `240` | Starting repeat interval before the acceleration ramp |
+| `baseRepeatRampMs` | `2500` | Time spent ramping from the slow repeat interval to the fastest interval |
 | `scrollSlowIntervalMs` | `120` | Reference slow scroll interval (ms). Scroll now ramps up from zero near the deadzone instead of starting with a full wheel notch |
 | `scrollFastIntervalMs` | `12` | Fastest scroll interval when the stick is fully held (ms) |
 
@@ -213,7 +215,7 @@ See `shikipad.example.json` for a clean default template.
 
 | Parameter | Default | Description |
 |---|---|---|
-| `configVersion` | `3` | Config file schema marker. Keep this value unless release notes say otherwise |
+| `configVersion` | `4` | Config file schema marker. Keep this value unless release notes say otherwise |
 | `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
 | `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
 
