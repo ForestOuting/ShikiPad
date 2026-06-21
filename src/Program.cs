@@ -1,13 +1,10 @@
 using System;
-using System.Net;
-using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -718,9 +715,11 @@ internal static class Program {
         _shutdownReleaseRegistered = true;
         Application.ApplicationExit += delegate(object sender, EventArgs e) {
             InputInjector.ReleaseAllRegistered();
+            InterceptionDriver.Cleanup();
         };
         AppDomain.CurrentDomain.ProcessExit += delegate(object sender, EventArgs e) {
             InputInjector.ReleaseAllRegistered();
+            InterceptionDriver.Cleanup();
         };
         Application.ThreadException += delegate(object sender, ThreadExceptionEventArgs e) {
             InputInjector.ReleaseAllRegistered();

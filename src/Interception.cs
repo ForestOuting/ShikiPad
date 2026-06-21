@@ -45,6 +45,9 @@ internal static class InterceptionDriver {
     [DllImport("interception.dll", CallingConvention = CallingConvention.Cdecl)]
     public static extern int interception_send(IntPtr context, int device, ref InterceptionStroke stroke, uint num_strokes);
 
+    [DllImport("interception.dll", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void interception_destroy_context(IntPtr context);
+
     // Hardcoded device IDs for injection
     // Device 1 is the first keyboard, Device 11 is the first mouse
     public const int KEYBOARD_DEVICE = 1;
@@ -61,6 +64,15 @@ internal static class InterceptionDriver {
             }
         }
         return _context != IntPtr.Zero;
+    }
+
+    public static void Cleanup() {
+        if (_context != IntPtr.Zero) {
+            try {
+                interception_destroy_context(_context);
+            } catch { }
+            _context = IntPtr.Zero;
+        }
     }
 
     public static void SendKey(ushort code, KeyState state) {

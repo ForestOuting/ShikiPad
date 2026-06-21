@@ -1,13 +1,7 @@
 using System;
-using System.Net;
-using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -801,6 +795,10 @@ internal sealed class MapperForm : Form {
         _r1DownMs = 0;
         _l2DownMs = 0;
         _r2DownMs = 0;
+        _l1UpMs = 0;
+        _r1UpMs = 0;
+        _l2UpMs = 0;
+        _r2UpMs = 0;
         _l2Pressed = false;
         _r2Pressed = false;
         _clutchButton.Reset();

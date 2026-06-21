@@ -1,15 +1,6 @@
 using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Windows.Forms;
 
 internal static class Logger {
     private static readonly object LockObj = new object();
