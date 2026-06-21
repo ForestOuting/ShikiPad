@@ -2,16 +2,11 @@ using System;
 
 internal sealed class LeftStickScrollIntegrator {
     internal const int WheelDelta = 120;
-    private const double MinPacketMs = 8.0;
-    private const int MinPacketDelta = 15;
-    private const int MaxPacketDelta = WheelDelta;
 
     private double _accumulatedWheelDelta;
-    private double _msSincePacket;
 
     public void Reset() {
         _accumulatedWheelDelta = 0.0;
-        _msSincePacket = 0.0;
     }
 
     public bool TryUpdate(double radius, double deltaSec, Config config, int direction, out int wheelDelta) {
@@ -25,18 +20,14 @@ internal sealed class LeftStickScrollIntegrator {
         }
 
         _accumulatedWheelDelta += direction * WheelDeltaPerSecond(normalized, config) * deltaSec;
-        _msSincePacket += deltaSec * 1000.0;
 
         double pending = Math.Abs(_accumulatedWheelDelta);
-        if (pending < MinPacketDelta) return false;
-        if (_msSincePacket < MinPacketMs && pending < MaxPacketDelta) return false;
+        if (pending < WheelDelta) return false;
 
-        int amount = Math.Min(MaxPacketDelta, (int)Math.Floor(pending));
-        if (amount < MinPacketDelta) return false;
+        int amount = (int)Math.Floor(pending / WheelDelta) * WheelDelta;
 
         wheelDelta = _accumulatedWheelDelta > 0.0 ? amount : -amount;
         _accumulatedWheelDelta -= wheelDelta;
-        _msSincePacket = 0.0;
         return wheelDelta != 0;
     }
 
