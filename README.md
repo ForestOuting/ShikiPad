@@ -146,16 +146,16 @@ To prevent accidental repeats during fast typing, **all Character Layer inputs a
 
 ShikiPad uses a precise timing system to correctly determine whether you intended to press a "base key" or a "character key":
 
-> **Note: The combo layer window has been changed from 25ms to 35ms.**
+> **Note: The combo layer window has been changed from 25ms to 30ms.**
 
 
 | Parameter | Default | Purpose |
 |---|---|---|
+| `comboLayerWindowMs` | 30ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
 | `actionLayerGraceMs` | 35ms | After pressing an action button, the system waits within this window for shoulder/trigger state changes to determine the final layer. Similarly, action buttons pressed within this window after releasing a shoulder/trigger are still attributed to that layer |
 | `layerTakeoverWindowMs` | 25ms | The maximum overlap allowed for a new layer to take over an action key that was pressed while a previous layer modifier was held. Limits how deep into the previous layer the new layer can reach |
-| `comboLayerWindowMs` | 35ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
 
-In short: single-layer confirmation remains **35ms**, and combo layers use a **35ms** pairing window.
+In short: single-layer confirmation remains **35ms**, and combo layers use a **30ms** pairing window.
 
 ---
 
@@ -173,7 +173,7 @@ See `shikipad.example.json` for a clean default template.
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed |
 | `rightStickDeadzone` | `0.025` | Right stick deadzone (inputs below this are ignored). Increase if cursor drifts when idle |
 | `rightStickCurveExponent` | `3.0` | Power curve exponent. Higher values = more precise at low deflection |
-| `mouseScrollCurveExponent`| `3.5` | Left stick scroll curve exponent. Higher values = more precise at low deflection |
+| `mouseScrollCurveExponent`| `3.0` | Left stick scroll curve exponent. Higher values = more precise at low deflection |
 | `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3. Clicking the stick often causes accidental nudges; this briefly ignores stick movement to ensure stable clicks |
 
 ### Left Stick / Modifiers
@@ -194,9 +194,9 @@ See `shikipad.example.json` for a clean default template.
 
 | Parameter | Default | Description |
 |---|---|---|
+| `comboLayerWindowMs` | `30` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
 | `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
 | `layerTakeoverWindowMs` | `25` | New layer takeover window (ms) for resolving cross-layer action presses |
-| `comboLayerWindowMs` | `35` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
 | `actionLayerSwitchGuardMs` | `35` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
 | `clutchLongPressMs` | `250` | Press duration that separates a clutch short press from a clutch long press |
 
@@ -206,14 +206,14 @@ See `shikipad.example.json` for a clean default template.
 |---|---|---|
 | `repeatDelayMs` | `300` | Initial delay before Base Layer key repeat starts |
 | `repeatIntervalMs` | `20` | Fastest repeat interval at full speed |
-| `scrollSlowIntervalMs` | `180` | Reference slow scroll interval (ms). Scroll now ramps up from zero near the deadzone instead of starting with a full wheel notch |
-| `scrollFastIntervalMs` | `18` | Fastest scroll interval when the stick is fully held (ms) |
+| `scrollSlowIntervalMs` | `120` | Reference slow scroll interval (ms). Scroll now ramps up from zero near the deadzone instead of starting with a full wheel notch |
+| `scrollFastIntervalMs` | `12` | Fastest scroll interval when the stick is fully held (ms) |
 
 ### System
 
 | Parameter | Default | Description |
 |---|---|---|
-| `configVersion` | `2` | Config file schema marker. Keep this value unless release notes say otherwise |
+| `configVersion` | `3` | Config file schema marker. Keep this value unless release notes say otherwise |
 | `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
 | `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
 

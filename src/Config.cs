@@ -5,10 +5,11 @@ using System.IO;
 using System.Text;
 
 internal sealed class Config {
-    private const int CurrentConfigVersion = 2;
-    private const double DefaultMouseScrollCurveExponent = 3.5;
-    private const int DefaultScrollSlowIntervalMs = 180;
-    private const int DefaultScrollFastIntervalMs = 18;
+    private const int CurrentConfigVersion = 3;
+    private const double DefaultMouseScrollCurveExponent = 3.0;
+    private const int DefaultScrollSlowIntervalMs = 120;
+    private const int DefaultScrollFastIntervalMs = 12;
+    private const int DefaultComboLayerWindowMs = 30;
 
     public int ConfigVersion = CurrentConfigVersion;
     public bool Enabled = true;
@@ -29,7 +30,7 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 35;
     public int LayerTakeoverWindowMs = 25;
     public int ActionLayerSwitchGuardMs = 35;
-    public int ComboLayerWindowMs = 35;
+    public int ComboLayerWindowMs = DefaultComboLayerWindowMs;
     public bool UseScanCode = true;
     public bool UseInterception = true;
     public int ScrollSlowIntervalMs = DefaultScrollSlowIntervalMs;
@@ -76,7 +77,7 @@ internal sealed class Config {
             cfg.ClutchLongPressMs = GetInt(json, "clutchLongPressMs", cfg.ClutchLongPressMs);
 
             if (cfg.ConfigVersion < CurrentConfigVersion) {
-                MigrateDefaultsFromV1(cfg);
+                MigrateDefaultsToCurrent(cfg);
                 shouldSaveConfig = true;
             }
             if (cfg.ConfigVersion != CurrentConfigVersion) {
@@ -133,8 +134,8 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (cfg.ComboLayerWindowMs < 0 || cfg.ComboLayerWindowMs > 500) {
-                Logger.Warn("invalid comboLayerWindowMs; using 35");
-                cfg.ComboLayerWindowMs = 35;
+                Logger.Warn("invalid comboLayerWindowMs; using " + DefaultComboLayerWindowMs.ToString(CultureInfo.InvariantCulture));
+                cfg.ComboLayerWindowMs = DefaultComboLayerWindowMs;
                 shouldSaveConfig = true;
             }
             if (cfg.ClutchLongPressMs < 80 || cfg.ClutchLongPressMs > 1000) {
@@ -303,15 +304,18 @@ internal sealed class Config {
         return value <= 0.0 || Double.IsNaN(value) || Double.IsInfinity(value);
     }
 
-    private static void MigrateDefaultsFromV1(Config cfg) {
-        if (Math.Abs(cfg.MouseScrollCurveExponent - 3.0) < 0.000001) {
+    private static void MigrateDefaultsToCurrent(Config cfg) {
+        if (Math.Abs(cfg.MouseScrollCurveExponent - 3.5) < 0.000001) {
             cfg.MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
         }
-        if (cfg.ScrollSlowIntervalMs == 120) {
+        if (cfg.ScrollSlowIntervalMs == 180) {
             cfg.ScrollSlowIntervalMs = DefaultScrollSlowIntervalMs;
         }
-        if (cfg.ScrollFastIntervalMs == 12) {
+        if (cfg.ScrollFastIntervalMs == 18) {
             cfg.ScrollFastIntervalMs = DefaultScrollFastIntervalMs;
+        }
+        if (cfg.ComboLayerWindowMs == 35) {
+            cfg.ComboLayerWindowMs = DefaultComboLayerWindowMs;
         }
         Logger.Info("migrated config defaults to version " + CurrentConfigVersion.ToString(CultureInfo.InvariantCulture));
     }
