@@ -426,7 +426,6 @@ internal sealed class MapperForm : Form {
                     hold = new ButtonHold();
                     hold.Pending = true;
                     hold.OriginalPendingLayer = initialLayer;
-                    hold.PendingFromPostRelease = initialLayer != layer;
                     hold.PendingLayer = initialLayer;
                     hold.PendingLayerMs = initialLayer == layer ? layerMs : LayerTimestamp(initialLayer);
                     hold.PendingSinceMs = now;
@@ -581,10 +580,6 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdatePendingLayer(ref ButtonHold hold, Layer layer, double layerMs) {
-        if (ShouldFreezeReleasedPendingLayer(hold.PendingReleased, hold.PendingFromPostRelease, hold.OriginalPendingLayer)) {
-            return;
-        }
-
         if (hold.OriginalPendingLayerUpMs == 0 && hold.OriginalPendingLayer != hold.PendingLayer) {
             hold.OriginalPendingLayerUpMs = LayerUpTimestamp(hold.OriginalPendingLayer);
         }
@@ -621,23 +616,9 @@ internal sealed class MapperForm : Form {
 
         if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
 
-        double overlap = 0;
-        if (pendingLayerUpMs > pendingSinceMs) overlap = pendingLayerUpMs - pendingSinceMs;
-        else if (pendingLayerUpMs == 0) overlap = double.PositiveInfinity;
+        double overlap = LayerOverlapAfterActionMs(pendingSinceMs, layerMs, pendingLayerUpMs, pendingLayer);
 
         if (overlap > takeoverWindowMs) {
-            if (IsComboLayer(layer) && IsComboComponent(layer, pendingLayer)) {
-                double originalOverlap = 0;
-                if (!IsComboComponent(layer, originalLayer)) {
-                    if (originalLayerUpMs > pendingSinceMs) originalOverlap = originalLayerUpMs - pendingSinceMs;
-                    else if (originalLayerUpMs == 0 && originalLayer != Layer.Base) originalOverlap = double.PositiveInfinity;
-                }
-
-                if (originalOverlap <= takeoverWindowMs) {
-                    return layer; // Fallback succeeded, the combo layer actually covers it!
-                }
-                return originalLayer;
-            }
             return pendingLayer;
         }
 
@@ -648,11 +629,11 @@ internal sealed class MapperForm : Form {
         return layer;
     }
 
-    internal static bool ShouldFreezeReleasedPendingLayer(bool pendingReleased, bool pendingFromPostRelease, Layer originalPendingLayer) {
-        return pendingReleased &&
-               !pendingFromPostRelease &&
-               originalPendingLayer != Layer.Base &&
-               originalPendingLayer != Layer.Reserved;
+    private static double LayerOverlapAfterActionMs(double pendingSinceMs, double layerMs, double layerUpMs, Layer heldLayer) {
+        if (heldLayer == Layer.Base || heldLayer == Layer.Reserved) return 0.0;
+        if (layerUpMs > pendingSinceMs) return Math.Max(0.0, layerUpMs - pendingSinceMs);
+        if (layerUpMs == 0.0) return Math.Max(0.0, layerMs - pendingSinceMs);
+        return 0.0;
     }
 
     private bool ShouldSuppressLayerChangeDuringCharacterTap(ButtonHold hold, Layer newLayer, double now) {
@@ -902,7 +883,6 @@ internal sealed class MapperForm : Form {
         public bool SuppressUntilRelease;
         public bool Pending;
         public bool PendingReleased;
-        public bool PendingFromPostRelease;
         public double PendingSinceMs;
         public Layer OriginalPendingLayer;
         public double OriginalPendingLayerUpMs;

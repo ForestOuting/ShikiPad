@@ -156,9 +156,9 @@ ShikiPad uses a precise timing system to correctly determine whether you intende
 | `comboLayerWindowMs` | 35ms | R1+L1, R2+L2, L1+R2, or R1+L2 must be pressed within this time gap to be recognized as a combo layer |
 | `actionLayerGraceMs` | 35ms | Pre-confirmation window. After an action button is pressed, a shoulder/trigger pressed within this window can still define the final layer |
 | `actionLayerPostGraceMs` | 35ms | Post-release attribution window. After a layer modifier is released, action buttons pressed during this blank gap start as the released layer unless a later pre-confirmed layer covers them |
-| `layerTakeoverWindowMs` | 30ms | Held-layer takeover window. The maximum allowed takeover overlap is 30ms, but whether a takeover actually happens is decided by the independent pending-layer resolution logic. This does not include the post-release blank gap |
+| `layerTakeoverWindowMs` | 30ms | Held-layer takeover window. If the old layer is still held after an action button is pressed, the overlap is measured until the new layer is pressed; takeover is allowed only when that overlap is within 30ms. Combo layers also obey this takeover limit. This does not include the post-release blank gap |
 
-In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **35ms** pairing window, and held-layer takeover allows **30ms** of overlap. Once an action tap that started inside a concrete layer has been released, the next rapid layer switch will not rewrite that completed tap.
+In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **35ms** pairing window, and held-layer takeover allows **30ms** of actual overlap.
 
 ---
 
@@ -200,7 +200,7 @@ See `shikipad.example.json` for a clean default template.
 | `comboLayerWindowMs` | `35` | Max time gap (ms) for R1+L1, R2+L2, L1+R2, or R1+L2 to trigger a combo layer |
 | `actionLayerGraceMs` | `35` | Pre-confirmation window (ms). After an action button is pressed, a new layer pressed within this window may cover it |
 | `actionLayerPostGraceMs` | `35` | Post-release attribution window (ms). Starts after the layer modifier is released and covers only the blank gap before another layer is pressed |
-| `layerTakeoverWindowMs` | `30` | Held-layer takeover window (ms). 30ms is the maximum allowed overlap; final takeover still depends on pending-layer resolution, and this does not include the post-release blank gap |
+| `layerTakeoverWindowMs` | `30` | Held-layer takeover window (ms). If the old layer is still held, overlap is measured from action press to the new layer press; combo layers also obey this limit; the post-release blank gap is handled separately |
 | `actionLayerSwitchGuardMs` | `35` | Already-sent character switch guard (ms). This is separate from post-release attribution; it suppresses residue when a held character key changes layers after it has already been sent |
 | `clutchLongPressMs` | `250` | Press duration that separates a clutch short press from a clutch long press |
 
@@ -212,7 +212,7 @@ See `shikipad.example.json` for a clean default template.
 | `repeatIntervalMs` | `32` | Fastest repeat interval at full speed, matching a high keyboard repeat rate |
 | `baseRepeatSlowIntervalMs` | `240` | Starting repeat interval before the acceleration ramp |
 | `baseRepeatRampMs` | `2500` | Time spent ramping from the slow repeat interval to the fastest interval |
-| `scrollSlowIntervalMs` | `180` | Reference slow scroll interval (ms). Left stick scroll uses continuous real analog input like right stick mouse: deflection is accumulated into wheel delta. "Ramps from zero" describes the speed curve near the deadzone, not a fake discrete step |
+| `scrollSlowIntervalMs` | `180` | Reference slow scroll interval (ms). Left stick scroll uses real continuous analog input: wheel speed follows one curve from the deadzone edge to full deflection using slow interval, fast interval, and `mouseScrollCurveExponent` together |
 | `scrollFastIntervalMs` | `18` | Fastest scroll interval when the stick is fully held (ms) |
 
 ### System

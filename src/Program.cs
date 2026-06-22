@@ -28,43 +28,9 @@ internal static class Program {
 
     public static void PrintGradientBanner() {
         EnableAnsi();
-
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(104, Math.Max(66, width - 6));
-        bool compactBanner = true;
-        if (compactBanner) {
-            WriteNeonRule(width, panelWidth, "ShikiPad");
-            Console.WriteLine("\x1b[0m");
-            return;
-        }
-        bool zh = IsChineseUi();
-        int left = (width - panelWidth) / 2;
-
-        string[] logo = BuildShikiPadLogo();
-
-        // top decorative rail
-        Console.Write(new string(' ', left));
-        WriteGradientText("╭" + new string('─', panelWidth - 2) + "╮", SeasonFlowStops());
-        Console.WriteLine();
-
-        // title
-        WriteNeonRule(width, panelWidth, zh ? "ShikiPad 控制界面" : "ShikiPad Control Surface");
-
-        // thin separator
-        Console.Write(new string(' ', left));
-        WriteGradientText(RepeatPattern("┈", panelWidth), SeasonFlowStops());
-        Console.WriteLine();
-
-        // logo
-        WriteExtrudedLogo(width, logo, SeasonFlowStops());
-        Console.WriteLine();
-
-        // bottom decorative rail
-        Console.Write(new string(' ', left));
-        WriteGradientText("╰" + new string('─', panelWidth - 2) + "╯", SeasonFlowStops());
-        Console.WriteLine();
-        WriteSeasonDropShadow(width, panelWidth);
-        Console.WriteLine("\x1b[0m");
+        PrintFullGradientBanner(width, panelWidth);
     }
 
     public static void PrintRunHint() {
@@ -72,8 +38,61 @@ internal static class Program {
         Console.Write("\x1b[0m");
     }
 
+    private static void PrintFullGradientBanner(int width, int panelWidth) {
+        bool zh = IsChineseUi();
+        int left = (width - panelWidth) / 2;
+        string[] logo = BuildShikiPadBlockLogo();
+
+        Console.Write(new string(' ', left));
+        WriteGradientText("\u256d" + new string('\u2500', panelWidth - 2) + "\u256e", SeasonFlowStops());
+        Console.WriteLine();
+
+        WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u63a7\u5236\u754c\u9762" : "ShikiPad Control Surface");
+
+        Console.Write(new string(' ', left));
+        WriteGradientText(RepeatPattern("\u2508", panelWidth), SeasonFlowStops());
+        Console.WriteLine();
+
+        WriteExtrudedLogo(width, logo, SeasonFlowStops());
+        Console.WriteLine();
+        WriteBannerStatus(width, panelWidth, zh);
+
+        Console.Write(new string(' ', left));
+        WriteGradientText("\u2570" + new string('\u2500', panelWidth - 2) + "\u256f", SeasonFlowStops());
+        Console.WriteLine();
+        WriteSeasonDropShadow(width, panelWidth);
+        Console.WriteLine("\x1b[0m");
+    }
+
+    private static void WriteBannerStatus(int width, int panelWidth, bool zh) {
+        string text = zh
+            ? "\u25c7  \u7269\u7406\u6309\u952e  \u2022  \u9f20\u6807\u66f2\u7ebf  \u2022  \u89e6\u63a7\u677f\u84c4\u529b  \u25c7"
+            : "\u25c7  Physical keys  \u2022  Mouse curve  \u2022  Clutch  \u25c7";
+        string sub = zh
+            ? "\u2014\u2014 \u5c31\u7eea  \u2022  \u5173\u95ed\u65f6\u81ea\u52a8\u91ca\u653e\u6240\u6709\u6309\u952e \u2014\u2014"
+            : "\u2014\u2014 Ready  \u2022  Releases all held keys on exit \u2014\u2014";
+        WriteEmbossedCenteredText(width, panelWidth, text, SeasonFlowStops(), false);
+        WriteEmbossedCenteredText(width, panelWidth, sub, SeasonFlowStops(), false);
+    }
+
+    private static string[] BuildShikiPadBlockLogo() {
+        return new string[] {
+            BlockLogo(" ########  ##    ## #### ##   ##  #### #######  ######  ######  "),
+            BlockLogo("##         ##    ##  ##  ##  ##    ##  ##    ## ##   ##     ##  "),
+            BlockLogo("##         ##    ##  ##  ## ##     ##  ##    ##      ##     ##  "),
+            BlockLogo(" #######   ########  ##  ####      ##  #######  #######  ###### "),
+            BlockLogo("      ##   ##    ##  ##  ####      ##  ##       ##   ## ##   ## "),
+            BlockLogo("       ##  ##    ##  ##  ## ##     ##  ##       ##   ## ##   ## "),
+            BlockLogo("########   ##    ##  ##  ##  ##    ##  ##       ##   ## ##   ## "),
+            BlockLogo(" ########  ##    ## #### ##   ##  #### ##        ######  ###### ")
+        };
+    }
+
+    private static string BlockLogo(string pattern) {
+        return pattern.Replace('#', '\u2588');
+    }
+
     public static void PrintRuntimeStatus(string processPath, int processId, int parentId, string backend, bool readsController) {
-        try { Console.Clear(); } catch { }
         EnableAnsi();
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(104, Math.Max(66, width - 6));
@@ -937,6 +956,8 @@ internal static class Program {
         Console.WriteLine("Pending timing checks:");
         bool ok = true;
         ok = PrintComboTakeoverCheck(config, mapping) && ok;
+        ok = PrintHeldLayerTakeoverCheck(config, mapping) && ok;
+        ok = PrintComboTakeoverLimitCheck(config, mapping) && ok;
         ok = PrintBidirectionalComboOrderCheck(config, mapping) && ok;
         ok = PrintCrossComboPunctuationCheck(config, mapping) && ok;
         ok = PrintPostReleaseGraceCheck(config, mapping) && ok;
@@ -987,9 +1008,77 @@ internal static class Program {
         return ok;
     }
 
+    private static bool PrintHeldLayerTakeoverCheck(Config config, MappingEngine mapping) {
+        double actionMs = 10.0;
+        double quickLayerMs = actionMs + Math.Min(20.0, Math.Max(1.0, config.LayerTakeoverWindowMs - 1.0));
+        double lateLayerMs = actionMs + config.LayerTakeoverWindowMs + 1.0;
+
+        Layer quickLayer = MapperForm.ResolvePendingLayer(
+            Layer.R2,
+            Layer.R2,
+            actionMs,
+            Layer.R1,
+            quickLayerMs,
+            0.0,
+            0.0,
+            config.ActionLayerGraceMs,
+            config.LayerTakeoverWindowMs);
+        KeyStroke quickKey = mapping.Lookup(quickLayer, ActionButton.Up);
+
+        Layer lateLayer = MapperForm.ResolvePendingLayer(
+            Layer.R2,
+            Layer.R2,
+            actionMs,
+            Layer.R1,
+            lateLayerMs,
+            0.0,
+            0.0,
+            config.ActionLayerGraceMs,
+            config.LayerTakeoverWindowMs);
+        KeyStroke lateKey = mapping.Lookup(lateLayer, ActionButton.Up);
+
+        bool ok = quickLayer == Layer.R1 &&
+                  quickKey == KeyStroke.Of(PhysicalKey.I) &&
+                  lateLayer == Layer.R2 &&
+                  lateKey == KeyStroke.Of(PhysicalKey.M);
+
+        Console.WriteLine("Held old layer, new layer inside takeover window = " +
+                          LayerDisplayName(quickLayer) + " / " + LayerTestKeyName(quickKey) +
+                          (quickLayer == Layer.R1 ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("Held old layer, new layer after takeover window = " +
+                          LayerDisplayName(lateLayer) + " / " + LayerTestKeyName(lateKey) +
+                          (lateLayer == Layer.R2 ? " [PASS]" : " [FAIL]"));
+        return ok;
+    }
+
+    private static bool PrintComboTakeoverLimitCheck(Config config, MappingEngine mapping) {
+        double r2Ms = 4.0;
+        double actionMs = 5.0;
+        double l1Ms = actionMs + config.LayerTakeoverWindowMs + 1.0;
+        Layer comboLayer = mapping.Resolve(true, false, false, true, l1Ms, 0.0, 0.0, r2Ms, config.ComboLayerWindowMs);
+        Layer resolved = MapperForm.ResolvePendingLayer(
+            Layer.R2,
+            Layer.R2,
+            actionMs,
+            comboLayer,
+            l1Ms,
+            0.0,
+            0.0,
+            config.ActionLayerGraceMs,
+            config.LayerTakeoverWindowMs);
+        KeyStroke key = mapping.Lookup(resolved, ActionButton.Circle);
+        bool comboWithinWindow = comboLayer == Layer.L1R2;
+        bool ok = comboWithinWindow && resolved == Layer.R2 && key == KeyStroke.Of(PhysicalKey.B);
+
+        Console.WriteLine("Combo inside pairing window but past takeover limit = " +
+                          LayerDisplayName(resolved) + " / " + LayerTestKeyName(key) +
+                          (ok ? " [PASS]" : " [FAIL]"));
+        return ok;
+    }
+
     private static bool PrintUserScenarioCheck(Config config, MappingEngine mapping) {
         Console.WriteLine("\n--- USER SCENARIO TEST ---");
-        // "按下 L2，100 毫秒后按下方块键，5ms之后松开l2，15毫秒之后按下 L1 键，然后 5毫秒之后按下 × 键，10 毫秒之后按下 R1 键"
+        // L2 down; +100ms Square; +5ms L2 up; +15ms L1; +5ms Cross; +10ms R1.
 
         double l2Down = 0;
         double sqDown = 100;
@@ -1028,7 +1117,8 @@ internal static class Program {
         Console.WriteLine("Cross resolved layer: " + LayerDisplayName(crFinal));
         Console.WriteLine("Cross resolved key: " + LayerTestKeyName(crKey));
 
-        bool pass = (sqKey == KeyStroke.Of(PhysicalKey.Num9));
+        bool pass = sqKey == KeyStroke.Of(PhysicalKey.D) &&
+                    crKey == KeyStroke.Of(PhysicalKey.Comma);
         Console.WriteLine("User Scenario = " + (pass ? "PASS" : "FAIL"));
         return pass;
     }
@@ -1167,22 +1257,16 @@ internal static class Program {
 
         Layer r1Layer = mapping.Resolve(false, true, false, false, 0, 22, 0, 0, config.ComboLayerWindowMs);
         KeyStroke upKey = mapping.Lookup(r1Layer, ActionButton.Up);
-        bool previousReleasedLayerFrozen = MapperForm.ShouldFreezeReleasedPendingLayer(true, false, r2Layer);
-        bool postReleaseStillCoverable = !MapperForm.ShouldFreezeReleasedPendingLayer(true, true, r2Layer);
 
         bool ok = r2Layer == Layer.R2 &&
                   triangleKey == KeyStroke.Of(PhysicalKey.X) &&
                   r1Layer == Layer.R1 &&
-                  upKey == KeyStroke.Of(PhysicalKey.I) &&
-                  previousReleasedLayerFrozen &&
-                  postReleaseStillCoverable;
+                  upKey == KeyStroke.Of(PhysicalKey.I);
 
         Console.WriteLine("Rapid R2+Triangle then R1+Up = " +
                           LayerDisplayName(r2Layer) + "/" + LayerTestKeyName(triangleKey) + " -> " +
                           LayerDisplayName(r1Layer) + "/" + LayerTestKeyName(upKey) +
                           (ok ? " [PASS]" : " [FAIL]"));
-        Console.WriteLine("Released layer tap isolation = " +
-                          (previousReleasedLayerFrozen && postReleaseStillCoverable ? "PASS" : "FAIL"));
         return ok;
     }
 
