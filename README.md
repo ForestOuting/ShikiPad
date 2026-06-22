@@ -43,6 +43,7 @@ After restarting, double-click `ShikiPad.exe`. In the terminal window, select yo
 | 8 | Xbox Series X\|S | Bluetooth |
 
 The program runs in the background after selection. **Close the terminal window to exit.**
+You will see a glowing `==== Press ENTER for Detailed Manual ====` prompt in the terminal. Press Enter to view the full-screen detailed mapping and operation manual.
 
 ### 4. Emergency Toggle
 While running, **hold Share/Create/View + Options/Menu simultaneously for 2 seconds** to toggle ShikiPad on/off — useful when you need to temporarily restore raw controller input.
@@ -55,7 +56,7 @@ While running, **hold Share/Create/View + Options/Menu simultaneously for 2 seco
 
 | Controller Input | Output | Notes |
 |---|---|---|
-| **Right Stick** movement | Mouse cursor movement | Power-curve acceleration: gentle for fine control, fast when pushed hard |
+| **Right Stick** movement | Mouse cursor movement | **Fully continuous power-curve acceleration**. Smoothly transitions from micro-adjustments at a gentle tilt to maximum speed when fully pushed, with no piecewise segments. |
 | **R3** (Right Stick click) | Right Mouse Button | Cursor freezes briefly on click to prevent accidental movement |
 | **L3** (Left Stick click) | Left Mouse Button | — |
 | **PS Share/Create** (DS4/DS5) | `Right Alt` | Hold to press, release to let go |
@@ -75,8 +76,8 @@ The Left Stick acts as an **8-way function dial**: push in a direction to hold t
 | **↘ Down-Right** | `Left Alt` | Shortcuts (e.g., Alt+Tab to switch windows) |
 | **→ Right** | `Win` | Start menu, system shortcuts |
 | **↖ Up-Left** | `Esc` | Cancel, exit |
-| **↑ Up** | Mouse Wheel ↑ | Scroll up (accelerates when held) |
-| **↓ Down** | Mouse Wheel ↓ | Scroll down (accelerates when held) |
+| **↑ Up** | Mouse Wheel ↑ | **Fully continuous power-curve acceleration**. Scroll up smoothly when tilted, accelerating seamlessly when held deeper. |
+| **↓ Down** | Mouse Wheel ↓ | **Fully continuous power-curve acceleration**. Scroll down smoothly when tilted, accelerating seamlessly when held deeper. |
 | **↗ Up-Right** | Activate `Fn` layer | Converts number keys to F1–F12 |
 
 #### ⚡ Clutch System (Modifier Accumulator)
@@ -146,19 +147,17 @@ To prevent accidental repeats during fast typing, **all Character Layer inputs a
 
 ### 🔧 Layer Detection Timing (Advanced)
 
-ShikiPad uses a precise timing system to correctly determine whether you intended to press a "base key" or a "character key":
-
-> **Note: The combo layer window has been changed from 30ms to 35ms.**
-
+ShikiPad uses a precise timing system to correctly determine whether you intended to press a "base key" or a "character key". This is the core mechanism of the application.
+Every action button press enters a state-machine based resolution engine. During multiple simultaneous inputs, it holds the output within a tolerance window until your explicit intention is clarified, and then dispatches the proper virtual key.
 
 | Parameter | Default | Purpose |
 |---|---|---|
-| `comboLayerWindowMs` | 35ms | R1+L1, R2+L2, L1+R2, or R1+L2 must be pressed within this time gap to be recognized as a combo layer |
-| `actionLayerGraceMs` | 35ms | Pre-confirmation window. After an action button is pressed, a shoulder/trigger pressed within this window can still define the final layer |
-| `actionLayerPostGraceMs` | 35ms | Post-release attribution window. After a layer modifier is released, action buttons pressed during this blank gap start as the released layer unless a later pre-confirmed layer covers them |
-| `layerTakeoverWindowMs` | 30ms | Held-layer takeover window. If the old layer is still held after an action button is pressed, the overlap is measured until the new layer is pressed; takeover is allowed only when that overlap is within 30ms. Combo layers also obey this takeover limit. This does not include the post-release blank gap |
+| `comboLayerWindowMs` | 35ms | Combo layer pairing. R1+L1, R2+L2, L1+R2, or R1+L2 must be pressed within this time gap. |
+| `actionLayerGraceMs` | 35ms | **Pre-confirmation window**. After an action button is pressed, a shoulder/trigger pressed within this window will STILL successfully map to the character layer. If the shoulder/trigger is pressed *after* this window, the pending action button will immediately output as a Base Layer virtual tap, ensuring no keys are ever "swallowed" or lost. |
+| `actionLayerPostGraceMs` | 25ms | **Post-release attribution window**. After a layer modifier is released, this brief gap prevents subsequent presses from attaching to the just-released layer. |
+| `layerTakeoverWindowMs` | 30ms | **Held-layer takeover window**. If the old layer is still held after an action button is pressed, this is the maximum allowed overlap time. Once a conflict is detected, it securely resolves the overlapping state into the newly intended layer. |
 
-In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **35ms** pairing window, and held-layer takeover allows **30ms** of actual overlap.
+In short: pre-confirmation is **35ms**, post-release attribution is **25ms**, combo layers use a **35ms** pairing window, and held-layer takeover allows **30ms** of actual overlap. All these windows are designed to seamlessly absorb human input discrepancies without missing a beat.
 
 ---
 
