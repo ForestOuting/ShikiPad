@@ -53,17 +53,6 @@ internal static class Program {
         WriteExtrudedLogo(width, logo, SeasonFlowStops());
         Console.WriteLine();
 
-        // tagline
-        string tagline = zh
-            ? "◇  物理按键  ·  鼠标曲线  ·  触控板蓄力  ◇"
-            : "◇  physical keys  ·  mouse curve  ·  touch clutch  ◇";
-        Console.Write(new string(' ', left));
-        WriteGradientText(CenterLine(panelWidth, tagline), SeasonFlowStops());
-        Console.WriteLine();
-
-        // status line
-        WriteMinimalStatus(width, panelWidth, zh);
-
         // bottom decorative rail
         Console.Write(new string(' ', left));
         WriteGradientText("╰" + new string('─', panelWidth - 2) + "╯", SeasonFlowStops());
@@ -74,10 +63,7 @@ internal static class Program {
 
     public static void PrintRunHint() {
         EnableAnsi();
-        int width = GetConsoleWidth();
-        int panelWidth = Math.Min(104, Math.Max(66, width - 6));
-        WriteLiveStatusBar(width, panelWidth, IsChineseUi());
-        Console.WriteLine("\x1b[0m");
+        Console.Write("\x1b[0m");
     }
 
     public static void PrintRuntimeStatus(string processPath, int processId, int parentId, string backend, bool readsController) {
@@ -87,18 +73,14 @@ internal static class Program {
         string fileName = Path.GetFileName(processPath);
         bool zh = IsChineseUi();
 
-        Console.WriteLine();
         WriteSeasonPanelBorder(width, panelWidth, true);
         WriteSeasonPanelTitle(width, panelWidth, zh ? "\u25c7 \u8fd0\u884c\u72b6\u6001 \u25c7" : "\u25c7 RUNTIME STATUS \u25c7");
         WriteSeasonPanelSeparator(width, panelWidth);
         WritePanelLine(width, panelWidth, zh ? "  \u8fdb\u7a0b" : "  Process", fileName + "  PID " + processId.ToString(CultureInfo.InvariantCulture), SeasonGold(), new Rgb(222, 238, 244));
-        WritePanelLine(width, panelWidth, zh ? "  \u7236\u8fdb\u7a0b" : "  Parent", parentId.ToString(CultureInfo.InvariantCulture), SeasonSummer(), new Rgb(222, 238, 244));
         WritePanelLine(width, panelWidth, zh ? "  \u624b\u67c4\u540e\u7aef" : "  Controller backend", backend, SeasonSpring(), new Rgb(222, 238, 244));
         WritePanelLine(width, panelWidth, zh ? "  \u624b\u67c4\u8bfb\u53d6" : "  Controller read", readsController ? (zh ? "\u672c\u8fdb\u7a0b\u6d3b\u8dc3" : "active in this process") : (zh ? "\u672a\u6d3b\u8dc3" : "inactive"), SeasonAutumn(), new Rgb(222, 238, 244));
-        WritePanelLine(width, panelWidth, zh ? "  \u8def\u5f84" : "  Path", ShortenPath(processPath, panelWidth - 14), SeasonWinter(), new Rgb(206, 220, 226));
         WriteSeasonPanelBorder(width, panelWidth, false);
-        WriteSeasonDropShadow(width, panelWidth);
-        Console.WriteLine("\x1b[0m");
+        Console.Write("\x1b[0m");
     }
 
     public static void PrintControllerGuide(ControllerProfile profile, string backend, Config config) {
@@ -110,7 +92,6 @@ internal static class Program {
                     profile == ControllerProfile.Xbox360BT || profile == ControllerProfile.XboxSeriesBT;
         bool ds4 = profile == ControllerProfile.DualShock4 || profile == ControllerProfile.DualShock4BT;
 
-        Console.WriteLine();
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
         WritePanelTitle(width, panelWidth, zh ? "\u25c7 \u6620\u5c04\u901f\u67e5 \u25c7" : "\u25c7 MAPPING QUICK REFERENCE \u25c7", new Rgb(235, 247, 252));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
@@ -462,14 +443,6 @@ internal static class Program {
         Console.WriteLine();
     }
 
-    private static void WriteMinimalStatus(int width, int panelWidth, bool zh) {
-        int left = (width - panelWidth) / 2;
-        string line = "\u2500\u2500\u2500  " + (zh ? "\u5c31\u7eea  \u00b7  \u5173\u95ed\u65f6\u81ea\u52a8\u91ca\u653e\u6240\u6709\u6309\u952e" : "READY  \u00b7  Auto-release all keys on close") + "  \u2500\u2500\u2500";
-        Console.Write(new string(' ', left));
-        WriteGradientText(CenterLine(panelWidth, line), SeasonFlowStops());
-        Console.WriteLine();
-    }
-
     private static void WriteSeasonPanelBorder(int width, int panelWidth, bool top) {
         int left = (width - panelWidth) / 2;
         string line = (top ? "\u256d" : "\u2570") + new string('\u2500', panelWidth - 2) + (top ? "\u256e" : "\u256f");
@@ -613,33 +586,6 @@ internal static class Program {
         while (sb.Length < width) sb.Append(pattern);
         if (sb.Length > width) sb.Length = width;
         return sb.ToString();
-    }
-
-    private static void WriteLiveStatusBar(int width, int panelWidth, bool zh) {
-        int left = (width - panelWidth) / 2;
-        string text = zh ? "\u25c6 \u5b9e\u65f6\u8fd0\u884c" : "\u25c6 Live session";
-        string rail = "\u256d" + RepeatPattern("\u2500\u22c5", panelWidth - 2) + "\u256e";
-        string bottom = "\u2570" + RepeatPattern("\u2500\u22c5", panelWidth - 2) + "\u256f";
-
-        Console.Write(new string(' ', left));
-        WriteGradientText(rail, SeasonFlowStops());
-        Console.WriteLine();
-        Console.Write(new string(' ', left));
-        WriteRgb(PanelInk(), "\u2502");
-        WriteGradientText(CenterLine(panelWidth - 2, text), SeasonFlowStops());
-        WriteRgb(PanelInk(), "\u2502");
-        Console.WriteLine();
-        Console.Write(new string(' ', left));
-        WriteGradientText(bottom, SeasonFlowStops());
-        Console.WriteLine();
-        WriteSeasonDropShadow(width, panelWidth);
-    }
-
-    private static string ShortenPath(string path, int maxLength) {
-        if (path == null) return "";
-        if (path.Length <= maxLength) return path;
-        if (maxLength <= 4) return path.Substring(0, maxLength);
-        return "\u2026" + path.Substring(path.Length - maxLength + 1);
     }
 
     private static bool _shutdownReleaseRegistered;
@@ -997,6 +943,7 @@ internal static class Program {
         ok = PrintPostReleaseGraceCheck(config, mapping) && ok;
         ok = PrintTriggerThresholdCheck(config) && ok;
         ok = PrintDigitalTriggerReportCheck(config, mapping) && ok;
+        ok = PrintRapidLayerSwitchCheck(config, mapping) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
         ok = PrintUserScenarioCheck(config, mapping) && ok;
         ok = PrintRequestedLayerScenarioCheck(config, mapping) && ok;
@@ -1215,6 +1162,25 @@ internal static class Program {
         return ok;
     }
 
+    private static bool PrintRapidLayerSwitchCheck(Config config, MappingEngine mapping) {
+        Layer r2Layer = mapping.Resolve(false, false, false, true, 0, 0, 0, 10, config.ComboLayerWindowMs);
+        KeyStroke triangleKey = mapping.Lookup(r2Layer, ActionButton.Triangle);
+
+        Layer r1Layer = mapping.Resolve(false, true, false, false, 0, 22, 0, 0, config.ComboLayerWindowMs);
+        KeyStroke upKey = mapping.Lookup(r1Layer, ActionButton.Up);
+
+        bool ok = r2Layer == Layer.R2 &&
+                  triangleKey == KeyStroke.Of(PhysicalKey.X) &&
+                  r1Layer == Layer.R1 &&
+                  upKey == KeyStroke.Of(PhysicalKey.I);
+
+        Console.WriteLine("Rapid R2+Triangle then R1+Up = " +
+                          LayerDisplayName(r2Layer) + "/" + LayerTestKeyName(triangleKey) + " -> " +
+                          LayerDisplayName(r1Layer) + "/" + LayerTestKeyName(upKey) +
+                          (ok ? " [PASS]" : " [FAIL]"));
+        return ok;
+    }
+
     private static bool PrintBidirectionalComboOrderCheck(Config config, MappingEngine mapping) {
         double firstMs = 10.0;
         double secondMs = firstMs + Math.Max(1.0, Math.Min(20.0, config.ComboLayerWindowMs - 1.0));
@@ -1276,13 +1242,13 @@ internal static class Program {
 
         KeyStroke blankKey = mapping.Lookup(initialInBlank, ActionButton.Square);
         bool ok = initialInBlank == Layer.L2 &&
-                  blankKey == KeyStroke.Of(PhysicalKey.Num9) &&
+                  blankKey == KeyStroke.Of(PhysicalKey.Num1) &&
                   initialExpired == Layer.Base &&
                   coveredByNewLayer == Layer.L1;
 
         Console.WriteLine("Post-release blank action = " +
                           LayerDisplayName(initialInBlank) + " / " + LayerTestKeyName(blankKey) +
-                          (initialInBlank == Layer.L2 && blankKey == KeyStroke.Of(PhysicalKey.Num9) ? " [PASS]" : " [FAIL]"));
+                          (initialInBlank == Layer.L2 && blankKey == KeyStroke.Of(PhysicalKey.Num1) ? " [PASS]" : " [FAIL]"));
         Console.WriteLine("Post-release grace expired = " +
                           LayerDisplayName(initialExpired) +
                           (initialExpired == Layer.Base ? " [PASS]" : " [FAIL]"));
