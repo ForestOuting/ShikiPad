@@ -16,7 +16,7 @@ internal sealed class Config {
     private const int DefaultActionLayerPostGraceMs = 25;
     private const int DefaultRepeatIntervalMs = 32;
     private const int DefaultBaseRepeatSlowIntervalMs = 240;
-    private const int DefaultBaseRepeatRampMs = 2500;
+    private const int DefaultBaseRepeatRampMs = 1000;
     private const double DefaultRightStickDeadzone = 0.03;
 
     public int ConfigVersion = CurrentConfigVersion;
@@ -355,7 +355,7 @@ internal sealed class Config {
         if (cfg.BaseRepeatSlowIntervalMs == 220) {
             cfg.BaseRepeatSlowIntervalMs = DefaultBaseRepeatSlowIntervalMs;
         }
-        if (cfg.BaseRepeatRampMs == 1200) {
+        if (cfg.BaseRepeatRampMs == 2500) {
             cfg.BaseRepeatRampMs = DefaultBaseRepeatRampMs;
         }
         if (Math.Abs(cfg.RightStickDeadzone - 0.025) < 0.000001 ||
