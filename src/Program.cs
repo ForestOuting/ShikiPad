@@ -40,17 +40,16 @@ internal static class Program {
 
     private static void PrintFullGradientBanner(int width, int panelWidth) {
         bool zh = IsChineseUi();
-        int left = (width - panelWidth) / 2;
         string[] logo = BuildShikiPadBlockLogo();
 
-        Console.Write(new string(' ', left));
-        WriteGradientText("\u256d" + new string('\u2500', panelWidth - 2) + "\u256e", SeasonFlowStops());
+        try { Console.Clear(); } catch { }
         Console.WriteLine();
 
         WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u63a7\u5236\u754c\u9762" : "ShikiPad Control Surface");
 
+        int left = (width - panelWidth) / 2;
         Console.Write(new string(' ', left));
-        WriteGradientText(RepeatPattern("\u2508", panelWidth), SeasonFlowStops());
+        WriteGradientText(left, width, RepeatPattern("\u2508", panelWidth), SeasonFlowStops());
         Console.WriteLine();
 
         WriteExtrudedLogo(width, logo, SeasonFlowStops());
@@ -58,7 +57,7 @@ internal static class Program {
         WriteBannerStatus(width, panelWidth, zh);
 
         Console.Write(new string(' ', left));
-        WriteGradientText("\u2570" + new string('\u2500', panelWidth - 2) + "\u256f", SeasonFlowStops());
+        WriteGradientText(left, width, "\u2570" + new string('\u2500', panelWidth - 2) + "\u256f", SeasonFlowStops());
         Console.WriteLine();
         WriteSeasonDropShadow(width, panelWidth);
         Console.WriteLine("\x1b[0m");
@@ -67,8 +66,8 @@ internal static class Program {
     private static void WriteBannerStatus(int width, int panelWidth, bool zh) {
         string text1 = zh ? "\u25c7  \u5168\u5c40\u952e\u9f20\u6620\u5c04\u5df2\u5c31\u7eea  \u25c7" : "\u25c7  GLOBAL MAPPING IS READY  \u25c7";
         string text2 = zh ? "\u2014\u2014  \u6309\u4e0b Enter \u952e\u5c55\u5f00\u8be6\u7ec6\u8bf4\u660e  \u2014\u2014" : "\u2014\u2014  PRESS ENTER FOR DETAILED MANUAL  \u2014\u2014";
-        WriteEmbossedCenteredText(width, panelWidth, text1, SeasonGlowStops(), true);
-        WriteEmbossedCenteredText(width, panelWidth, text2, SeasonGlowStops(), false);
+        WriteEmbossedCenteredText(width, panelWidth, text1, SeasonFlowStops(), true);
+        WriteEmbossedCenteredText(width, panelWidth, text2, SeasonFlowStops(), false);
     }
 
     private static string[] BuildShikiPadBlockLogo() {
@@ -438,9 +437,12 @@ internal static class Program {
         WriteEmbossedCenteredText(width, panelWidth, line, SeasonGlowStops(), true);
     }
 
-    private static void WriteGradientText(string text, Rgb[] stops) {
+    private static void WriteGradientText(int absoluteX, int consoleWidth, string text, Rgb[] stops) {
+        int logoWidth = 64;
+        int logoLeft = Math.Max(0, (consoleWidth - 67) / 2);
         for (int i = 0; i < text.Length; i++) {
-            double t = text.Length <= 1 ? 1.0 : (double)i / (double)(text.Length - 1);
+            int col = (absoluteX + i) - logoLeft;
+            double t = Math.Max(0.0, Math.Min(col, logoWidth - 1)) / (double)(logoWidth - 1);
             WriteRgb(GradientAt(stops, t), text[i].ToString());
         }
     }
@@ -449,22 +451,25 @@ internal static class Program {
         int left = (width - panelWidth) / 2;
         string line = CenterLine(panelWidth, text);
         Console.Write(new string(' ', left + 1));
-        WriteGradientShadowGlyphs(line, stops);
+        WriteGradientShadowGlyphs(left + 1, width, line, stops);
         Console.Write("\r");
         Console.Write(new string(' ', left));
         if (bold) Console.Write("\x1b[1m");
-        WriteGradientText(line, stops);
+        WriteGradientText(left, width, line, stops);
         if (bold) Console.Write("\x1b[22m");
         Console.WriteLine();
     }
 
-    private static void WriteGradientShadowGlyphs(string text, Rgb[] stops) {
+    private static void WriteGradientShadowGlyphs(int absoluteX, int consoleWidth, string text, Rgb[] stops) {
+        int logoWidth = 64;
+        int logoLeft = Math.Max(0, (consoleWidth - 67) / 2);
         for (int i = 0; i < text.Length; i++) {
             char c = text[i];
             if (c == ' ') {
                 Console.Write(' ');
             } else {
-                double t = text.Length <= 1 ? 1.0 : (double)i / (double)(text.Length - 1);
+                int col = (absoluteX + i) - logoLeft;
+                double t = Math.Max(0.0, Math.Min(col, logoWidth - 1)) / (double)(logoWidth - 1);
                 WriteRgb(Scale(GradientAt(stops, t), 0.22), "\u2592");
             }
         }
@@ -481,7 +486,7 @@ internal static class Program {
         int left = (width - panelWidth) / 2;
         string line = (top ? "\u256d" : "\u2570") + new string('\u2500', panelWidth - 2) + (top ? "\u256e" : "\u256f");
         Console.Write(new string(' ', left));
-        WriteGradientText(line, SeasonFlowStops());
+        WriteGradientText(left, width, line, SeasonFlowStops());
         Console.WriteLine();
     }
 
@@ -489,7 +494,7 @@ internal static class Program {
         int left = (width - panelWidth) / 2;
         Console.Write(new string(' ', left));
         WriteRgb(PanelInk(), "\u2502");
-        WriteGradientText(new string('\u2504', panelWidth - 2), SeasonFlowStops());
+        WriteGradientText(left + 1, width, new string('\u2504', panelWidth - 2), SeasonFlowStops());
         WriteRgb(PanelInk(), "\u2502");
         Console.WriteLine();
     }
@@ -499,7 +504,7 @@ internal static class Program {
         Console.Write(new string(' ', left));
         WriteRgb(PanelInk(), "\u2502");
         Console.Write("\x1b[1m");
-        WriteGradientText(CenterLine(panelWidth - 2, title), SeasonFlowStops());
+        WriteGradientText(left + 1, width, CenterLine(panelWidth - 2, title), SeasonFlowStops());
         Console.Write("\x1b[22m");
         WriteRgb(PanelInk(), "\u2502");
         Console.WriteLine();
@@ -624,8 +629,15 @@ internal static class Program {
 
     private static bool _shutdownReleaseRegistered;
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AllocConsole();
+
     [STAThread]
     private static int Main(string[] args) {
+        AllocConsole();
+        StreamWriter writer = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+        Console.SetOut(writer);
         try { Console.Title = "ShikiPad"; } catch { }
         PrintGradientBanner();
 
