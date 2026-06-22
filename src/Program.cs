@@ -65,8 +65,10 @@ internal static class Program {
     }
 
     private static void WriteBannerStatus(int width, int panelWidth, bool zh) {
-        string text = zh ? "==== \u6309\u4e0b Enter \u952e\u67e5\u770b\u8be6\u7ec6\u8bf4\u660e ====" : "==== Press ENTER for Detailed Manual ====";
-        WriteEmbossedCenteredText(width, panelWidth, text, SeasonGlowStops(), true);
+        string text1 = zh ? "\u25c7  \u7269\u7406\u6309\u952e  \u00b7  \u9f20\u6807\u66f2\u7ebf  \u00b7  \u89e6\u63a7\u677f\u84c4\u529b  \u25c7" : "\u25c7  PHYSICAL KEYS  \u00b7  MOUSE CURVES  \u00b7  TOUCHPAD CLUTCH  \u25c7";
+        string text2 = zh ? "\u2014\u2014  \u5c31\u7eea  \u00b7  \u5173\u95ed\u65f6\u81ea\u52a8\u91ca\u653e\u6240\u6709\u6309\u952e  \u2014\u2014" : "\u2014\u2014  READY  \u00b7  ALL KEYS RELEASED ON EXIT  \u2014\u2014";
+        WriteEmbossedCenteredText(width, panelWidth, text1, SeasonGlowStops(), true);
+        WriteEmbossedCenteredText(width, panelWidth, text2, SeasonGlowStops(), false);
     }
 
     private static string[] BuildShikiPadBlockLogo() {
