@@ -14,8 +14,8 @@ internal sealed class Config {
     private const double DefaultTriggerReleaseThreshold = 0.0;
     private const int DefaultLayerTakeoverWindowMs = 30;
     private const int DefaultActionLayerPostGraceMs = 25;
-    private const int DefaultRepeatIntervalMs = 32;
-    private const int DefaultBaseRepeatSlowIntervalMs = 240;
+    private const int DefaultRepeatIntervalMs = 18;
+    private const int DefaultBaseRepeatSlowIntervalMs = 120;
     private const int DefaultBaseRepeatRampMs = 1000;
     private const double DefaultRightStickDeadzone = 0.03;
 
@@ -349,10 +349,10 @@ internal sealed class Config {
             cfg.TriggerPressThreshold = DefaultTriggerPressThreshold;
             cfg.TriggerReleaseThreshold = DefaultTriggerReleaseThreshold;
         }
-        if (cfg.RepeatIntervalMs == 20) {
+        if (cfg.RepeatIntervalMs == 20 || cfg.RepeatIntervalMs == 32) {
             cfg.RepeatIntervalMs = DefaultRepeatIntervalMs;
         }
-        if (cfg.BaseRepeatSlowIntervalMs == 220) {
+        if (cfg.BaseRepeatSlowIntervalMs == 220 || cfg.BaseRepeatSlowIntervalMs == 240) {
             cfg.BaseRepeatSlowIntervalMs = DefaultBaseRepeatSlowIntervalMs;
         }
         if (cfg.BaseRepeatRampMs == 2500) {
