@@ -34,6 +34,18 @@ ShikiPad may create one optional runtime file, `shikipad.default`, to remember t
 4. Run `ShikiPad.exe`. It requests administrator rights because low-level input injection needs elevated access.
 5. Select your controller profile in the console. After selection, you can save it as the default launch profile so future starts do not require manual input.
 
+## Interface Pages
+
+The ShikiPad console uses five page types:
+
+| Page | When it appears | What to do |
+|---|---|---|
+| Startup | Every time ShikiPad opens | Read the launch hints, then continue to controller selection or default launch |
+| Controller selection | No default controller exists, or you choose again manually | Type `1` through `8`, then press `Enter` |
+| Default launch | A default controller profile is saved | Wait about 1.8 seconds to auto-start; press `Enter` to choose again, or `Esc` to clear the default |
+| Welcome home | The controller connects successfully | Press `Enter` to open the mapping manual; press `Esc` to clear default launch; close the window to exit |
+| Mapping manual | After pressing `Enter` while running | Press `Enter` again to return to the ShikiPad home screen |
+
 | # | Controller | Connection |
 |:---:|---|---|
 | 1 | DualSense (PS5) | USB |
@@ -51,10 +63,10 @@ After the controller connects, the console switches to the ShikiPad welcome home
 
 When the prompt asks whether to save the selected controller as the default launch profile, press `Enter` or type `Y` to save it.
 
-When a default is saved, ShikiPad waits about 1.2 seconds on the default launch prompt, then auto-starts with it. To choose again or exit default launch, press `C` when that prompt appears, then:
+When a default is saved, ShikiPad waits about 1.8 seconds on the default launch prompt, then auto-starts with it.
 
-- Type `1` through `8` to choose another controller for this run and optionally save it as the new default.
-- Type `0` to clear default launch so ShikiPad asks for a controller each time.
+- Press `Enter` on the default launch page to choose another controller for this run and optionally save it as the new default.
+- Press `Esc` on the default launch page, or on the connected welcome home screen, to clear default launch so ShikiPad asks for a controller each time.
 
 Command-line controls are also available:
 
@@ -67,6 +79,10 @@ Command-line controls are also available:
 | `ShikiPad.exe --list-devices` | Enumerate HID devices |
 
 Accepted profile aliases include `ds5`, `ds5bt`, `ds4`, `ds4bt`, `xbox360`, `xbox360bt`, `xboxseries`, and `xboxseriesbt`.
+
+## Emergency Toggle
+
+Hold `Share/Create/View` and `Options/Menu` together for about 1 second to toggle ShikiPad on or off. Use this when you temporarily want the controller to pass through as a normal gamepad. Hold the same combination for about 1 second again to restore ShikiPad mapping.
 
 ## Home And Manual
 
@@ -83,6 +99,8 @@ Press `Enter` while ShikiPad is running to open the mapping manual. Press `Enter
 | PS Share/Create | `Right Alt` | Sony controllers only |
 | PS Options/Menu | `Right Ctrl` | Sony controllers only |
 | PS Home | `Right Shift` | Sony controllers only; Xbox Home is intercepted by Windows |
+
+Right-stick feel is one of ShikiPad's core interaction details: deadzone, power exponent, maximum speed, and sensitivity work together to define cursor movement. This release keeps the fixed power-curve execution path intact.
 
 ## Left Stick Functions
 

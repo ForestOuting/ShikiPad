@@ -43,6 +43,8 @@ internal sealed class MapperForm : Form {
     private bool _createKeyDown;
     private bool _optionsKeyDown;
     private bool _homeKeyDown;
+    private double _disableStartMs;
+    private bool _disableArmed = true;
     private volatile bool _manualVisible;
     private double _lastTickMs;
 
@@ -91,6 +93,11 @@ internal sealed class MapperForm : Form {
                                 Program.PrintDetailedManual(_controllerProfile, _config);
                                 _manualVisible = true;
                             }
+                        } else if (key.Key == ConsoleKey.Escape) {
+                            bool cleared = Program.ClearSavedDefaultControllerForRuntime();
+                            if (cleared) Logger.Info("default launch cleared from connected home");
+                            Program.PrintRunningHome(_controllerProfile, _config, _hid.DisplayName, _hid.State.Connected);
+                            _manualVisible = false;
                         }
                     }
                 } catch { }
@@ -150,6 +157,7 @@ internal sealed class MapperForm : Form {
         _prevL1 = s.L1;
         _prevR1 = s.R1;
 
+        UpdateEmergency(s, now);
         if (!s.Connected || !_enabled) {
             if (!s.Connected) _printedConnectedGuide = false;
             if (!_runtimeReleased) {
@@ -840,6 +848,28 @@ internal sealed class MapperForm : Form {
             keyDown = false;
         }
         prev = down;
+    }
+
+    private void UpdateEmergency(ControllerState s, double now) {
+        bool held = s.Options && s.Create;
+        if (!held) {
+            _disableStartMs = 0;
+            _disableArmed = true;
+            return;
+        }
+        if (_disableStartMs <= 0) {
+            _disableStartMs = now;
+            return;
+        }
+        if (_disableArmed && now - _disableStartMs >= 1000.0) {
+            _enabled = !_enabled;
+            _disableArmed = false;
+            if (!_enabled) {
+                ReleaseRuntimeHolds();
+                _runtimeReleased = true;
+            }
+            Logger.Info(_enabled ? "enabled" : "disabled");
+        }
     }
 
     private void ReleaseRuntimeHolds() {
