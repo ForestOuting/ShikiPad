@@ -122,8 +122,8 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/L1 \u6216 R2/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: brackets    L1+R2: quotes/slashes    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "\u56db\u4e2a\u7ec4\u5408\u5c42\u5747\u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u524d\u7f6e / \u540e\u7f6e", "\u52a8\u4f5c\u952e\u540e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u524d\u7f6e; \u677e\u5f00\u952e\u5c42\u540e " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u7a7a\u767d\u671f\u5f52\u5c5e", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Menu \u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b" : "\u89e6\u63a7\u677f\u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
@@ -134,8 +134,8 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  Base layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combo window", "R1/L1 or R2/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: brackets    L1+R2: quotes/slashes    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combo window", "All four combo layers must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Pre / post", "Pre " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after action; post " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after layer release", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Clutch", xbox ? "View/Menu short press=toggle clutch, long press=hold clutch" : "Touchpad short press=toggle clutch, long press=hold clutch; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
@@ -944,18 +944,18 @@ internal static class Program {
 
     private static void PrintLayerTest(Config config) {
         MappingEngine m = new MappingEngine();
-        Layer[] layers = new Layer[] { Layer.Base, Layer.L1, Layer.R1, Layer.L2, Layer.R2, Layer.R1L1, Layer.R2L2 };
+        Layer[] layers = new Layer[] { Layer.Base, Layer.L1, Layer.R1, Layer.L2, Layer.R2, Layer.R1L1, Layer.R2L2, Layer.L1R2, Layer.R1L2 };
         Console.WriteLine("Action button order: Up, Right, Square, Triangle, Left, Down, Cross, Circle");
         Console.WriteLine();
         for (int l = 0; l < layers.Length; l++) {
             Console.WriteLine(LayerDisplayName(layers[l]) + ":");
             for (int i = 0; i < 8; i++) {
-                PhysicalKey key = m.Lookup(layers[l], (ActionButton)i);
+                KeyStroke key = m.Lookup(layers[l], (ActionButton)i);
                 Console.WriteLine(((ActionButton)i).ToString() + " = " + LayerTestKeyName(key));
             }
             Console.WriteLine();
         }
-        Console.WriteLine("Layer priority: latest triggered layer wins; R1+L1 and R2+L2 activate only inside comboLayerWindowMs.");
+        Console.WriteLine("Layer priority: latest triggered layer wins; all combo layers activate only inside comboLayerWindowMs.");
         Console.WriteLine("actionLayerGraceMs = " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("actionLayerPostGraceMs = " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("layerTakeoverWindowMs = " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture));
@@ -974,13 +974,15 @@ internal static class Program {
         PrintResolutionCheck(config, m, "R2+L2 then R1 + Up", false, true, true, true, 0, 30, 20, 10, ActionButton.Up);
         PrintResolutionCheck(config, m, "R1 then R2 + Square", false, true, false, true, 0, 10, 0, 20, ActionButton.Square);
         PrintResolutionCheck(config, m, "L1 then L2 + Square", true, false, true, false, 10, 0, 20, 0, ActionButton.Square);
+        PrintResolutionCheck(config, m, "L1 then R2 inside window + Circle", true, false, false, true, 10, 0, 0, 20, ActionButton.Circle);
+        PrintResolutionCheck(config, m, "R1 then L2 inside window + Square", false, true, true, false, 0, 10, 20, 0, ActionButton.Square);
         Console.WriteLine();
         PrintPendingTimingChecks(config, m);
     }
 
     private static void PrintResolutionCheck(Config config, MappingEngine mapping, string label, bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, ActionButton action) {
         Layer layer = mapping.Resolve(l1, r1, l2, r2, l1Ms, r1Ms, l2Ms, r2Ms, config.ComboLayerWindowMs);
-        PhysicalKey key = mapping.Lookup(layer, action);
+        KeyStroke key = mapping.Lookup(layer, action);
         Console.WriteLine(label + " = " + LayerDisplayName(layer) + " / " + LayerTestKeyName(key));
     }
 
@@ -988,6 +990,7 @@ internal static class Program {
         Console.WriteLine("Pending timing checks:");
         bool ok = true;
         ok = PrintComboTakeoverCheck(config, mapping) && ok;
+        ok = PrintCrossComboPunctuationCheck(config, mapping) && ok;
         ok = PrintPostReleaseGraceCheck(config, mapping) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
         ok = PrintUserScenarioCheck(config, mapping) && ok;
@@ -1003,33 +1006,33 @@ internal static class Program {
         double lateL1Ms = config.ComboLayerWindowMs + 10.0;
 
         Layer crossStartLayer = mapping.Resolve(false, true, false, false, 0, r1Ms, 0, 0, config.ComboLayerWindowMs);
-        PhysicalKey crossStartKey = mapping.Lookup(crossStartLayer, ActionButton.Cross);
+        KeyStroke crossStartKey = mapping.Lookup(crossStartLayer, ActionButton.Cross);
         Layer afterQuickL1Layer = mapping.Resolve(true, true, false, false, quickL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
         Layer quickSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterQuickL1Layer, quickL1Ms, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
-        PhysicalKey quickSettledKey = mapping.Lookup(quickSettledLayer, ActionButton.Cross);
+        KeyStroke quickSettledKey = mapping.Lookup(quickSettledLayer, ActionButton.Cross);
         Layer afterLateL1Layer = mapping.Resolve(true, true, false, false, lateL1Ms, r1Ms, 0, 0, config.ComboLayerWindowMs);
         Layer lateSettledLayer = MapperForm.ResolvePendingLayer(crossStartLayer, crossStartLayer, crossMs, afterLateL1Layer, lateL1Ms, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
-        PhysicalKey lateSettledKey = mapping.Lookup(lateSettledLayer, ActionButton.Cross);
+        KeyStroke lateSettledKey = mapping.Lookup(lateSettledLayer, ActionButton.Cross);
 
         bool quickInsideCombo = quickL1Ms - r1Ms <= config.ComboLayerWindowMs;
         bool lateOutsideCombo = lateL1Ms - r1Ms > config.ComboLayerWindowMs;
         bool ok = quickInsideCombo
             && lateOutsideCombo
             && crossStartLayer == Layer.R1
-            && crossStartKey == PhysicalKey.H
+            && crossStartKey == KeyStroke.Of(PhysicalKey.H)
             && afterQuickL1Layer == Layer.R1L1
             && quickSettledLayer == Layer.R1L1
-            && quickSettledKey == PhysicalKey.Comma
+            && quickSettledKey == KeyStroke.Of(PhysicalKey.Comma)
             && afterLateL1Layer == Layer.L1
             && lateSettledLayer == Layer.R1
-            && lateSettledKey == PhysicalKey.H;
+            && lateSettledKey == KeyStroke.Of(PhysicalKey.H);
 
         Console.WriteLine("R1+Cross/A pending, L1 inside combo window = " +
                           LayerDisplayName(quickSettledLayer) + " / " + LayerTestKeyName(quickSettledKey) +
-                          (quickSettledKey == PhysicalKey.Comma ? " [PASS]" : " [FAIL]"));
+                          (quickSettledKey == KeyStroke.Of(PhysicalKey.Comma) ? " [PASS]" : " [FAIL]"));
         Console.WriteLine("R1+Cross/A pending, L1 after combo window = " +
                           LayerDisplayName(lateSettledLayer) + " / " + LayerTestKeyName(lateSettledKey) +
-                          (lateSettledKey == PhysicalKey.H ? " [PASS]" : " [FAIL]"));
+                          (lateSettledKey == KeyStroke.Of(PhysicalKey.H) ? " [PASS]" : " [FAIL]"));
         return ok;
     }
 
@@ -1063,18 +1066,18 @@ internal static class Program {
 
         // Update Sq with R1L1
         Layer sqFinal = MapperForm.ResolvePendingLayer(sqAfterL1, sqLayer, sqDown, r1l1Layer, r1Down, 0, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
-        PhysicalKey sqKey = mapping.Lookup(sqFinal, ActionButton.Square);
+        KeyStroke sqKey = mapping.Lookup(sqFinal, ActionButton.Square);
 
         // Update Cr with R1L1
         Layer crFinal = MapperForm.ResolvePendingLayer(crLayer, crLayer, crDown, r1l1Layer, r1Down, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
-        PhysicalKey crKey = mapping.Lookup(crFinal, ActionButton.Cross);
+        KeyStroke crKey = mapping.Lookup(crFinal, ActionButton.Cross);
 
         Console.WriteLine("Square resolved layer: " + LayerDisplayName(sqFinal));
         Console.WriteLine("Square resolved key: " + LayerTestKeyName(sqKey));
         Console.WriteLine("Cross resolved layer: " + LayerDisplayName(crFinal));
         Console.WriteLine("Cross resolved key: " + LayerTestKeyName(crKey));
 
-        bool pass = (sqKey == PhysicalKey.Num9);
+        bool pass = (sqKey == KeyStroke.Of(PhysicalKey.Num9));
         Console.WriteLine("User Scenario = " + (pass ? "PASS" : "FAIL"));
         return pass;
     }
@@ -1101,17 +1104,17 @@ internal static class Program {
         Layer triFinal = MapperForm.ResolvePendingLayer(triAfterL1, l2Layer, triDown, comboLayer, r1Down, 0, l2Up, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
         Layer crossFinal = MapperForm.ResolvePendingLayer(l1LayerAfterL2Up, l1LayerAfterL2Up, crossDown, comboLayer, r1Down, 0, 0, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
 
-        PhysicalKey sqKey = mapping.Lookup(sqFinal, ActionButton.Square);
-        PhysicalKey triKey = mapping.Lookup(triFinal, ActionButton.Triangle);
-        PhysicalKey crossKey = mapping.Lookup(crossFinal, ActionButton.Cross);
+        KeyStroke sqKey = mapping.Lookup(sqFinal, ActionButton.Square);
+        KeyStroke triKey = mapping.Lookup(triFinal, ActionButton.Triangle);
+        KeyStroke crossKey = mapping.Lookup(crossFinal, ActionButton.Cross);
 
         Console.WriteLine("Square resolved layer/key: " + LayerDisplayName(sqFinal) + " / " + LayerTestKeyName(sqKey));
         Console.WriteLine("Triangle resolved layer/key: " + LayerDisplayName(triFinal) + " / " + LayerTestKeyName(triKey));
         Console.WriteLine("Cross resolved layer/key: " + LayerDisplayName(crossFinal) + " / " + LayerTestKeyName(crossKey));
 
-        bool pass = sqKey == PhysicalKey.Num9 &&
-                    triKey == PhysicalKey.Num0 &&
-                    crossKey == PhysicalKey.Comma;
+        bool pass = sqKey == KeyStroke.Of(PhysicalKey.Num9) &&
+                    triKey == KeyStroke.Of(PhysicalKey.Num0) &&
+                    crossKey == KeyStroke.Of(PhysicalKey.Comma);
         Console.WriteLine("Requested Scenario = " + (pass ? "PASS" : "FAIL"));
         return pass;
     }
@@ -1126,8 +1129,8 @@ internal static class Program {
         bool ok = true;
         for (int i = 0; i < profiles.Length; i++) {
             Layer layer = mapping.Resolve(false, true, false, false, 0, 10, 0, 0, config.ComboLayerWindowMs);
-            PhysicalKey key = mapping.Lookup(layer, ActionButton.Cross);
-            bool profileOk = layer == Layer.R1 && key == PhysicalKey.H;
+            KeyStroke key = mapping.Lookup(layer, ActionButton.Cross);
+            bool profileOk = layer == Layer.R1 && key == KeyStroke.Of(PhysicalKey.H);
             string actionName = (profiles[i] == ControllerProfile.DualSense || profiles[i] == ControllerProfile.DualShock4) ? "Cross" : "A";
             Console.WriteLine(ControllerProfileName(profiles[i]) + " R1/RB + " + actionName + " = " +
                               LayerTestKeyName(key) + (profileOk ? " [PASS]" : " [FAIL]"));
@@ -1184,6 +1187,23 @@ internal static class Program {
         return ok;
     }
 
+    private static bool PrintCrossComboPunctuationCheck(Config config, MappingEngine mapping) {
+        Layer l1r2 = mapping.Resolve(true, false, false, true, 10, 0, 0, 20, config.ComboLayerWindowMs);
+        KeyStroke question = mapping.Lookup(l1r2, ActionButton.Circle);
+        Layer r1l2 = mapping.Resolve(false, true, true, false, 0, 10, 20, 0, config.ComboLayerWindowMs);
+        KeyStroke hash = mapping.Lookup(r1l2, ActionButton.Square);
+        bool ok = l1r2 == Layer.L1R2 &&
+                  question == KeyStroke.Shifted(PhysicalKey.Slash) &&
+                  r1l2 == Layer.R1L2 &&
+                  hash == KeyStroke.Shifted(PhysicalKey.Num3);
+
+        Console.WriteLine("L1+R2 Circle = " + LayerDisplayName(l1r2) + " / " + LayerTestKeyName(question) +
+                          (question == KeyStroke.Shifted(PhysicalKey.Slash) ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("R1+L2 Square = " + LayerDisplayName(r1l2) + " / " + LayerTestKeyName(hash) +
+                          (hash == KeyStroke.Shifted(PhysicalKey.Num3) ? " [PASS]" : " [FAIL]"));
+        return ok;
+    }
+
     private static bool PrintPostReleaseGraceCheck(Config config, MappingEngine mapping) {
         double oldLayerUpMs = 100.0;
         double actionMs = oldLayerUpMs + Math.Min(20.0, Math.Max(1.0, config.ActionLayerPostGraceMs - 1.0));
@@ -1195,15 +1215,15 @@ internal static class Program {
         Layer l1Layer = mapping.Resolve(true, false, false, false, newLayerMs, 0, 0, 0, config.ComboLayerWindowMs);
         Layer coveredByNewLayer = MapperForm.ResolvePendingLayer(initialInBlank, initialInBlank, actionMs, l1Layer, newLayerMs, oldLayerUpMs, oldLayerUpMs, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
 
-        PhysicalKey blankKey = mapping.Lookup(initialInBlank, ActionButton.Square);
+        KeyStroke blankKey = mapping.Lookup(initialInBlank, ActionButton.Square);
         bool ok = initialInBlank == Layer.L2 &&
-                  blankKey == PhysicalKey.Num9 &&
+                  blankKey == KeyStroke.Of(PhysicalKey.Num9) &&
                   initialExpired == Layer.Base &&
                   coveredByNewLayer == Layer.L1;
 
         Console.WriteLine("Post-release blank action = " +
                           LayerDisplayName(initialInBlank) + " / " + LayerTestKeyName(blankKey) +
-                          (initialInBlank == Layer.L2 && blankKey == PhysicalKey.Num9 ? " [PASS]" : " [FAIL]"));
+                          (initialInBlank == Layer.L2 && blankKey == KeyStroke.Of(PhysicalKey.Num9) ? " [PASS]" : " [FAIL]"));
         Console.WriteLine("Post-release grace expired = " +
                           LayerDisplayName(initialExpired) +
                           (initialExpired == Layer.Base ? " [PASS]" : " [FAIL]"));
@@ -1441,7 +1461,13 @@ internal static class Program {
     private static string LayerDisplayName(Layer layer) {
         if (layer == Layer.R1L1) return "R1+L1";
         if (layer == Layer.R2L2) return "R2+L2";
+        if (layer == Layer.L1R2) return "L1+R2";
+        if (layer == Layer.R1L2) return "R1+L2";
         return layer.ToString();
+    }
+
+    private static string LayerTestKeyName(KeyStroke stroke) {
+        return MappingEngine.KeyName(stroke);
     }
 
     private static string LayerTestKeyName(PhysicalKey key) {

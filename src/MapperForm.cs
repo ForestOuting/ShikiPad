@@ -318,14 +318,14 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private PhysicalKey ApplyFnLayer(PhysicalKey key) {
-        if (!_fnArmed) return key;
-        PhysicalKey fKey = TranslateToFKey(key);
-        return fKey != PhysicalKey.None ? fKey : key;
+    private KeyStroke ApplyFnLayer(KeyStroke stroke) {
+        if (!_fnArmed || stroke.Shift) return stroke;
+        PhysicalKey fKey = TranslateToFKey(stroke.Key);
+        return fKey != PhysicalKey.None ? KeyStroke.Of(fKey) : stroke;
     }
 
-    private static bool IsFunctionKey(PhysicalKey key) {
-        return key >= PhysicalKey.F1 && key <= PhysicalKey.F12;
+    private static bool IsFunctionKey(KeyStroke stroke) {
+        return !stroke.Shift && stroke.Key >= PhysicalKey.F1 && stroke.Key <= PhysicalKey.F12;
     }
 
     private static void AddUnique(List<PhysicalKey> keys, PhysicalKey key) {
@@ -348,7 +348,7 @@ internal sealed class MapperForm : Form {
             bool prev = _prevDown[i];
             bool curr = currentDown[i];
             ButtonHold hold = _holds[i];
-            PhysicalKey layerKey = ApplyFnLayer(_mapping.Lookup(layer, (ActionButton)i));
+            KeyStroke layerKey = ApplyFnLayer(_mapping.Lookup(layer, (ActionButton)i));
 
             if (hold.Pending) {
                 if (!curr && !hold.PendingReleased) {
@@ -367,8 +367,8 @@ internal sealed class MapperForm : Form {
                 Layer resolvedLayer = hold.PendingLayer != Layer.Base && hold.PendingLayer != Layer.Reserved
                     ? hold.PendingLayer
                     : (releasedPending ? hold.PendingLayer : layer);
-                PhysicalKey resolvedLayerKey = ApplyFnLayer(_mapping.Lookup(resolvedLayer, (ActionButton)i));
-                if (resolvedLayerKey != PhysicalKey.None) {
+                KeyStroke resolvedLayerKey = ApplyFnLayer(_mapping.Lookup(resolvedLayer, (ActionButton)i));
+                if (!resolvedLayerKey.IsNone) {
                     _fnArmed = false;
                     if (resolvedLayer != Layer.Base || IsFunctionKey(resolvedLayerKey)) {
                         TapActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " virtual tap");
@@ -411,7 +411,7 @@ internal sealed class MapperForm : Form {
 
             if (!prev && curr) {
                 Layer initialLayer = InitialActionLayer(layer, now);
-                PhysicalKey key = ApplyFnLayer(_mapping.Lookup(initialLayer, (ActionButton)i));
+                KeyStroke key = ApplyFnLayer(_mapping.Lookup(initialLayer, (ActionButton)i));
                 if (ShouldDeferInitialAction()) {
                     hold = new ButtonHold();
                     hold.Pending = true;
@@ -427,7 +427,7 @@ internal sealed class MapperForm : Form {
                 hold.Key = key;
                 hold.KeyIsDown = false;
 
-                if (key != PhysicalKey.None) {
+                if (!key.IsNone) {
                     _fnArmed = false;
                     if (layer != Layer.Base || IsFunctionKey(key)) {
                         TapActionKey(i, key, "Button " + ActionButtonName(i) + " virtual tap");
@@ -451,14 +451,14 @@ internal sealed class MapperForm : Form {
                     continue;
                 }
 
-                PhysicalKey currentLayerKey = layerKey;
+                KeyStroke currentLayerKey = layerKey;
 
                 if (hold.Key != currentLayerKey) {
                     if (hold.KeyLayer == Layer.Base && layer != Layer.Base) {
                         if (hold.KeyIsDown) {
                             ReleaseActionKey(i, hold.Key, "Button " + ActionButtonName(i) + " base release before layer change");
                         }
-                        hold.Key = PhysicalKey.None;
+                        hold.Key = KeyStroke.None;
                         hold.KeyIsDown = false;
                         hold.RepeatEnabled = false;
                         hold.SuppressUntilRelease = true;
@@ -469,7 +469,7 @@ internal sealed class MapperForm : Form {
 
                     if (hold.KeyIsDown && ShouldSuppressLayerChangeDuringCharacterTap(hold, layer, now)) {
                         ReleaseActionKey(i, hold.Key, "Button " + ActionButtonName(i) + " layer change suppress tap residue");
-                        hold.Key = PhysicalKey.None;
+                        hold.Key = KeyStroke.None;
                         hold.KeyIsDown = false;
                         hold.RepeatEnabled = false;
                         hold.SuppressUntilRelease = true;
@@ -484,7 +484,7 @@ internal sealed class MapperForm : Form {
                     }
 
                     if (layer != Layer.Base || IsFunctionKey(currentLayerKey)) {
-                        if (currentLayerKey != PhysicalKey.None) {
+                        if (!currentLayerKey.IsNone) {
                             _fnArmed = false;
                             TapActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change virtual tap");
                             hold.Key = currentLayerKey;
@@ -498,7 +498,7 @@ internal sealed class MapperForm : Form {
                         }
                     }
 
-                    if (currentLayerKey != PhysicalKey.None) {
+                    if (!currentLayerKey.IsNone) {
                         _fnArmed = false;
                         PressActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change press", ref hold, layer, layer == Layer.Base, now);
                     }
@@ -549,6 +549,8 @@ internal sealed class MapperForm : Form {
             case Layer.R2: return _r2DownMs;
             case Layer.R1L1: return Math.Max(_r1DownMs, _l1DownMs);
             case Layer.R2L2: return Math.Max(_r2DownMs, _l2DownMs);
+            case Layer.L1R2: return Math.Max(_l1DownMs, _r2DownMs);
+            case Layer.R1L2: return Math.Max(_r1DownMs, _l2DownMs);
             default: return 0.0;
         }
     }
@@ -561,6 +563,8 @@ internal sealed class MapperForm : Form {
             case Layer.R2: return _r2UpMs;
             case Layer.R1L1: return Math.Max(_r1UpMs, _l1UpMs);
             case Layer.R2L2: return Math.Max(_r2UpMs, _l2UpMs);
+            case Layer.L1R2: return Math.Max(_l1UpMs, _r2UpMs);
+            case Layer.R1L2: return Math.Max(_r1UpMs, _l2UpMs);
             default: return 0.0;
         }
     }
@@ -590,6 +594,8 @@ internal sealed class MapperForm : Form {
     private static bool IsComboComponent(Layer combo, Layer single) {
         if (combo == Layer.R1L1 && (single == Layer.R1 || single == Layer.L1)) return true;
         if (combo == Layer.R2L2 && (single == Layer.R2 || single == Layer.L2)) return true;
+        if (combo == Layer.L1R2 && (single == Layer.L1 || single == Layer.R2)) return true;
+        if (combo == Layer.R1L2 && (single == Layer.R1 || single == Layer.L2)) return true;
         return false;
     }
 
@@ -636,16 +642,17 @@ internal sealed class MapperForm : Form {
     }
 
     private static bool IsComboLayer(Layer layer) {
-        return layer == Layer.R1L1 || layer == Layer.R2L2;
+        return layer == Layer.R1L1 || layer == Layer.R2L2 || layer == Layer.L1R2 || layer == Layer.R1L2;
     }
 
-    private void PressActionKey(int index, PhysicalKey key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now) {
+    private void PressActionKey(int index, KeyStroke key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now) {
         string source = ActionSource(index);
         string btn = ActionButtonName(index);
         _injector.CurrentSource = source;
         _injector.CurrentReason = reason;
         DebugSources("Source=" + source + " Button=" + btn + " Mode=Held -> " + MappingEngine.KeyName(key) + "Down");
-        _injector.KeyDown(key);
+        if (key.Shift) _injector.KeyDown(PhysicalKey.LShift);
+        _injector.KeyDown(key.Key);
         hold.Key = key;
         hold.KeyLayer = keyLayer;
         hold.KeyIsDown = true;
@@ -655,28 +662,27 @@ internal sealed class MapperForm : Form {
         hold.NextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
     }
 
-    private void TapActionKey(int index, PhysicalKey key, string reason) {
+    private void TapActionKey(int index, KeyStroke key, string reason) {
         string source = ActionSource(index);
         string btn = ActionButtonName(index);
         _injector.CurrentSource = source;
         _injector.CurrentReason = reason;
         DebugSources("Source=" + source + " Button=" + btn + " Mode=Tap -> " + MappingEngine.KeyName(key));
-        _injector.KeyDown(key);
-        _injector.CurrentReason = reason + " release";
-        _injector.KeyUp(key);
+        _injector.KeyTap(key.Key, key.Shift, false, false, false);
     }
 
-    private void ReleaseActionKey(int index, PhysicalKey key, string reason) {
+    private void ReleaseActionKey(int index, KeyStroke key, string reason) {
         string source = ActionSource(index);
         string btn = ActionButtonName(index);
         DebugSources("Source=" + source + " Button=" + btn + " Mode=Held -> " + MappingEngine.KeyName(key) + "Up");
         _injector.CurrentSource = source;
         _injector.CurrentReason = reason;
-        _injector.KeyUp(key);
+        _injector.KeyUp(key.Key);
+        if (key.Shift) _injector.KeyUp(PhysicalKey.LShift);
     }
 
     private void UpdateBaseRepeat(int index, ref ButtonHold hold, double now) {
-        if (!hold.RepeatEnabled || !hold.KeyIsDown || hold.Key == PhysicalKey.None) return;
+        if (!hold.RepeatEnabled || !hold.KeyIsDown || hold.Key.IsNone) return;
         if (now < hold.NextRepeatMs) return;
 
         string source = ActionSource(index);
@@ -684,7 +690,7 @@ internal sealed class MapperForm : Form {
         _injector.CurrentSource = source;
         _injector.CurrentReason = "Button " + btn + " progressive repeat";
         DebugSources("Source=" + source + " Button=" + btn + " Mode=Repeat -> " + MappingEngine.KeyName(hold.Key) + "Down");
-        _injector.KeyDown(hold.Key);
+        _injector.KeyDown(hold.Key.Key);
 
         double heldMs = Math.Max(0.0, now - hold.RepeatStartedMs);
         double interval = BaseRepeatIntervalMs(heldMs);
@@ -832,9 +838,7 @@ internal sealed class MapperForm : Form {
     private void ReleaseHeldActionKeys() {
         for (int i = 0; i < _holds.Length; i++) {
             if (_holds[i].KeyIsDown) {
-                _injector.CurrentSource = "Release";
-                _injector.CurrentReason = "Runtime release " + ActionButtonName(i);
-                _injector.KeyUp(_holds[i].Key);
+                ReleaseActionKey(i, _holds[i].Key, "Runtime release " + ActionButtonName(i));
             }
             _holds[i] = new ButtonHold();
         }
@@ -870,7 +874,7 @@ internal sealed class MapperForm : Form {
     private static double Clamp(double value, double min, double max) { return value < min ? min : (value > max ? max : value); }
 
     private struct ButtonHold {
-        public PhysicalKey Key;
+        public KeyStroke Key;
         public Layer KeyLayer;
         public bool KeyIsDown;
         public bool SuppressUntilRelease;

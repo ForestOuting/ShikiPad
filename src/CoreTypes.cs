@@ -3,6 +3,50 @@ internal enum PhysicalKey {
       None, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9, Minus, Equals, LeftBracket, RightBracket, Backslash, Semicolon, Apostrophe, Comma, Period, Slash, Grave, Space, Backspace, Enter, Tab, Escape, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, LShift, RShift, LCtrl, RCtrl, LAlt, RAlt, LWin, RWin, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
     }
 
+internal struct KeyStroke {
+    public PhysicalKey Key;
+    public bool Shift;
+
+    public KeyStroke(PhysicalKey key, bool shift) {
+        Key = key;
+        Shift = shift;
+    }
+
+    public bool IsNone {
+        get { return Key == PhysicalKey.None; }
+    }
+
+    public static KeyStroke None {
+        get { return new KeyStroke(PhysicalKey.None, false); }
+    }
+
+    public static KeyStroke Of(PhysicalKey key) {
+        return new KeyStroke(key, false);
+    }
+
+    public static KeyStroke Shifted(PhysicalKey key) {
+        return new KeyStroke(key, true);
+    }
+
+    public override bool Equals(object obj) {
+        if (!(obj is KeyStroke)) return false;
+        KeyStroke other = (KeyStroke)obj;
+        return Key == other.Key && Shift == other.Shift;
+    }
+
+    public override int GetHashCode() {
+        return ((int)Key * 397) ^ (Shift ? 1 : 0);
+    }
+
+    public static bool operator ==(KeyStroke a, KeyStroke b) {
+        return a.Key == b.Key && a.Shift == b.Shift;
+    }
+
+    public static bool operator !=(KeyStroke a, KeyStroke b) {
+        return !(a == b);
+    }
+}
+
 internal enum Layer {
     Base,
     L1,
@@ -11,6 +55,8 @@ internal enum Layer {
     R2,
     R1L1,
     R2L2,
+    L1R2,
+    R1L2,
     Reserved
 }
 
