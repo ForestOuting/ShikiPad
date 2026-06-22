@@ -42,8 +42,8 @@ The ShikiPad console uses five page types:
 |---|---|---|
 | Startup | Every time ShikiPad opens | Read the launch hints, then continue to controller selection or default launch |
 | Controller selection | No default controller exists, or you choose again manually | Type `1` through `8`, then press `Enter` |
-| Default launch | A default controller profile is saved | Wait about 1.8 seconds to auto-start; press `Enter` to choose again, or `Esc` to clear the default |
-| Welcome home | The controller connects successfully | Press `Enter` to open the mapping manual; press `Esc` to clear default launch; close the window to exit |
+| Default launch | A default controller profile is saved | Wait about 1.8 seconds to auto-start, or press `Enter` to choose again |
+| Welcome home | The controller connects successfully | Press `Enter` to open the mapping manual; press `Esc` to clear default launch and return to controller selection; close the window to exit |
 | Mapping manual | After pressing `Enter` while running | Press `Enter` again to return to the ShikiPad home screen |
 
 | # | Controller | Connection |
@@ -66,7 +66,7 @@ When the prompt asks whether to save the selected controller as the default laun
 When a default is saved, ShikiPad waits about 1.8 seconds on the default launch prompt, then auto-starts with it.
 
 - Press `Enter` on the default launch page to choose another controller for this run and optionally save it as the new default.
-- Press `Esc` on the default launch page, or on the connected welcome home screen, to clear default launch so ShikiPad asks for a controller each time.
+- Press `Esc` on the connected welcome home screen to clear default launch and immediately return to the non-default controller selection flow. Future launches will ask for a controller each time.
 
 Command-line controls are also available:
 

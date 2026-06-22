@@ -48,6 +48,8 @@ internal sealed class MapperForm : Form {
     private volatile bool _manualVisible;
     private double _lastTickMs;
 
+    public bool RestartControllerSelectionRequested { get; private set; }
+
     public MapperForm(Config config, ControllerProfile controllerProfile, bool debugSources, bool traceInput, bool traceSendinput) {
         _config = config;
         _controllerProfile = controllerProfile;
@@ -93,11 +95,12 @@ internal sealed class MapperForm : Form {
                                 Program.PrintDetailedManual(_controllerProfile, _config);
                                 _manualVisible = true;
                             }
-                        } else if (key.Key == ConsoleKey.Escape) {
-                            bool cleared = Program.ClearSavedDefaultControllerForRuntime();
-                            if (cleared) Logger.Info("default launch cleared from connected home");
-                            Program.PrintRunningHome(_controllerProfile, _config, _hid.DisplayName, _hid.State.Connected);
-                            _manualVisible = false;
+                        } else if (key.Key == ConsoleKey.Escape && !_manualVisible) {
+                            if (Program.ClearSavedDefaultControllerForRuntime()) {
+                                Logger.Info("default launch cleared from connected home");
+                                RequestControllerSelectionRestart();
+                                break;
+                            }
                         }
                     }
                 } catch { }
@@ -106,6 +109,20 @@ internal sealed class MapperForm : Form {
         });
         guideThread.IsBackground = true;
         guideThread.Start();
+    }
+
+    private void RequestControllerSelectionRestart() {
+        RestartControllerSelectionRequested = true;
+        _manualVisible = false;
+        try {
+            if (IsHandleCreated) {
+                BeginInvoke((MethodInvoker)delegate { Close(); });
+            } else {
+                Close();
+            }
+        } catch {
+            try { Application.ExitThread(); } catch { }
+        }
     }
 
     private void PollLoop() {

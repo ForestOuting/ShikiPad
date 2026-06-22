@@ -45,10 +45,8 @@ internal static class Program {
         string[] logo = BuildShikiPadBlockLogo();
 
         try { Console.Clear(); } catch { }
-        WriteHudRail(width, panelWidth, zh ? "ShikiPad \u542f\u52a8\u4e2d" : "ShikiPad Booting", zh ? "\u63a7\u5236\u5668 \u00b7 \u952e\u76d8 \u00b7 \u9f20\u6807 \u00b7 \u6587\u5b57\u8f93\u5165" : "controller \u00b7 keyboard \u00b7 mouse \u00b7 text input");
-        WriteSignalWeave(width, panelWidth, 2, "BOOT");
-
-        WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u63a7\u5236\u754c\u9762" : "ShikiPad Control Surface");
+        Console.WriteLine();
+        WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u542f\u52a8\u4e2d" : "ShikiPad Booting");
 
         WriteExtrudedLogo(width, logo, SeasonFlowStops());
         WriteEmbossedCenteredText(width, panelWidth, zh ? "\u7528\u624b\u67c4\u5199\u5b57\uff0c\u7528\u6447\u6746\u63a7\u5236\u684c\u9762" : "TYPE WITH A CONTROLLER, STEER THE DESKTOP", SeasonGlowStops(), true);
@@ -61,7 +59,7 @@ internal static class Program {
         WritePanelTwinLine(width, panelWidth, zh ? "\u8fd0\u884c\u4e2d" : "While running", zh ? "Enter \u6253\u5f00\u8bf4\u660e / \u518d\u6309\u8fd4\u56de" : "Enter opens manual / returns home", zh ? "\u9000\u51fa" : "Exit", zh ? "\u5173\u95ed\u672c\u7a97\u53e3\u5373\u53ef\u91ca\u653e\u6309\u952e" : "Close this window to release held inputs", SeasonGold(), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
         WriteSeasonDropShadow(width, panelWidth);
-        WriteSignalWeave(width, panelWidth, 2, "READY");
+        FillViewportWithSignal(width, panelWidth, zh ? "ShikiPad \u5c06\u8fdb\u5165\u624b\u67c4\u9009\u62e9\u6216\u9ed8\u8ba4\u542f\u52a8" : "ShikiPad will continue to selection or default launch");
         Console.WriteLine("\x1b[0m");
     }
 
@@ -180,8 +178,7 @@ internal static class Program {
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(112, Math.Max(72, width - 6));
         bool zh = IsChineseUi();
-        WriteHudRail(width, panelWidth, zh ? "ShikiPad \u5df2\u8fde\u63a5" : "ShikiPad Connected", connected ? (zh ? "\u952e\u9f20\u6620\u5c04\u6b63\u5728\u8fd0\u884c" : "keyboard and mouse mapping is live") : (zh ? "\u7b49\u5f85\u624b\u67c4\u8fde\u63a5" : "waiting for controller"));
-        WriteSignalWeave(width, panelWidth, 1, "HOME");
+        Console.WriteLine();
         WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u5df2\u5c31\u7eea" : "ShikiPad Is Ready");
         WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
         Console.WriteLine();
@@ -192,7 +189,7 @@ internal static class Program {
         WritePanelTwinLine(width, panelWidth, zh ? "\u624b\u67c4" : "Controller", String.IsNullOrEmpty(deviceName) ? ControllerProfileName(profile) : deviceName, zh ? "\u72b6\u6001" : "Status", connected ? (zh ? "\u5df2\u8fde\u63a5\uff0c\u6b63\u5728\u6620\u5c04" : "Connected and mapping") : (zh ? "\u7b49\u5f85\u8fde\u63a5" : "Waiting"), new Rgb(113, 255, 194), new Rgb(245, 250, 255));
         WritePanelTwinLine(width, panelWidth, zh ? "\u8bf4\u660e" : "Manual", zh ? "Enter \u6253\u5f00 / Enter \u8fd4\u56de" : "Enter opens / Enter returns", zh ? "\u9000\u51fa" : "Exit", zh ? "\u5173\u95ed\u7a97\u53e3\uff0c\u81ea\u52a8\u91ca\u653e\u6309\u952e" : "Close window; inputs release", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
         bool hasDefault = HasDefaultControllerForRuntime();
-        WritePanelLine(width, panelWidth, zh ? "  \u9ed8\u8ba4\u542f\u52a8" : "  Default launch", hasDefault ? (zh ? "Esc \u5173\u95ed\u9ed8\u8ba4\uff0c\u4e0b\u6b21\u542f\u52a8\u91cd\u65b0\u9009\u62e9" : "Esc clears it; next launch asks again") : (zh ? "\u5df2\u5173\u95ed\uff1b\u4e0b\u6b21\u542f\u52a8\u4f1a\u663e\u793a\u624b\u67c4\u9009\u62e9" : "Off; next launch will show controller selection"), SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, zh ? "  \u9ed8\u8ba4\u542f\u52a8" : "  Default launch", hasDefault ? (zh ? "Esc \u6e05\u9664\u9ed8\u8ba4\u5e76\u56de\u5230\u624b\u67c4\u9009\u62e9" : "Esc clears default and returns to selection") : (zh ? "\u5df2\u5173\u95ed\uff1b\u4e0b\u6b21\u542f\u52a8\u4f1a\u663e\u793a\u624b\u67c4\u9009\u62e9" : "Off; next launch will show controller selection"), SeasonGold(), new Rgb(245, 250, 255));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
         WritePanelSectionTitle(width, panelWidth, zh ? "> \u5feb\u901f\u5730\u56fe" : "> Quick Map", zh ? "\u5f00\u59cb\u4f7f\u7528\u65f6\u5148\u8bb0\u4f4f\u8fd9\u51e0\u4e2a\u533a\u5757" : "Keep these anchors in mind while using ShikiPad.");
         WritePanelTwinLine(width, panelWidth, zh ? "\u6253\u5b57" : "Typing", "L1/R1/L2/R2 + " + (IsXboxProfile(profile) ? "D-pad/X/Y/A/B" : "D-pad/\u25a1/\u25b3/\u00d7/\u25cb"), zh ? "\u9f20\u6807" : "Mouse", zh ? "\u53f3\u6447\u6746\u79fb\u52a8\uff0cL3/R3 \u70b9\u51fb" : "Right stick moves; L3/R3 click", SeasonGold(), new Rgb(245, 250, 255));
@@ -217,8 +214,8 @@ internal static class Program {
     private static void PrintDefaultLaunchSurface(int width, int panelWidth, ControllerProfile savedDefault) {
         bool zh = IsChineseUi();
         try { Console.Clear(); } catch { }
-        WriteHudRail(width, panelWidth, zh ? "\u9ed8\u8ba4\u624b\u67c4\u542f\u52a8" : "Default Controller Launch", zh ? "\u81ea\u52a8\u8fdb\u5165 ShikiPad" : "auto-starting ShikiPad");
-        WriteSignalWeave(width, panelWidth, 2, "DEFAULT");
+        Console.WriteLine();
+        WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u9ed8\u8ba4\u542f\u52a8" : "ShikiPad Default Launch");
         WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
         WriteEmbossedCenteredText(width, panelWidth, zh ? "\u5df2\u8bb0\u4f4f\u4f60\u7684\u624b\u67c4\u578b\u53f7" : "YOUR CONTROLLER PROFILE IS SAVED", SeasonGlowStops(), true);
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
@@ -227,10 +224,9 @@ internal static class Program {
         WritePanelLine(width, panelWidth, zh ? "  \u9ed8\u8ba4\u624b\u67c4" : "  Saved profile", ControllerProfileName(savedDefault), SeasonGold(), new Rgb(245, 250, 255));
         WritePanelLine(width, panelWidth, zh ? "  \u81ea\u52a8\u7ee7\u7eed" : "  Auto start", zh ? "\u7ea6 1.8 \u79d2\u540e\u76f4\u63a5\u542f\u52a8\uff0c\u65e0\u9700\u518d\u8f93\u5165" : "Continues in about 1.8 seconds with no input", SeasonSpring(), new Rgb(245, 250, 255));
         WritePanelLine(width, panelWidth, zh ? "  \u91cd\u65b0\u9009\u62e9" : "  Choose again", zh ? "\u6309 Enter \u8fdb\u5165\u624b\u67c4\u9009\u62e9" : "Press Enter to open controller selection", SeasonSummer(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, zh ? "  \u5173\u95ed\u9ed8\u8ba4" : "  Clear default", zh ? "\u6309 Esc \u5173\u95ed\u9ed8\u8ba4\u542f\u52a8\uff0c\u4ee5\u540e\u6bcf\u6b21\u91cd\u65b0\u9009\u62e9" : "Press Esc to ask every time again", SeasonAutumn(), new Rgb(245, 250, 255));
         WritePanelLine(width, panelWidth, zh ? "  \u4ec5\u672c\u6b21" : "  One run", zh ? "\u547d\u4ee4\u884c --controller ds5 \u4ec5\u6539\u53d8\u672c\u6b21\u542f\u52a8" : "--controller changes only the current run", SeasonAutumn(), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
-        FillViewportWithSignal(width, panelWidth, zh ? "Enter \u91cd\u65b0\u9009\u62e9 / Esc \u5173\u95ed\u9ed8\u8ba4\u542f\u52a8" : "Enter chooses again / Esc clears default launch");
+        FillViewportWithSignal(width, panelWidth, zh ? "\u8fde\u63a5\u540e\u53ef\u5728\u4e3b\u754c\u9762\u7ba1\u7406\u9ed8\u8ba4\u542f\u52a8" : "Default launch is managed from the home screen after connection");
         Console.WriteLine("\x1b[0m");
     }
 
@@ -781,29 +777,43 @@ internal static class Program {
             return 0;
         }
 
-        ControllerProfile controllerProfile = SelectControllerProfile(args, root);
-        Logger.Info("startup");
-        Logger.Info("controller profile: " + ControllerProfileName(controllerProfile));
-        Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
-                    ", rightStickCurve = " + config.RightStickCurve +
-                    ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
-                    ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
-                    ", mouseSensitivity = " + config.MouseSensitivity.ToString(CultureInfo.InvariantCulture) +
-                    ", neutralCalibration = enabled");
-        Logger.Info("scroll settings: mouseScrollCurveExponent = " + config.MouseScrollCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
-                    ", leftStickEnterDeadzone = " + config.LeftStickEnterDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
-                    ", leftStickExitDeadzone = " + config.LeftStickExitDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
-                    ", scrollSlowIntervalMs = " + config.ScrollSlowIntervalMs.ToString(CultureInfo.InvariantCulture) +
-                    ", scrollFastIntervalMs = " + config.ScrollFastIntervalMs.ToString(CultureInfo.InvariantCulture));
-        Logger.Info("left stick modifiers = physical held keys");
         if (debugSources) Logger.Info("debug-sources enabled");
         if (traceInput) Logger.Info("trace-input enabled");
         if (traceSendinput) Logger.Info("trace-sendinput enabled");
 
-        PrintRunHint();
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        Application.Run(new MapperForm(config, controllerProfile, debugSources, traceInput, traceSendinput));
+
+        string[] selectionArgs = args;
+        bool forceControllerMenuAfterRestart = false;
+        while (true) {
+            if (forceControllerMenuAfterRestart) {
+                PrintGradientBanner();
+                selectionArgs = new string[] { "--controller-menu" };
+            }
+
+            ControllerProfile controllerProfile = SelectControllerProfile(selectionArgs, root);
+            Logger.Info("startup");
+            Logger.Info("controller profile: " + ControllerProfileName(controllerProfile));
+            Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
+                        ", rightStickCurve = " + config.RightStickCurve +
+                        ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
+                        ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
+                        ", mouseSensitivity = " + config.MouseSensitivity.ToString(CultureInfo.InvariantCulture) +
+                        ", neutralCalibration = enabled");
+            Logger.Info("scroll settings: mouseScrollCurveExponent = " + config.MouseScrollCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
+                        ", leftStickEnterDeadzone = " + config.LeftStickEnterDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
+                        ", leftStickExitDeadzone = " + config.LeftStickExitDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
+                        ", scrollSlowIntervalMs = " + config.ScrollSlowIntervalMs.ToString(CultureInfo.InvariantCulture) +
+                        ", scrollFastIntervalMs = " + config.ScrollFastIntervalMs.ToString(CultureInfo.InvariantCulture));
+            Logger.Info("left stick modifiers = physical held keys");
+
+            PrintRunHint();
+            MapperForm form = new MapperForm(config, controllerProfile, debugSources, traceInput, traceSendinput);
+            Application.Run(form);
+            if (!form.RestartControllerSelectionRequested) break;
+            forceControllerMenuAfterRestart = true;
+        }
         return 0;
     }
 
@@ -854,13 +864,8 @@ internal static class Program {
         if (hasSavedDefault && !forceMenu) {
             bool inputRedirected = false;
             try { inputRedirected = Console.IsInputRedirected; } catch { }
-            bool defaultCleared;
-            if (inputRedirected || !ShouldOpenControllerMenuForDefault(savedDefault, defaultPath, out defaultCleared)) {
+            if (inputRedirected || !ShouldOpenControllerMenuForDefault(savedDefault)) {
                 return savedDefault;
-            }
-            if (defaultCleared) {
-                hasSavedDefault = false;
-                savedDefault = ControllerProfile.DualSense;
             }
         }
 
@@ -956,8 +961,7 @@ internal static class Program {
         }
     }
 
-    private static bool ShouldOpenControllerMenuForDefault(ControllerProfile savedDefault, string defaultPath, out bool defaultCleared) {
-        defaultCleared = false;
+    private static bool ShouldOpenControllerMenuForDefault(ControllerProfile savedDefault) {
         EnableAnsi();
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(104, Math.Max(66, width - 6));
@@ -969,12 +973,6 @@ internal static class Program {
                 if (Console.KeyAvailable) {
                     ConsoleKeyInfo key = Console.ReadKey(true);
                     if (key.Key == ConsoleKey.Enter) return true;
-                    if (key.Key == ConsoleKey.Escape) {
-                        ClearDefaultControllerProfile(defaultPath);
-                        PrintDefaultControllerCleared();
-                        defaultCleared = true;
-                        return true;
-                    }
                 }
             } catch {
                 return false;
