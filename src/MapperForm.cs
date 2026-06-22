@@ -635,16 +635,23 @@ internal sealed class MapperForm : Form {
         }
     }
 
+    private double ComboUpTimestamp(double t1, double t2) {
+        if (t1 == 0 && t2 == 0) return 0.0;
+        if (t1 == 0) return t2;
+        if (t2 == 0) return t1;
+        return Math.Min(t1, t2);
+    }
+
     private double LayerUpTimestamp(Layer layer) {
         switch (layer) {
             case Layer.L1: return _l1UpMs;
             case Layer.R1: return _r1UpMs;
             case Layer.L2: return _l2UpMs;
             case Layer.R2: return _r2UpMs;
-            case Layer.R1L1: return Math.Max(_r1UpMs, _l1UpMs);
-            case Layer.R2L2: return Math.Max(_r2UpMs, _l2UpMs);
-            case Layer.L1R2: return Math.Max(_l1UpMs, _r2UpMs);
-            case Layer.R1L2: return Math.Max(_r1UpMs, _l2UpMs);
+            case Layer.R1L1: return ComboUpTimestamp(_r1UpMs, _l1UpMs);
+            case Layer.R2L2: return ComboUpTimestamp(_r2UpMs, _l2UpMs);
+            case Layer.L1R2: return ComboUpTimestamp(_l1UpMs, _r2UpMs);
+            case Layer.R1L2: return ComboUpTimestamp(_r1UpMs, _l2UpMs);
             default: return 0.0;
         }
     }
@@ -708,9 +715,6 @@ internal sealed class MapperForm : Form {
         if (overlap > takeoverWindowMs) {
             return effectivePendingLayer;
         }
-
-        bool pendingCombo = IsComboLayer(effectivePendingLayer);
-        if (pendingCombo && !layerCombo) return effectivePendingLayer;
 
         return layer;
     }
