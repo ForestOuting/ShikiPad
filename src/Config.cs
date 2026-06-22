@@ -5,11 +5,13 @@ using System.IO;
 using System.Text;
 
 internal sealed class Config {
-    private const int CurrentConfigVersion = 6;
+    private const int CurrentConfigVersion = 7;
     private const double DefaultMouseScrollCurveExponent = 3.0;
     private const int DefaultScrollSlowIntervalMs = 160;
     private const int DefaultScrollFastIntervalMs = 18;
-    private const int DefaultComboLayerWindowMs = 30;
+    private const int DefaultComboLayerWindowMs = 35;
+    private const double DefaultTriggerPressThreshold = 0.0;
+    private const double DefaultTriggerReleaseThreshold = 0.0;
     private const int DefaultLayerTakeoverWindowMs = 30;
     private const int DefaultActionLayerPostGraceMs = 35;
     private const int DefaultRepeatIntervalMs = 32;
@@ -27,8 +29,8 @@ internal sealed class Config {
     public double MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.25;
-    public double TriggerPressThreshold = 0.1;
-    public double TriggerReleaseThreshold = 0.05;
+    public double TriggerPressThreshold = DefaultTriggerPressThreshold;
+    public double TriggerReleaseThreshold = DefaultTriggerReleaseThreshold;
     public int RepeatDelayMs = 300;
     public int RepeatIntervalMs = DefaultRepeatIntervalMs;
     public int BaseRepeatSlowIntervalMs = DefaultBaseRepeatSlowIntervalMs;
@@ -161,10 +163,15 @@ internal sealed class Config {
                 cfg.LeftStickExitDeadzone = 0.25;
                 shouldSaveConfig = true;
             }
-            if (cfg.TriggerPressThreshold <= 0.0 || cfg.TriggerPressThreshold > 1.0 || cfg.TriggerReleaseThreshold < 0.0 || cfg.TriggerReleaseThreshold >= cfg.TriggerPressThreshold) {
-                Logger.Warn("invalid trigger thresholds; using 0.1 / 0.05");
-                cfg.TriggerPressThreshold = 0.1;
-                cfg.TriggerReleaseThreshold = 0.05;
+            if (Double.IsNaN(cfg.TriggerPressThreshold) || Double.IsInfinity(cfg.TriggerPressThreshold) ||
+                Double.IsNaN(cfg.TriggerReleaseThreshold) || Double.IsInfinity(cfg.TriggerReleaseThreshold) ||
+                cfg.TriggerPressThreshold < 0.0 || cfg.TriggerPressThreshold > 1.0 ||
+                cfg.TriggerReleaseThreshold < 0.0 || cfg.TriggerReleaseThreshold > cfg.TriggerPressThreshold) {
+                Logger.Warn("invalid trigger thresholds; using " +
+                            DefaultTriggerPressThreshold.ToString("0.###", CultureInfo.InvariantCulture) + " / " +
+                            DefaultTriggerReleaseThreshold.ToString("0.###", CultureInfo.InvariantCulture));
+                cfg.TriggerPressThreshold = DefaultTriggerPressThreshold;
+                cfg.TriggerReleaseThreshold = DefaultTriggerReleaseThreshold;
                 shouldSaveConfig = true;
             }
             if (cfg.RepeatDelayMs < 0) {
@@ -333,6 +340,14 @@ internal sealed class Config {
         }
         if (cfg.ComboLayerWindowMs == 35) {
             cfg.ComboLayerWindowMs = DefaultComboLayerWindowMs;
+        }
+        if (cfg.ComboLayerWindowMs == 30) {
+            cfg.ComboLayerWindowMs = DefaultComboLayerWindowMs;
+        }
+        if (Math.Abs(cfg.TriggerPressThreshold - 0.1) < 0.000001 &&
+            Math.Abs(cfg.TriggerReleaseThreshold - 0.05) < 0.000001) {
+            cfg.TriggerPressThreshold = DefaultTriggerPressThreshold;
+            cfg.TriggerReleaseThreshold = DefaultTriggerReleaseThreshold;
         }
         if (cfg.RepeatIntervalMs == 20) {
             cfg.RepeatIntervalMs = DefaultRepeatIntervalMs;

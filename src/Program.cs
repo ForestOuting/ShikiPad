@@ -122,7 +122,8 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: brackets    L1+R2: quotes/slashes    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42 1", "R1+L1: 7 8 9 0 - = , .    R2+L2: < ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42 2", "L1+R2: ` \\ ' \" ; ~ / ?    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "\u56db\u4e2a\u7ec4\u5408\u5c42\u5747\u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u524d\u7f6e / \u540e\u7f6e", "\u52a8\u4f5c\u952e\u540e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u524d\u7f6e; \u677e\u5f00\u952e\u5c42\u540e " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u7a7a\u767d\u671f\u5f52\u5c5e", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Menu \u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b" : "\u89e6\u63a7\u677f\u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
@@ -134,7 +135,8 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  Base layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: brackets    L1+R2: quotes/slashes    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combos 1", "R1+L1: 7 8 9 0 - = , .    R2+L2: < ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Combos 2", "L1+R2: ` \\ ' \" ; ~ / ?    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combo window", "All four combo layers must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Pre / post", "Pre " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after action; post " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after layer release", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Clutch", xbox ? "View/Menu short press=toggle clutch, long press=hold clutch" : "Touchpad short press=toggle clutch, long press=hold clutch; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
@@ -992,6 +994,7 @@ internal static class Program {
         ok = PrintComboTakeoverCheck(config, mapping) && ok;
         ok = PrintCrossComboPunctuationCheck(config, mapping) && ok;
         ok = PrintPostReleaseGraceCheck(config, mapping) && ok;
+        ok = PrintTriggerThresholdCheck(config) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
         ok = PrintUserScenarioCheck(config, mapping) && ok;
         ok = PrintRequestedLayerScenarioCheck(config, mapping) && ok;
@@ -1184,6 +1187,16 @@ internal static class Program {
         Console.WriteLine("rightStickBoundaryNoise = " + (boundaryNoiseOk ? "PASS" : "FAIL"));
         Console.WriteLine("rightStickFirstMoveMs = " + firstMoveMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("rightStickMotion = " + (ok ? "PASS" : "FAIL"));
+        return ok;
+    }
+
+    private static bool PrintTriggerThresholdCheck(Config config) {
+        bool zeroPresses = MapperForm.IsTriggerPressed(0.001, config.TriggerPressThreshold);
+        bool zeroDoesNotPress = !MapperForm.IsTriggerPressed(0.0, config.TriggerPressThreshold);
+        bool zeroReleases = MapperForm.IsTriggerReleased(0.0, config.TriggerReleaseThreshold);
+        bool positiveDoesNotRelease = !MapperForm.IsTriggerReleased(0.001, config.TriggerReleaseThreshold);
+        bool ok = zeroPresses && zeroDoesNotPress && zeroReleases && positiveDoesNotRelease;
+        Console.WriteLine("Trigger any-positive input = " + (ok ? "PASS" : "FAIL"));
         return ok;
     }
 

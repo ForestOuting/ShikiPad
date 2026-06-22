@@ -148,17 +148,17 @@ To prevent accidental repeats during fast typing, **all Character Layer inputs a
 
 ShikiPad uses a precise timing system to correctly determine whether you intended to press a "base key" or a "character key":
 
-> **Note: The combo layer window has been changed from 25ms to 30ms.**
+> **Note: The combo layer window has been changed from 30ms to 35ms.**
 
 
 | Parameter | Default | Purpose |
 |---|---|---|
-| `comboLayerWindowMs` | 30ms | R1+L1, R2+L2, L1+R2, or R1+L2 must be pressed within this time gap to be recognized as a combo layer |
+| `comboLayerWindowMs` | 35ms | R1+L1, R2+L2, L1+R2, or R1+L2 must be pressed within this time gap to be recognized as a combo layer |
 | `actionLayerGraceMs` | 35ms | Pre-confirmation window. After an action button is pressed, a shoulder/trigger pressed within this window can still define the final layer |
 | `actionLayerPostGraceMs` | 35ms | Post-release attribution window. After a layer modifier is released, action buttons pressed during this blank gap start as the released layer unless a later pre-confirmed layer covers them |
 | `layerTakeoverWindowMs` | 30ms | Held-layer takeover window. The maximum allowed takeover overlap is 30ms, but whether a takeover actually happens is decided by the independent pending-layer resolution logic. This does not include the post-release blank gap |
 
-In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **30ms** pairing window, and held-layer takeover allows **30ms** of overlap.
+In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **35ms** pairing window, and held-layer takeover allows **30ms** of overlap.
 
 ---
 
@@ -190,14 +190,14 @@ See `shikipad.example.json` for a clean default template.
 
 | Parameter | Default | Description |
 |---|---|---|
-| `triggerPressThreshold` | `0.1` | L2/R2 "pressed" threshold |
-| `triggerReleaseThreshold` | `0.05` | L2/R2 "released" threshold (lower than press to create hysteresis and prevent jitter) |
+| `triggerPressThreshold` | `0` | L2/R2 "pressed" threshold. `0` means any positive analog trigger input counts as pressed |
+| `triggerReleaseThreshold` | `0` | L2/R2 "released" threshold. With the default `0`, the trigger releases only after it returns to zero |
 
 ### Typing & Layers
 
 | Parameter | Default | Description |
 |---|---|---|
-| `comboLayerWindowMs` | `30` | Max time gap (ms) for R1+L1, R2+L2, L1+R2, or R1+L2 to trigger a combo layer |
+| `comboLayerWindowMs` | `35` | Max time gap (ms) for R1+L1, R2+L2, L1+R2, or R1+L2 to trigger a combo layer |
 | `actionLayerGraceMs` | `35` | Pre-confirmation window (ms). After an action button is pressed, a new layer pressed within this window may cover it |
 | `actionLayerPostGraceMs` | `35` | Post-release attribution window (ms). Starts after the layer modifier is released and covers only the blank gap before another layer is pressed |
 | `layerTakeoverWindowMs` | `30` | Held-layer takeover window (ms). 30ms is the maximum allowed overlap; final takeover still depends on pending-layer resolution, and this does not include the post-release blank gap |
@@ -219,7 +219,7 @@ See `shikipad.example.json` for a clean default template.
 
 | Parameter | Default | Description |
 |---|---|---|
-| `configVersion` | `6` | Config file schema marker. Keep this value unless release notes say otherwise |
+| `configVersion` | `7` | Config file schema marker. Keep this value unless release notes say otherwise |
 | `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
 | `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
 

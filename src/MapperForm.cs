@@ -154,23 +154,33 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
-        if (!_l2Pressed && s.L2 > _config.TriggerPressThreshold) {
+        if (!_l2Pressed && IsTriggerPressed(s.L2, _config.TriggerPressThreshold)) {
             _l2Pressed = true;
             _l2DownMs = now;
             _l2UpMs = 0;
-        } else if (_l2Pressed && s.L2 < _config.TriggerReleaseThreshold) {
+        } else if (_l2Pressed && IsTriggerReleased(s.L2, _config.TriggerReleaseThreshold)) {
             _l2Pressed = false;
             _l2UpMs = now;
         }
 
-        if (!_r2Pressed && s.R2 > _config.TriggerPressThreshold) {
+        if (!_r2Pressed && IsTriggerPressed(s.R2, _config.TriggerPressThreshold)) {
             _r2Pressed = true;
             _r2DownMs = now;
             _r2UpMs = 0;
-        } else if (_r2Pressed && s.R2 < _config.TriggerReleaseThreshold) {
+        } else if (_r2Pressed && IsTriggerReleased(s.R2, _config.TriggerReleaseThreshold)) {
             _r2Pressed = false;
             _r2UpMs = now;
         }
+    }
+
+    internal static bool IsTriggerPressed(double value, double threshold) {
+        double press = Math.Max(0.0, threshold);
+        return value > press;
+    }
+
+    internal static bool IsTriggerReleased(double value, double threshold) {
+        double release = Math.Max(0.0, threshold);
+        return value <= release;
     }
 
     private void UpdateClutchButton(ControllerState s, double now) {
