@@ -992,9 +992,11 @@ internal static class Program {
         Console.WriteLine("Pending timing checks:");
         bool ok = true;
         ok = PrintComboTakeoverCheck(config, mapping) && ok;
+        ok = PrintBidirectionalComboOrderCheck(config, mapping) && ok;
         ok = PrintCrossComboPunctuationCheck(config, mapping) && ok;
         ok = PrintPostReleaseGraceCheck(config, mapping) && ok;
         ok = PrintTriggerThresholdCheck(config) && ok;
+        ok = PrintDigitalTriggerReportCheck(config, mapping) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
         ok = PrintUserScenarioCheck(config, mapping) && ok;
         ok = PrintRequestedLayerScenarioCheck(config, mapping) && ok;
@@ -1187,6 +1189,50 @@ internal static class Program {
         Console.WriteLine("rightStickBoundaryNoise = " + (boundaryNoiseOk ? "PASS" : "FAIL"));
         Console.WriteLine("rightStickFirstMoveMs = " + firstMoveMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("rightStickMotion = " + (ok ? "PASS" : "FAIL"));
+        return ok;
+    }
+
+    private static bool PrintDigitalTriggerReportCheck(Config config, MappingEngine mapping) {
+        byte[] dualSense = NeutralDualSenseReport();
+        dualSense[5] = 0;
+        dualSense[9] = 0x04;
+        ControllerState dualSenseState;
+        bool dualSenseParsed = DirectHidController.TryParseDualSenseReport(dualSense, ControllerProfile.DualSense, out dualSenseState);
+
+        byte[] dualShock4 = NeutralDualShock4Report();
+        dualShock4[8] = 0;
+        dualShock4[6] = 0x04;
+        ControllerState dualShock4State;
+        bool dualShock4Parsed = DirectHidController.TryParseDualSenseReport(dualShock4, ControllerProfile.DualShock4, out dualShock4State);
+
+        bool ds5L2 = dualSenseParsed && MapperForm.IsTriggerPressed(dualSenseState.L2, config.TriggerPressThreshold);
+        bool ds4L2 = dualShock4Parsed && MapperForm.IsTriggerPressed(dualShock4State.L2, config.TriggerPressThreshold);
+        Layer l2ThenR1 = mapping.Resolve(false, true, ds5L2, false, 0, 20, 0, 0, config.ComboLayerWindowMs);
+        bool ok = ds5L2 && ds4L2 && l2ThenR1 == Layer.R1L2;
+
+        Console.WriteLine("Sony digital L2 with zero analog = " + (ds5L2 && ds4L2 ? "PASS" : "FAIL"));
+        Console.WriteLine("Digital L2 then R1 combo = " + LayerDisplayName(l2ThenR1) + (l2ThenR1 == Layer.R1L2 ? " [PASS]" : " [FAIL]"));
+        return ok;
+    }
+
+    private static bool PrintBidirectionalComboOrderCheck(Config config, MappingEngine mapping) {
+        double firstMs = 10.0;
+        double secondMs = firstMs + Math.Max(1.0, Math.Min(20.0, config.ComboLayerWindowMs - 1.0));
+
+        Layer r1ThenL2 = mapping.Resolve(false, true, true, false, 0, firstMs, secondMs, 0, config.ComboLayerWindowMs);
+        Layer l2ThenR1 = mapping.Resolve(false, true, true, false, 0, secondMs, firstMs, 0, config.ComboLayerWindowMs);
+        Layer l1ThenR2 = mapping.Resolve(true, false, false, true, firstMs, 0, 0, secondMs, config.ComboLayerWindowMs);
+        Layer r2ThenL1 = mapping.Resolve(true, false, false, true, secondMs, 0, 0, firstMs, config.ComboLayerWindowMs);
+
+        bool ok = r1ThenL2 == Layer.R1L2 &&
+                  l2ThenR1 == Layer.R1L2 &&
+                  l1ThenR2 == Layer.L1R2 &&
+                  r2ThenL1 == Layer.L1R2;
+
+        Console.WriteLine("R1 then L2 combo = " + LayerDisplayName(r1ThenL2) + (r1ThenL2 == Layer.R1L2 ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("L2 then R1 combo = " + LayerDisplayName(l2ThenR1) + (l2ThenR1 == Layer.R1L2 ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("L1 then R2 combo = " + LayerDisplayName(l1ThenR2) + (l1ThenR2 == Layer.L1R2 ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("R2 then L1 combo = " + LayerDisplayName(r2ThenL1) + (r2ThenL1 == Layer.L1R2 ? " [PASS]" : " [FAIL]"));
         return ok;
     }
 
@@ -1423,6 +1469,17 @@ internal static class Program {
         report[3] = 128;
         report[4] = 128;
         report[8] = 0x08;
+        return report;
+    }
+
+    private static byte[] NeutralDualShock4Report() {
+        byte[] report = new byte[64];
+        report[0] = 0x01;
+        report[1] = 128;
+        report[2] = 128;
+        report[3] = 128;
+        report[4] = 128;
+        report[5] = 0x08;
         return report;
     }
 

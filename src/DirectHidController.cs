@@ -287,14 +287,13 @@ internal sealed class DirectHidController {
             s.RX = Axis(r[3]);
             s.RY = Axis(r[4]);
 
-            s.L2 = Trigger(r[8]);
-            s.R2 = Trigger(r[9]);
-
             FillDpadAndFace(s, r[5]);
 
             byte b2 = r[6];
             s.L1 = (b2 & 0x01) != 0;
             s.R1 = (b2 & 0x02) != 0;
+            s.L2 = Trigger(r[8], (b2 & 0x04) != 0);
+            s.R2 = Trigger(r[9], (b2 & 0x08) != 0);
             s.Create = (b2 & 0x10) != 0;
             s.Options = (b2 & 0x20) != 0;
             s.L3 = (b2 & 0x40) != 0;
@@ -331,18 +330,17 @@ internal sealed class DirectHidController {
                     s.TouchClick = (r[offset + 6] & 0x02) != 0;
                 }
 
-                s.L2 = Trigger(r[offset + 7]);
-                s.R2 = Trigger(r[offset + 8]);
+                s.L2 = Trigger(r[offset + 7], (b2 & 0x04) != 0);
+                s.R2 = Trigger(r[offset + 8], (b2 & 0x08) != 0);
             } else {
                 // DS5 layout: sticks, L2, R2, counter, dpad+face, shoulders, ps+touch
-                s.L2 = Trigger(r[offset + 4]);
-                s.R2 = Trigger(r[offset + 5]);
-
                 FillDpadAndFace(s, r[offset + 7]);
 
                 byte b2 = r[offset + 8];
                 s.L1 = (b2 & 0x01) != 0;
                 s.R1 = (b2 & 0x02) != 0;
+                s.L2 = Trigger(r[offset + 4], (b2 & 0x04) != 0);
+                s.R2 = Trigger(r[offset + 5], (b2 & 0x08) != 0);
                 s.Create = (b2 & 0x10) != 0;
                 s.Options = (b2 & 0x20) != 0;
                 s.L3 = (b2 & 0x40) != 0;
@@ -377,6 +375,9 @@ internal sealed class DirectHidController {
             : Clamp((double)value / 32767.0, 0.0, 1.0);
     }
     private static double Trigger(byte value) { return Clamp((double)value / 255.0, 0.0, 1.0); }
+    private static double Trigger(byte value, bool digitalPressed) {
+        return digitalPressed ? 1.0 : Trigger(value);
+    }
     private static double Clamp(double value, double min, double max) { return value < min ? min : (value > max ? max : value); }
 
 }
