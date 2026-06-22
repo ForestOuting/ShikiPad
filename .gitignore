@@ -10,3 +10,5 @@ bin/
 *.log
 release/
 ShikiPad-release-*.zip
+ShikiPad_old.exe
+ShikiPad_test.exe
