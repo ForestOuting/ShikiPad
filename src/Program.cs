@@ -31,6 +31,12 @@ internal static class Program {
 
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(104, Math.Max(66, width - 6));
+        bool compactBanner = true;
+        if (compactBanner) {
+            WriteNeonRule(width, panelWidth, "ShikiPad");
+            Console.WriteLine("\x1b[0m");
+            return;
+        }
         bool zh = IsChineseUi();
         int left = (width - panelWidth) / 2;
 
@@ -67,6 +73,7 @@ internal static class Program {
     }
 
     public static void PrintRuntimeStatus(string processPath, int processId, int parentId, string backend, bool readsController) {
+        try { Console.Clear(); } catch { }
         EnableAnsi();
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(104, Math.Max(66, width - 6));
@@ -97,31 +104,23 @@ internal static class Program {
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
         if (zh) {
-            WritePanelLine(width, panelWidth, "  \u5df2\u8fde\u63a5", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u53f3\u6447\u6746", "\u79fb\u52a8\u9f20\u6807, R3 \u53f3\u952e, L3 \u5de6\u952e", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u5de6\u6447\u6746", "\u2191\u6eda\u8f6e\u4e0a  \u2197 Fn  \u2192 Win  \u2198 Alt  \u2193\u6eda\u8f6e\u4e0b  \u2199 Ctrl  \u2190 Shift  \u2196 Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u53f3\u6447\u6746", "\u9f20\u6807\u79fb\u52a8, L3=\u5de6\u952e, R3=\u53f3\u952e", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5de6\u6447\u6746", "\u2191/\u2193 \u6eda\u8f6e, \u2197 Fn, \u2192 Win, \u2198 Alt, \u2199 Ctrl, \u2190 Shift, \u2196 Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, \u25a1=Space, \u25b3=Backspace, \u00d7=Enter, \u25cb=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42 1", "R1+L1: 7 8 9 0 - = , .    R2+L2: < ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42 2", "L1+R2: ` \\ ' \" ; ~ / ?    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "\u56db\u4e2a\u7ec4\u5408\u5c42\u5747\u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u524d\u7f6e / \u540e\u7f6e", "\u52a8\u4f5c\u952e\u540e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u524d\u7f6e; \u677e\u5f00\u952e\u5c42\u540e " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u7a7a\u767d\u671f\u5f52\u5c5e", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Menu \u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b" : "\u89e6\u63a7\u677f\u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u65f6\u5e8f", "\u7ec4\u5408 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms, \u524d/\u540e\u7f6e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "/" + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms, \u63a5\u7ba1 " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
         } else {
-            WritePanelLine(width, panelWidth, "  Connected", backend, new Rgb(126, 226, 244), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Right stick", "Move mouse, R3 right click, L3 left click", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Left stick", "Up WheelUp, UpRight Fn, Right Win, DownRight Alt, Down WheelDown, DownLeft Ctrl, Left Shift, UpLeft Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Left stick", "Up/Down wheel, UpRight Fn, Right Win, DownRight Alt, DownLeft Ctrl, Left Shift, UpLeft Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Base layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combos 1", "R1+L1: 7 8 9 0 - = , .    R2+L2: < ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combos 2", "L1+R2: ` \\ ' \" ; ~ / ?    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combo window", "All four combo layers must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Pre / post", "Pre " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after action; post " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after layer release", SeasonSummer(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Clutch", xbox ? "View/Menu short press=toggle clutch, long press=hold clutch" : "Touchpad short press=toggle clutch, long press=hold clutch; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Timing", "combo " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms, pre/post " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "/" + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms, takeover " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
         }
 
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
@@ -1168,16 +1167,22 @@ internal static class Program {
 
         Layer r1Layer = mapping.Resolve(false, true, false, false, 0, 22, 0, 0, config.ComboLayerWindowMs);
         KeyStroke upKey = mapping.Lookup(r1Layer, ActionButton.Up);
+        bool previousReleasedLayerFrozen = MapperForm.ShouldFreezeReleasedPendingLayer(true, false, r2Layer);
+        bool postReleaseStillCoverable = !MapperForm.ShouldFreezeReleasedPendingLayer(true, true, r2Layer);
 
         bool ok = r2Layer == Layer.R2 &&
                   triangleKey == KeyStroke.Of(PhysicalKey.X) &&
                   r1Layer == Layer.R1 &&
-                  upKey == KeyStroke.Of(PhysicalKey.I);
+                  upKey == KeyStroke.Of(PhysicalKey.I) &&
+                  previousReleasedLayerFrozen &&
+                  postReleaseStillCoverable;
 
         Console.WriteLine("Rapid R2+Triangle then R1+Up = " +
                           LayerDisplayName(r2Layer) + "/" + LayerTestKeyName(triangleKey) + " -> " +
                           LayerDisplayName(r1Layer) + "/" + LayerTestKeyName(upKey) +
                           (ok ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("Released layer tap isolation = " +
+                          (previousReleasedLayerFrozen && postReleaseStillCoverable ? "PASS" : "FAIL"));
         return ok;
     }
 

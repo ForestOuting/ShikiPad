@@ -5,9 +5,9 @@ using System.IO;
 using System.Text;
 
 internal sealed class Config {
-    private const int CurrentConfigVersion = 7;
+    private const int CurrentConfigVersion = 8;
     private const double DefaultMouseScrollCurveExponent = 3.0;
-    private const int DefaultScrollSlowIntervalMs = 160;
+    private const int DefaultScrollSlowIntervalMs = 180;
     private const int DefaultScrollFastIntervalMs = 18;
     private const int DefaultComboLayerWindowMs = 35;
     private const double DefaultTriggerPressThreshold = 0.0;
@@ -329,7 +329,7 @@ internal sealed class Config {
         if (Math.Abs(cfg.MouseScrollCurveExponent - 3.5) < 0.000001) {
             cfg.MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
         }
-        if (cfg.ScrollSlowIntervalMs == 180 || cfg.ScrollSlowIntervalMs == 120) {
+        if (cfg.ScrollSlowIntervalMs == 160 || cfg.ScrollSlowIntervalMs == 120) {
             cfg.ScrollSlowIntervalMs = DefaultScrollSlowIntervalMs;
         }
         if (cfg.ScrollFastIntervalMs == 12) {

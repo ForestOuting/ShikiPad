@@ -158,7 +158,7 @@ ShikiPad uses a precise timing system to correctly determine whether you intende
 | `actionLayerPostGraceMs` | 35ms | Post-release attribution window. After a layer modifier is released, action buttons pressed during this blank gap start as the released layer unless a later pre-confirmed layer covers them |
 | `layerTakeoverWindowMs` | 30ms | Held-layer takeover window. The maximum allowed takeover overlap is 30ms, but whether a takeover actually happens is decided by the independent pending-layer resolution logic. This does not include the post-release blank gap |
 
-In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **35ms** pairing window, and held-layer takeover allows **30ms** of overlap.
+In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **35ms** pairing window, and held-layer takeover allows **30ms** of overlap. Once an action tap that started inside a concrete layer has been released, the next rapid layer switch will not rewrite that completed tap.
 
 ---
 
@@ -212,14 +212,14 @@ See `shikipad.example.json` for a clean default template.
 | `repeatIntervalMs` | `32` | Fastest repeat interval at full speed, matching a high keyboard repeat rate |
 | `baseRepeatSlowIntervalMs` | `240` | Starting repeat interval before the acceleration ramp |
 | `baseRepeatRampMs` | `2500` | Time spent ramping from the slow repeat interval to the fastest interval |
-| `scrollSlowIntervalMs` | `160` | Reference slow scroll interval (ms). Left stick scroll uses continuous real analog input like right stick mouse: deflection is accumulated into wheel delta. "Ramps from zero" describes the speed curve near the deadzone, not a fake discrete step |
+| `scrollSlowIntervalMs` | `180` | Reference slow scroll interval (ms). Left stick scroll uses continuous real analog input like right stick mouse: deflection is accumulated into wheel delta. "Ramps from zero" describes the speed curve near the deadzone, not a fake discrete step |
 | `scrollFastIntervalMs` | `18` | Fastest scroll interval when the stick is fully held (ms) |
 
 ### System
 
 | Parameter | Default | Description |
 |---|---|---|
-| `configVersion` | `7` | Config file schema marker. Keep this value unless release notes say otherwise |
+| `configVersion` | `8` | Config file schema marker. Keep this value unless release notes say otherwise |
 | `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
 | `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
 

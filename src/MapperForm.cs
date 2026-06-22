@@ -426,6 +426,7 @@ internal sealed class MapperForm : Form {
                     hold = new ButtonHold();
                     hold.Pending = true;
                     hold.OriginalPendingLayer = initialLayer;
+                    hold.PendingFromPostRelease = initialLayer != layer;
                     hold.PendingLayer = initialLayer;
                     hold.PendingLayerMs = initialLayer == layer ? layerMs : LayerTimestamp(initialLayer);
                     hold.PendingSinceMs = now;
@@ -580,6 +581,10 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdatePendingLayer(ref ButtonHold hold, Layer layer, double layerMs) {
+        if (ShouldFreezeReleasedPendingLayer(hold.PendingReleased, hold.PendingFromPostRelease, hold.OriginalPendingLayer)) {
+            return;
+        }
+
         if (hold.OriginalPendingLayerUpMs == 0 && hold.OriginalPendingLayer != hold.PendingLayer) {
             hold.OriginalPendingLayerUpMs = LayerUpTimestamp(hold.OriginalPendingLayer);
         }
@@ -641,6 +646,13 @@ internal sealed class MapperForm : Form {
         if (pendingCombo && !layerCombo) return pendingLayer;
 
         return layer;
+    }
+
+    internal static bool ShouldFreezeReleasedPendingLayer(bool pendingReleased, bool pendingFromPostRelease, Layer originalPendingLayer) {
+        return pendingReleased &&
+               !pendingFromPostRelease &&
+               originalPendingLayer != Layer.Base &&
+               originalPendingLayer != Layer.Reserved;
     }
 
     private bool ShouldSuppressLayerChangeDuringCharacterTap(ButtonHold hold, Layer newLayer, double now) {
@@ -890,6 +902,7 @@ internal sealed class MapperForm : Form {
         public bool SuppressUntilRelease;
         public bool Pending;
         public bool PendingReleased;
+        public bool PendingFromPostRelease;
         public double PendingSinceMs;
         public Layer OriginalPendingLayer;
         public double OriginalPendingLayerUpMs;

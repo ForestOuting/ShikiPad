@@ -1,5 +1,5 @@
 {
-  "configVersion": 7,
+  "configVersion": 8,
   "enabled": true,
   "mouseSensitivity": 1,
   "mouseMaxSpeed": 20,
@@ -22,7 +22,7 @@
   "comboLayerWindowMs": 35,
   "useScanCode": true,
   "useInterception": true,
-  "scrollSlowIntervalMs": 160,
+  "scrollSlowIntervalMs": 180,
   "scrollFastIntervalMs": 18,
   "r3FreezeMs": 60,
   "clutchLongPressMs": 250
