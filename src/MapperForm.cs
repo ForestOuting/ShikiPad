@@ -126,6 +126,7 @@ internal sealed class MapperForm : Form {
     private Layer _previousActionLayer = Layer.Base;
     private Layer _lastReleasedActionLayer = Layer.Base;
     private double _lastReleasedActionLayerUpMs;
+    private double _lastReleasedActionLayerDownMs;
 
     private void OnTick() {
         ControllerState s = _hid.State;
@@ -435,7 +436,7 @@ internal sealed class MapperForm : Form {
             }
 
             if (!prev && curr) {
-                Layer initialLayer = InitialActionLayer(layer, now);
+                Layer initialLayer = InitialActionLayer(layer, now, layerMs);
                 KeyStroke key = ApplyFnLayer(_mapping.Lookup(initialLayer, (ActionButton)i));
                 if (ShouldDeferInitialAction(initialLayer)) {
                     hold = new ButtonHold();
@@ -569,18 +570,22 @@ internal sealed class MapperForm : Form {
             if (now - upMs < 100.0) {
                 _lastReleasedActionLayer = _previousActionLayer;
                 _lastReleasedActionLayerUpMs = upMs > 0.0 ? upMs : now;
+                _lastReleasedActionLayerDownMs = LayerTimestamp(_previousActionLayer);
             }
         }
         _previousActionLayer = layer;
     }
 
-    private Layer InitialActionLayer(Layer layer, double now) {
-        return ResolveInitialActionLayer(layer, _lastReleasedActionLayer, now, _lastReleasedActionLayerUpMs, _config.ActionLayerPostGraceMs);
+    private Layer InitialActionLayer(Layer layer, double now, double layerMs) {
+        return ResolveInitialActionLayer(layer, layerMs, _lastReleasedActionLayer, _lastReleasedActionLayerDownMs, now, _lastReleasedActionLayerUpMs, _config.ActionLayerPostGraceMs);
     }
 
-    internal static Layer ResolveInitialActionLayer(Layer layer, Layer lastReleasedLayer, double now, double lastReleasedLayerUpMs, double postGraceMs) {
+    internal static Layer ResolveInitialActionLayer(Layer layer, double layerDownMs, Layer lastReleasedLayer, double lastReleasedLayerDownMs, double now, double lastReleasedLayerUpMs, double postGraceMs) {
         if (lastReleasedLayer != Layer.Base && lastReleasedLayer != Layer.Reserved && (now - lastReleasedLayerUpMs <= postGraceMs)) {
             if (IsSubsetOf(layer, lastReleasedLayer)) {
+                return lastReleasedLayer;
+            }
+            if (lastReleasedLayerDownMs > layerDownMs) {
                 return lastReleasedLayer;
             }
         }

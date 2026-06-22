@@ -1353,8 +1353,8 @@ internal static class Program {
         double expiredActionMs = oldLayerUpMs + config.ActionLayerPostGraceMs + 1.0;
         double newLayerMs = actionMs + Math.Min(10.0, Math.Max(1.0, config.ActionLayerGraceMs - 1.0));
 
-        Layer initialInBlank = MapperForm.ResolveInitialActionLayer(Layer.Base, Layer.L2, actionMs, oldLayerUpMs, config.ActionLayerPostGraceMs);
-        Layer initialExpired = MapperForm.ResolveInitialActionLayer(Layer.Base, Layer.L2, expiredActionMs, oldLayerUpMs, config.ActionLayerPostGraceMs);
+        Layer initialInBlank = MapperForm.ResolveInitialActionLayer(Layer.Base, 0.0, Layer.L2, oldLayerUpMs - 100.0, actionMs, oldLayerUpMs, config.ActionLayerPostGraceMs);
+        Layer initialExpired = MapperForm.ResolveInitialActionLayer(Layer.Base, 0.0, Layer.L2, oldLayerUpMs - 100.0, expiredActionMs, oldLayerUpMs, config.ActionLayerPostGraceMs);
         Layer l1Layer = mapping.Resolve(true, false, false, false, newLayerMs, 0, 0, 0, config.ComboLayerWindowMs);
         Layer coveredByNewLayer = MapperForm.ResolvePendingLayer(initialInBlank, initialInBlank, actionMs, l1Layer, newLayerMs, oldLayerUpMs, oldLayerUpMs, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
 
