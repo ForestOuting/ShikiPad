@@ -437,7 +437,7 @@ internal sealed class MapperForm : Form {
             if (!prev && curr) {
                 Layer initialLayer = InitialActionLayer(layer, now);
                 KeyStroke key = ApplyFnLayer(_mapping.Lookup(initialLayer, (ActionButton)i));
-                if (ShouldDeferInitialAction()) {
+                if (ShouldDeferInitialAction(initialLayer)) {
                     hold = new ButtonHold();
                     hold.Pending = true;
                     hold.OriginalPendingLayer = initialLayer;
@@ -545,7 +545,8 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private bool ShouldDeferInitialAction() {
+    private bool ShouldDeferInitialAction(Layer initialLayer) {
+        if (initialLayer != Layer.Base && initialLayer != Layer.Reserved) return false;
         return _config.ActionLayerGraceMs > 0;
     }
 
@@ -636,15 +637,31 @@ internal sealed class MapperForm : Form {
 
         if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
 
-        double overlap = LayerOverlapAfterActionMs(pendingSinceMs, layerMs, pendingLayerUpMs, pendingLayer);
+        bool layerCombo = IsComboLayer(layer);
 
-        if (overlap > takeoverWindowMs) {
-            return pendingLayer;
+        // 如果当前层是组合层，并且之前的 pendingLayer 是这个组合层的一个组件（即它的单层意图被组合层覆盖了）
+        // 那么必须剥夺 pendingLayer 的资格，将其回退到 originalLayer 进行判定。
+        Layer effectivePendingLayer = pendingLayer;
+        double effectivePendingLayerUpMs = pendingLayerUpMs;
+        if (layerCombo && IsComboComponent(layer, pendingLayer)) {
+            effectivePendingLayer = originalLayer;
+            effectivePendingLayerUpMs = originalLayerUpMs;
         }
 
-        bool pendingCombo = IsComboLayer(pendingLayer);
-        bool layerCombo = IsComboLayer(layer);
-        if (pendingCombo && !layerCombo) return pendingLayer;
+        // 组合层的特殊之处：如果回退后的 effectivePendingLayer（或者原始层）与组合层毫无关联，则组合层无法接管它！
+        // （这防止了毫无关联的组合层强行劫持旧动作键）
+        if (layerCombo && !IsComboComponent(layer, effectivePendingLayer) && effectivePendingLayer != layer) {
+            return effectivePendingLayer;
+        }
+
+        double overlap = LayerOverlapAfterActionMs(pendingSinceMs, layerMs, effectivePendingLayerUpMs, effectivePendingLayer);
+
+        if (overlap > takeoverWindowMs) {
+            return effectivePendingLayer;
+        }
+
+        bool pendingCombo = IsComboLayer(effectivePendingLayer);
+        if (pendingCombo && !layerCombo) return effectivePendingLayer;
 
         return layer;
     }
