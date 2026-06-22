@@ -25,6 +25,8 @@ internal static class Program {
     private static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
 
     private static ConsoleCtrlHandler _consoleCtrlHandler;
+    private const string DefaultControllerFileName = "shikipad.default";
+    private const int DefaultControllerGraceMs = 1200;
 
     public static void PrintGradientBanner() {
         EnableAnsi();
@@ -65,7 +67,7 @@ internal static class Program {
 
     private static void WriteBannerStatus(int width, int panelWidth, bool zh) {
         string text1 = zh ? "\u25c7  \u5168\u5c40\u952e\u9f20\u6620\u5c04\u5df2\u5c31\u7eea  \u25c7" : "\u25c7  GLOBAL MAPPING IS READY  \u25c7";
-        string text2 = zh ? "\u2014\u2014  \u6309\u4e0b Enter \u952e\u5c55\u5f00\u8be6\u7ec6\u8bf4\u660e  \u2014\u2014" : "\u2014\u2014  PRESS ENTER FOR DETAILED MANUAL  \u2014\u2014";
+        string text2 = zh ? "\u2014\u2014  \u8fd0\u884c\u540e\u6309 Enter \u6253\u5f00\u8bf4\u660e\uff0c\u8bf4\u660e\u9875\u518d\u6309 Enter \u8fd4\u56de  \u2014\u2014" : "\u2014\u2014  PRESS ENTER FOR THE MANUAL, THEN ENTER AGAIN TO RETURN  \u2014\u2014";
         WriteEmbossedCenteredText(width, panelWidth, text1, SeasonFlowStops(), true);
         WriteEmbossedCenteredText(width, panelWidth, text2, SeasonFlowStops(), false);
     }
@@ -91,74 +93,102 @@ internal static class Program {
         try { Console.Clear(); } catch { }
         EnableAnsi();
         int width = GetConsoleWidth();
-        int panelWidth = Math.Min(112, Math.Max(72, width - 6));
+        int panelWidth = Math.Min(116, Math.Max(72, width - 6));
         bool zh = IsChineseUi();
         bool xbox = profile == ControllerProfile.Xbox360 || profile == ControllerProfile.XboxSeries ||
                     profile == ControllerProfile.Xbox360BT || profile == ControllerProfile.XboxSeriesBT;
 
         Console.WriteLine();
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
-        WritePanelTitle(width, panelWidth, zh ? "\u25c7 \u8be6\u7ec6\u6620\u5c04\u4e0e\u64cd\u4f5c\u8bf4\u660e \u25c7" : "\u25c7 DETAILED MAPPING MANUAL \u25c7", new Rgb(235, 247, 252));
+        WritePanelTitle(width, panelWidth, zh ? "\u25c7 \u6620\u5c04\u8bf4\u660e  |  Enter \u8fd4\u56de ShikiPad \u4e3b\u754c\u9762 \u25c7" : "\u25c7 MAPPING MANUAL  |  ENTER RETURNS TO SHIKIPAD HOME \u25c7", new Rgb(235, 247, 252));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
         if (zh) {
-            WritePanelLine(width, panelWidth, "  \u3010 \u65b0\u624b\u5fc5\u8bfb\uff1a\u5982\u4f55\u6253\u5b57\uff1f \u3011", "", new Rgb(255, 120, 150), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u2728 \u6838\u5fc3\u539f\u7406", "\u6309\u4f4f\u3010L/R\u80a9\u952e\u3011\u540c\u65f6\u6309\u3010\u53f3\u4fa7\u56db\u952e/\u5341\u5b57\u952e\u3011\uff0c\u5373\u53ef\u8f93\u5165\u5b57\u6bcd\u3001\u6570\u5b57\u548c\u6807\u70b9", new Rgb(255, 200, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5982\u4f55\u6253\u5b57", "\u6309\u4f4f L1/R1/L2/R2 \u4e4b\u4e00\uff0c\u518d\u6309\u5341\u5b57\u952e\u6216\u53f3\u4fa7\u56db\u952e", new Rgb(255, 200, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u6309\u952e\u987a\u5e8f", xbox ? "\u2191 \u2192 X Y \u2190 \u2193 A B" : "\u2191 \u2192 \u25a1 \u25b3 \u2190 \u2193 \u00d7 \u25cb", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
-            WritePanelLine(width, panelWidth, "  \u3010 \u5b57\u7b26\u8f93\u5165\u5c42\uff08\u6253\u5b57\u9762\u677f\uff09 \u3011", "\u57fa\u7840\u6309\u952e\uff1a" + (xbox ? "D-pad(\u5341\u5b57\u952e) + X Y A B" : "D-pad(\u5341\u5b57\u952e) + \u25a1 \u25b3 \u00d7 \u25cb"), new Rgb(255, 211, 106), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 \u57fa\u7840\u5c42 (\u4e0d\u6309\u80a9\u952e)", xbox ? "D-pad=\u65b9\u5411\u952e, X=\u7a7a\u683c, Y=\u9000\u683c, A=\u56de\u8f66, B=Tab" : "D-pad=\u65b9\u5411\u952e, \u25a1=\u7a7a\u683c, \u25b3=\u9000\u683c, \u00d7=\u56de\u8f66, \u25cb=Tab", new Rgb(255, 235, 180), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 L1 \u5c42 (\u6309\u4f4f L1)", "s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R1 \u5c42 (\u6309\u4f4f R1)", "i n e a o t h u (\u5bf9\u5e948\u4e2a\u57fa\u7840\u952e\u987a\u5e8f:\u4e0a\u53f3 \u25a1\u25b3 \u5de6\u4e0b \u00d7\u25cb)", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 L2 \u5c42 (\u6309\u4f4f L2)", "k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R2 \u5c42 (\u6309\u4f4f R2)", "m w j x q f p b", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R1+L1 \u7ec4\u5408\u5c42", "7 8 9 0 - = , . (\u540c\u65f6\u6309\u4f4f\u4e24\u4e2a\u80a9\u952e)", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R2+L2 \u7ec4\u5408\u5c42", "< ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 L1+R2 \u7ec4\u5408\u5c42", "` \\ ' \" ; ~ / ?", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R1+L2 \u7ec4\u5408\u5c42", "! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "\u57fa\u7840", xbox ? "\u2191 \u2192 Space Back \u2190 \u2193 Enter Tab" : "\u2191 \u2192 Space Back \u2190 \u2193 Enter Tab", "R1/RB", "i n e a o t h u", new Rgb(255, 235, 180), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "L1/LB", "s r d g l c y z", "R2/RT", "m w j x q f p b", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "L2/LT", "k v 1 2 3 4 5 6", "R1+L1", "7 8 9 0 - = , .", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "R2+L2", "< ) [ { ( > } ]", "L1+R2", "` \\ ' \" ; ~ / ?", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "R1+L2", "! @ # $ % ^ & *", "Fn", "1..0/-/= \u2192 F1..F12", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
-            WritePanelLine(width, panelWidth, "  \u3010 \u6447\u6746\u4e0e\u9f20\u6807\u64cd\u4f5c \u3011", "", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 \u53f3\u6447\u6746", "\u63a7\u5236\u9f20\u6807\u79fb\u52a8\uff1bL3=\u5de6\u952e\uff0cR3=\u53f3\u952e(\u77ed\u6682\u9632\u6f02\u79fb)", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 \u5de6\u6447\u6746 (\u6eda\u8f6e)", "\u5411\u4e0a/\u5411\u4e0b\u63a8\u52a8\u4e3a\u9f20\u6807\u6eda\u8f6e\u3002\u63a8\u52a8\u8d8a\u6df1\u6eda\u52a8\u8d8a\u5feb", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 \u5de6\u6447\u6746 (\u4fee\u9970\u952e)", "\u5176\u4ed6\u65b9\u5411\u6620\u5c04: \u2197 Fn, \u2192 Win, \u2198 Alt, \u2199 Ctrl, \u2190 Shift, \u2196 Esc", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "\u53f3\u6447\u6746", "\u9f20\u6807\u79fb\u52a8\uff1bL3 \u5de6\u952e / R3 \u53f3\u952e", "\u5de6\u6447\u6746", "\u2191/\u2193 \u6eda\u8f6e\uff0c\u63a8\u5f97\u8d8a\u6df1\u8d8a\u5feb", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5de6\u6447\u6746\u4fee\u9970", "\u2190 Shift / \u2199 Ctrl / \u2198 Alt / \u2192 Win / \u2196 Esc / \u2197 Fn", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, xbox ? "  \u84c4\u529b\u4fee\u9970" : "  \u84c4\u529b\u4fee\u9970", xbox ? "View/Menu \u77ed\u6309\u5207\u6362\uff0c\u957f\u6309\u4fdd\u6301\uff1b\u5de6\u6447\u6746\u4f9d\u6b21\u6536\u96c6\u7ec4\u5408\u952e" : "\u89e6\u63a7\u677f\u77ed\u6309\u5207\u6362\uff0c\u957f\u6309\u4fdd\u6301\uff1b\u5de6\u6447\u6746\u4f9d\u6b21\u6536\u96c6\u7ec4\u5408\u952e", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
             WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
-            WritePanelLine(width, panelWidth, "  \u3010 \u9ad8\u7ea7\u673a\u5236\u4e0e\u5173\u95ed \u3011", "", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, xbox ? "  \u25b6 \u84c4\u529b\u4fee\u9970 (View/Menu)" : "  \u25b6 \u84c4\u529b\u4fee\u9970 (\u89e6\u63a7\u677f)", "\u77ed\u6309\u5207\u6362\uff0c\u957f\u6309\u4fdd\u6301\uff1b\u5de6\u6447\u6746\u53ef\u4f9d\u6b21\u6536\u96c6 Ctrl/Shift/Esc/Alt/Win", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 \u5bbd\u5bb9\u7a97\u53e3", "\u5b57\u7b26\u952e\u4e0e\u80a9\u952e\u524d\u540e\u5dee\u5728 " + config.ActionLayerGraceMs + "ms \u5185\uff0c\u4ecd\u4f1a\u5224\u5b9a\u4e3a\u540c\u4e00\u6b21\u5206\u5c42\u8f93\u5165", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 \u5982\u4f55\u5173\u95ed\u8f6f\u4ef6\uff1f", "\u76f4\u63a5\u70b9\u51fb\u672c\u7a97\u53e3\u53f3\u4e0a\u89d2\u7684 X \u5173\u95ed\u5373\u53ef\uff0c\u6240\u6709\u6309\u952e\u4f1a\u81ea\u52a8\u91ca\u653e", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u8fd4\u56de\u4e3b\u754c\u9762", "\u518d\u6309\u4e00\u6b21 Enter\uff1b\u5173\u95ed\u8fd9\u4e2a\u7a97\u53e3\u5373\u53ef\u9000\u51fa ShikiPad", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5bbd\u5bb9\u7a97\u53e3", "\u5b57\u7b26\u952e\u4e0e\u80a9\u952e\u5728 " + config.ActionLayerGraceMs + "ms \u5185\u53ef\u89c6\u4e3a\u540c\u4e00\u6b21\u5206\u5c42\u8f93\u5165", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
         } else {
-            WritePanelLine(width, panelWidth, "  [ QUICK START ]", "", new Rgb(255, 120, 150), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u2728 How to type", "Hold L/R shoulder buttons and press D-Pad or Action keys to type.", new Rgb(255, 200, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  How to type", "Hold L1/R1/L2/R2, then press D-pad or action buttons.", new Rgb(255, 200, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Button order", xbox ? "Up Right X Y Left Down A B" : "Up Right Square Triangle Left Down Cross Circle", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
             WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
-            WritePanelLine(width, panelWidth, "  [ JOYSTICKS & MOUSE ]", "", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 Right stick", "Move mouse; L3 left click, R3 right click with brief freeze", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 Left stick (Scroll)", "Up/Down pushes scroll wheel. Deeper push means faster scroll", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 Left stick (Mods)", "UpRight Fn, Right Win, DownRight Alt, DownLeft Ctrl, Left Shift, UpLeft Esc", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
-            WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
-            
-            WritePanelLine(width, panelWidth, "  [ CHARACTER LAYERS ]", "Base Action Keys = " + (xbox ? "D-pad + X Y A B" : "D-pad + Square Triangle Cross Circle"), new Rgb(255, 211, 106), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 Base Layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 235, 180), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R1 Layer", "i n e a o t h u", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 L1 Layer", "s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R2 Layer", "m w j x q f p b", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 L2 Layer", "k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R1+L1 Combo", "7 8 9 0 - = , .", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R2+L2 Combo", "< ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 L1+R2 Combo", "` \\ ' \" ; ~ / ?", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 R1+L2 Combo", "! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "Base", "arrows / Space / Back / Enter / Tab", "R1/RB", "i n e a o t h u", new Rgb(255, 235, 180), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "L1/LB", "s r d g l c y z", "R2/RT", "m w j x q f p b", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "L2/LT", "k v 1 2 3 4 5 6", "R1+L1", "7 8 9 0 - = , .", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "R2+L2", "< ) [ { ( > } ]", "L1+R2", "` \\ ' \" ; ~ / ?", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "R1+L2", "! @ # $ % ^ & *", "Fn", "1..0/-/= -> F1..F12", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
-            WritePanelLine(width, panelWidth, "  [ ADVANCED CONTROLS ]", "", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, xbox ? "  \u25b6 Clutch (View/Menu)" : "  \u25b6 Clutch (Touchpad)", "Short tap toggles; long press holds. Collect Ctrl/Shift/Esc/Alt/Win.", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 Grace Windows", "Action and layer inputs within " + config.ActionLayerGraceMs + "ms resolve as one layered stroke.", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u25b6 How to Exit", "Simply close this window to exit and release all keys automatically.", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
+            WritePanelTwinLine(width, panelWidth, "Right stick", "Mouse; L3 left, R3 right", "Left stick", "Up/Down scrolls faster when deeper", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Left stick mods", "Left Shift / DownLeft Ctrl / DownRight Alt / Right Win / UpLeft Esc / UpRight Fn", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Clutch", xbox ? "Tap View/Menu to toggle, or long-press to hold collected modifiers." : "Tap Touchpad to toggle, or long-press to hold collected modifiers.", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
+            WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+
+            WritePanelLine(width, panelWidth, "  Return home", "Press Enter again. Close this window to exit ShikiPad safely.", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Grace window", "Inputs within " + config.ActionLayerGraceMs + "ms resolve as one layered stroke.", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
         }
 
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
         Console.WriteLine("\x1b[0m");
+    }
+
+    public static void PrintConnectedWelcome(ControllerProfile profile, Config config, string deviceName) {
+        PrintHomeSurface(profile, config, deviceName, true, true);
+    }
+
+    public static void PrintRunningHome(ControllerProfile profile, Config config, string deviceName, bool connected) {
+        PrintHomeSurface(profile, config, deviceName, connected, false);
+    }
+
+    private static void PrintHomeSurface(ControllerProfile profile, Config config, string deviceName, bool connected, bool pageBreak) {
+        EnableAnsi();
+        if (pageBreak) {
+            WritePageBreak();
+        } else {
+            try { Console.Clear(); } catch { }
+        }
+
+        int width = GetConsoleWidth();
+        int panelWidth = Math.Min(112, Math.Max(72, width - 6));
+        bool zh = IsChineseUi();
+        Console.WriteLine();
+        WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u5df2\u5c31\u7eea" : "ShikiPad Is Ready");
+        WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
+        Console.WriteLine();
+        WriteEmbossedCenteredText(width, panelWidth, zh ? "\u6b22\u8fce\u6765\u5230 ShikiPad" : "WELCOME TO SHIKIPAD", SeasonGlowStops(), true);
+        Console.WriteLine();
+        WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
+        WritePanelTitle(width, panelWidth, zh ? "\u4e3b\u754c\u9762" : "HOME", new Rgb(235, 247, 252));
+        WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+        WritePanelLine(width, panelWidth, zh ? "  \u624b\u67c4" : "  Controller", String.IsNullOrEmpty(deviceName) ? ControllerProfileName(profile) : deviceName, new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, zh ? "  \u72b6\u6001" : "  Status", connected ? (zh ? "\u5df2\u8fde\u63a5\uff0c\u952e\u9f20\u6620\u5c04\u6b63\u5728\u8fd0\u884c" : "Connected; keyboard and mouse mapping is running") : (zh ? "\u7b49\u5f85\u624b\u67c4\u8fde\u63a5" : "Waiting for controller connection"), new Rgb(255, 211, 106), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, zh ? "  \u8bf4\u660e" : "  Manual", zh ? "\u6309 Enter \u6253\u5f00\u6620\u5c04\u8bf4\u660e\uff1b\u8bf4\u660e\u9875\u518d\u6309 Enter \u8fd4\u56de" : "Press Enter for the manual; press Enter again to return", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, zh ? "  \u9000\u51fa" : "  Exit", zh ? "\u5173\u95ed\u8fd9\u4e2a\u7a97\u53e3\uff0cShikiPad \u4f1a\u81ea\u52a8\u91ca\u653e\u6309\u952e" : "Close this window; ShikiPad releases held inputs automatically", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+        WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
+        Console.WriteLine("\x1b[0m");
+    }
+
+    private static void WritePageBreak() {
+        int lines = 28;
+        try {
+            lines = Math.Max(28, Console.WindowHeight + 6);
+        } catch { }
+        for (int i = 0; i < lines; i++) Console.WriteLine();
     }
 
     private static bool IsChineseUi() {
@@ -444,6 +474,39 @@ internal static class Program {
         Console.WriteLine();
     }
 
+    private static void WritePanelTwinLine(int width, int panelWidth, string leftLabel, string leftValue, string rightLabel, string rightValue, Rgb labelColor, Rgb valueColor) {
+        int left = (width - panelWidth) / 2;
+        int inner = panelWidth - 2;
+        int gap = 3;
+        int column = (inner - gap) / 2;
+        string leftText = leftLabel + ": " + leftValue;
+        string rightText = rightLabel + ": " + rightValue;
+
+        Console.Write(new string(' ', left));
+        WriteRgb(new Rgb(72, 91, 101), "\u2502");
+        WriteTwinCell(leftText, column, labelColor, valueColor);
+        WriteRgb(new Rgb(72, 91, 101), " \u2506 ");
+        WriteTwinCell(rightText, inner - column - gap, labelColor, valueColor);
+        WriteRgb(new Rgb(72, 91, 101), "\u2502");
+        Console.WriteLine();
+    }
+
+    private static void WriteTwinCell(string text, int width, Rgb labelColor, Rgb valueColor) {
+        int colon = text.IndexOf(": ", StringComparison.Ordinal);
+        string label = colon >= 0 ? text.Substring(0, colon + 2) : "";
+        string value = colon >= 0 ? text.Substring(colon + 2) : text;
+        string combined = label + value;
+        if (DisplayWidth(combined) > width) combined = TrimToWidth(combined, width);
+
+        int labelChars = Math.Min(label.Length, combined.Length);
+        string visibleLabel = combined.Substring(0, labelChars);
+        string visibleValue = combined.Substring(labelChars);
+        Console.Write("\x1b[1m");
+        WriteRgb(labelColor, visibleLabel);
+        Console.Write("\x1b[22m");
+        WriteRgb(valueColor, PadRight(visibleValue, width - DisplayWidth(visibleLabel)));
+    }
+
     private static void WriteControllerPairLine(int width, int panelWidth, string leftLabel, string rightLabel, Rgb color) {
         int left = (width - panelWidth) / 2;
         int inner = panelWidth - 2;
@@ -567,7 +630,7 @@ internal static class Program {
             return 0;
         }
 
-        ControllerProfile controllerProfile = SelectControllerProfile(args);
+        ControllerProfile controllerProfile = SelectControllerProfile(args, root);
         Logger.Info("startup");
         Logger.Info("controller profile: " + ControllerProfileName(controllerProfile));
         Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
@@ -624,13 +687,35 @@ internal static class Program {
         InterceptionDriver.Cleanup();
     }
 
-    private static ControllerProfile SelectControllerProfile(string[] args) {
+    private static ControllerProfile SelectControllerProfile(string[] args, string root) {
         ControllerProfile fromArgs;
         if (TryGetControllerProfileArg(args, out fromArgs)) return fromArgs;
+        string defaultPath = Path.Combine(root, DefaultControllerFileName);
+        bool forceMenu = HasAnyArg(args, "--controller-menu", "--choose-controller", "--select-controller");
+        if (HasAnyArg(args, "--clear-default-controller", "--reset-default-controller", "--forget-controller")) {
+            ClearDefaultControllerProfile(defaultPath);
+            PrintDefaultControllerCleared();
+            forceMenu = true;
+        }
+
+        ControllerProfile savedDefault;
+        bool hasSavedDefault = TryLoadDefaultControllerProfile(defaultPath, out savedDefault);
+        if (hasSavedDefault && !forceMenu) {
+            bool inputRedirected = false;
+            try { inputRedirected = Console.IsInputRedirected; } catch { }
+            if (inputRedirected || !ShouldOpenControllerMenuForDefault(savedDefault)) {
+                return savedDefault;
+            }
+        }
+
         try {
             if (Console.IsInputRedirected) return ControllerProfile.DualSense;
         } catch { }
 
+        return PromptControllerProfile(defaultPath, hasSavedDefault, savedDefault);
+    }
+
+    private static ControllerProfile PromptControllerProfile(string defaultPath, bool hasSavedDefault, ControllerProfile savedDefault) {
         EnableAnsi();
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(104, Math.Max(66, width - 6));
@@ -642,25 +727,140 @@ internal static class Program {
         WriteControllerPairLine(width, panelWidth, "[3] DualShock 4", "[4] DualShock 4 (BT)", new Rgb(100, 180, 255));
         WriteControllerPairLine(width, panelWidth, "[5] Xbox 360", "[6] Xbox 360 (BT)", SeasonSpring());
         WriteControllerPairLine(width, panelWidth, "[7] Xbox Series X|S", "[8] Xbox Series (BT)", SeasonGold());
+        if (hasSavedDefault) {
+            WriteSeasonPanelSeparator(width, panelWidth);
+            WritePanelLine(width, panelWidth, zh ? "  当前默认启动" : "  Saved default", ControllerProfileName(savedDefault), SeasonGold(), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, zh ? "  退出默认启动" : "  Clear default", zh ? "输入 0 后回车，之后每次启动都会重新选择手柄" : "Type 0 and press Enter to ask every time again", SeasonAutumn(), new Rgb(245, 250, 255));
+        }
         WriteSeasonPanelBorder(width, panelWidth, false);
         WriteSeasonDropShadow(width, panelWidth);
         Console.WriteLine();
 
         while (true) {
-            WriteRgb(SeasonSummer(), zh ? "选择手柄型号 [1..8，Enter = 1] > " : "Select controller profile [1..8, Enter = 1] > ");
+            WriteRgb(SeasonSummer(), hasSavedDefault
+                ? (zh ? "选择手柄型号 [1..8，Enter = 1，0 = 退出默认启动] > " : "Select controller profile [1..8, Enter = 1, 0 = clear default] > ")
+                : (zh ? "选择手柄型号 [1..8，Enter = 1] > " : "Select controller profile [1..8, Enter = 1] > "));
             Console.Write("\x1b[0m");
             string line = Console.ReadLine();
             if (line == null) return ControllerProfile.DualSense;
             line = line.Trim();
-            if (line.Length == 0 || line == "1") return ControllerProfile.DualSense;
-            if (line == "2") return ControllerProfile.DualSenseBT;
-            if (line == "3") return ControllerProfile.DualShock4;
-            if (line == "4") return ControllerProfile.DualShock4BT;
-            if (line == "5") return ControllerProfile.Xbox360;
-            if (line == "6") return ControllerProfile.Xbox360BT;
-            if (line == "7") return ControllerProfile.XboxSeries;
-            if (line == "8") return ControllerProfile.XboxSeriesBT;
-            WriteRgb(SeasonAutumn(), zh ? "请选择 1 到 8 之间的数字。\n" : "Please choose 1 to 8.\n");
+            if (line == "0") {
+                ClearDefaultControllerProfile(defaultPath);
+                hasSavedDefault = false;
+                WriteRgb(SeasonGold(), zh ? "已关闭默认启动。现在请选择本次要使用的手柄。\n" : "Default launch cleared. Choose a controller for this run.\n");
+                continue;
+            }
+
+            ControllerProfile selected;
+            if (TryParseMenuControllerProfile(line.Length == 0 ? "1" : line, out selected)) {
+                MaybeSaveDefaultControllerProfile(defaultPath, selected);
+                return selected;
+            }
+            WriteRgb(SeasonAutumn(), zh ? "请选择 1 到 8 之间的数字，或输入 0 关闭默认启动。\n" : "Please choose 1 to 8, or 0 to clear the saved default.\n");
+        }
+    }
+
+    private static bool ShouldOpenControllerMenuForDefault(ControllerProfile savedDefault) {
+        EnableAnsi();
+        int width = GetConsoleWidth();
+        int panelWidth = Math.Min(104, Math.Max(66, width - 6));
+        bool zh = IsChineseUi();
+        WriteSeasonPanelBorder(width, panelWidth, true);
+        WriteSeasonPanelTitle(width, panelWidth, zh ? "◇ 默认手柄启动 ◇" : "◇ DEFAULT CONTROLLER LAUNCH ◇");
+        WriteSeasonPanelSeparator(width, panelWidth);
+        WritePanelLine(width, panelWidth, zh ? "  默认手柄" : "  Default", ControllerProfileName(savedDefault), SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, zh ? "  自动继续" : "  Auto start", zh ? "无需输入；如需重新选择或退出默认启动，请按 C" : "No input needed; press C to choose or clear default", SeasonSummer(), new Rgb(245, 250, 255));
+        WriteSeasonPanelBorder(width, panelWidth, false);
+        WriteSeasonDropShadow(width, panelWidth);
+        Console.WriteLine();
+
+        DateTime end = DateTime.UtcNow.AddMilliseconds(DefaultControllerGraceMs);
+        while (DateTime.UtcNow < end) {
+            try {
+                if (Console.KeyAvailable) {
+                    ConsoleKeyInfo key = Console.ReadKey(true);
+                    char c = Char.ToUpperInvariant(key.KeyChar);
+                    if (c == 'C' || c == 'M' || key.Key == ConsoleKey.Enter) return true;
+                    if (c == 'D' || key.Key == ConsoleKey.Delete || key.Key == ConsoleKey.Backspace) {
+                        return true;
+                    }
+                }
+            } catch {
+                return false;
+            }
+            Thread.Sleep(50);
+        }
+        return false;
+    }
+
+    private static void MaybeSaveDefaultControllerProfile(string defaultPath, ControllerProfile profile) {
+        bool zh = IsChineseUi();
+        WriteRgb(SeasonGold(), zh ? "将「" + ControllerProfileName(profile) + "」设为默认启动？[Enter/Y = 保存，N = 仅本次] > " : "Save \"" + ControllerProfileName(profile) + "\" as the default launch profile? [Enter/Y = yes, N = once] > ");
+        Console.Write("\x1b[0m");
+        string line = Console.ReadLine();
+        if (line == null) return;
+        line = line.Trim();
+        if (line.Length > 0 && line.StartsWith("n", StringComparison.OrdinalIgnoreCase)) return;
+        SaveDefaultControllerProfile(defaultPath, profile);
+    }
+
+    private static bool TryParseMenuControllerProfile(string value, out ControllerProfile profile) {
+        value = (value ?? "").Trim();
+        if (value == "1") { profile = ControllerProfile.DualSense; return true; }
+        if (value == "2") { profile = ControllerProfile.DualSenseBT; return true; }
+        if (value == "3") { profile = ControllerProfile.DualShock4; return true; }
+        if (value == "4") { profile = ControllerProfile.DualShock4BT; return true; }
+        if (value == "5") { profile = ControllerProfile.Xbox360; return true; }
+        if (value == "6") { profile = ControllerProfile.Xbox360BT; return true; }
+        if (value == "7") { profile = ControllerProfile.XboxSeries; return true; }
+        if (value == "8") { profile = ControllerProfile.XboxSeriesBT; return true; }
+        return TryParseControllerProfile(value, out profile);
+    }
+
+    private static bool TryLoadDefaultControllerProfile(string defaultPath, out ControllerProfile profile) {
+        profile = ControllerProfile.DualSense;
+        try {
+            if (!File.Exists(defaultPath)) return false;
+            string value = File.ReadAllText(defaultPath, Encoding.UTF8).Trim();
+            return TryParseControllerProfile(value, out profile);
+        } catch {
+            return false;
+        }
+    }
+
+    private static void SaveDefaultControllerProfile(string defaultPath, ControllerProfile profile) {
+        bool zh = IsChineseUi();
+        try {
+            File.WriteAllText(defaultPath, ControllerProfileKey(profile) + Environment.NewLine, Encoding.UTF8);
+            WriteRgb(SeasonSpring(), zh ? "已保存默认启动。以后直接运行 ShikiPad 即会自动使用这个手柄型号。\n" : "Default launch profile saved.\n");
+        } catch (Exception ex) {
+            WriteRgb(SeasonAutumn(), (zh ? "默认启动保存失败：" : "Could not save default profile: ") + ex.Message + "\n");
+        }
+    }
+
+    private static void ClearDefaultControllerProfile(string defaultPath) {
+        try {
+            if (File.Exists(defaultPath)) File.Delete(defaultPath);
+        } catch { }
+    }
+
+    private static void PrintDefaultControllerCleared() {
+        EnableAnsi();
+        bool zh = IsChineseUi();
+        WriteRgb(SeasonGold(), zh ? "默认启动已关闭；ShikiPad 会重新显示手柄选择。\n" : "Default launch has been cleared; ShikiPad will show controller selection.\n");
+        Console.Write("\x1b[0m");
+    }
+
+    private static string ControllerProfileKey(ControllerProfile profile) {
+        switch (profile) {
+            case ControllerProfile.DualSenseBT: return "dualsensebt";
+            case ControllerProfile.DualShock4: return "dualshock4";
+            case ControllerProfile.DualShock4BT: return "dualshock4bt";
+            case ControllerProfile.Xbox360: return "xbox360";
+            case ControllerProfile.Xbox360BT: return "xbox360bt";
+            case ControllerProfile.XboxSeries: return "xboxseries";
+            case ControllerProfile.XboxSeriesBT: return "xboxseriesbt";
+            default: return "dualsense";
         }
     }
 
@@ -732,6 +932,13 @@ internal static class Program {
 
     private static bool HasArg(string[] args, string value) {
         for (int i = 0; i < args.Length; i++) if (String.Equals(args[i], value, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    private static bool HasAnyArg(string[] args, params string[] values) {
+        for (int i = 0; i < values.Length; i++) {
+            if (HasArg(args, values[i])) return true;
+        }
         return false;
     }
 

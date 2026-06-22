@@ -1,5 +1,6 @@
 *.py
 shikipad.json
+shikipad.default
 .vs/
 obj/
 bin/

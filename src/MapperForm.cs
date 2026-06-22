@@ -43,8 +43,7 @@ internal sealed class MapperForm : Form {
     private bool _createKeyDown;
     private bool _optionsKeyDown;
     private bool _homeKeyDown;
-    private double _disableStartMs;
-    private bool _disableArmed = true;
+    private volatile bool _manualVisible;
     private double _lastTickMs;
 
     public MapperForm(Config config, ControllerProfile controllerProfile, bool debugSources, bool traceInput, bool traceSendinput) {
@@ -85,7 +84,13 @@ internal sealed class MapperForm : Form {
                     if (Console.KeyAvailable) {
                         var key = Console.ReadKey(true);
                         if (key.Key == ConsoleKey.Enter) {
-                            Program.PrintDetailedManual(_controllerProfile, _config);
+                            if (_manualVisible) {
+                                Program.PrintRunningHome(_controllerProfile, _config, _hid.DisplayName, _hid.State.Connected);
+                                _manualVisible = false;
+                            } else {
+                                Program.PrintDetailedManual(_controllerProfile, _config);
+                                _manualVisible = true;
+                            }
                         }
                     }
                 } catch { }
@@ -145,7 +150,6 @@ internal sealed class MapperForm : Form {
         _prevL1 = s.L1;
         _prevR1 = s.R1;
 
-        UpdateEmergency(s, now);
         if (!s.Connected || !_enabled) {
             if (!s.Connected) _printedConnectedGuide = false;
             if (!_runtimeReleased) {
@@ -156,7 +160,8 @@ internal sealed class MapperForm : Form {
         }
         _runtimeReleased = false;
         if (!_printedConnectedGuide) {
-            Console.WriteLine("\x1b[38;2;113;255;194m[ShikiPad] Controller connected: " + _hid.DisplayName + "\x1b[0m");
+            Program.PrintConnectedWelcome(_controllerProfile, _config, _hid.DisplayName);
+            _manualVisible = false;
             _printedConnectedGuide = true;
         }
         UpdateTriggers(s, now);
@@ -835,24 +840,6 @@ internal sealed class MapperForm : Form {
             keyDown = false;
         }
         prev = down;
-    }
-
-    private void UpdateEmergency(ControllerState s, double now) {
-        bool held = s.Options && s.Create;
-        if (!held) {
-            _disableStartMs = 0;
-            _disableArmed = true;
-            return;
-        }
-        if (_disableStartMs <= 0) {
-            _disableStartMs = now;
-            return;
-        }
-        if (_disableArmed && now - _disableStartMs >= 2000.0) {
-            _enabled = !_enabled;
-            _disableArmed = false;
-            Logger.Info(_enabled ? "enabled" : "disabled");
-        }
     }
 
     private void ReleaseRuntimeHolds() {

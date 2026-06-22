@@ -14,7 +14,7 @@ Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
 ## Release Package
 
-A release archive should contain:
+A formal release archive should contain:
 
 | File | Purpose |
 |---|---|
@@ -24,7 +24,7 @@ A release archive should contain:
 | `driver/install-interception.exe` | Interception driver installer |
 | `README.md` / `README.zh-CN.md` | English and Chinese manuals |
 
-The current release uses compiled-in defaults. It does not read `shikipad.json`; old config files from earlier builds can be ignored.
+ShikiPad may create one optional runtime file, `shikipad.default`, to remember the default launch controller. It is not part of the release package and does not change mapping parameters.
 
 ## Install And First Run
 
@@ -32,7 +32,7 @@ The current release uses compiled-in defaults. It does not read `shikipad.json`;
 2. Right-click `install_driver.bat` and choose `Run as administrator`.
 3. Wait for `Installation complete!`, then restart Windows. The driver is not active until after reboot.
 4. Run `ShikiPad.exe`. It requests administrator rights because low-level input injection needs elevated access.
-5. Select your controller profile in the console.
+5. Select your controller profile in the console. After selection, you can save it as the default launch profile so future starts do not require manual input.
 
 | # | Controller | Connection |
 |:---:|---|---|
@@ -45,11 +45,32 @@ The current release uses compiled-in defaults. It does not read `shikipad.json`;
 | 7 | Xbox Series X\|S | USB |
 | 8 | Xbox Series X\|S | Bluetooth |
 
-After selection, ShikiPad runs in the background. Close the ShikiPad console window to exit; held keys and mouse buttons are released automatically. Press `Enter` in the console at any time to show the full mapping manual.
+After the controller connects, the console switches to the ShikiPad welcome home screen. Close the ShikiPad console window to exit; held keys and mouse buttons are released automatically.
 
-## Emergency Toggle
+## Default Launch
 
-Hold `Share/Create/View` and `Options/Menu` together for 2 seconds to toggle ShikiPad on or off. Use this when you need the controller to pass through as a normal gamepad temporarily.
+When the prompt asks whether to save the selected controller as the default launch profile, press `Enter` or type `Y` to save it.
+
+When a default is saved, ShikiPad waits about 1.2 seconds on the default launch prompt, then auto-starts with it. To choose again or exit default launch, press `C` when that prompt appears, then:
+
+- Type `1` through `8` to choose another controller for this run and optionally save it as the new default.
+- Type `0` to clear default launch so ShikiPad asks for a controller each time.
+
+Command-line controls are also available:
+
+| Command | Purpose |
+|---|---|
+| `ShikiPad.exe --controller ds5` | Start this run with a controller profile without changing the saved default |
+| `ShikiPad.exe --controller-menu` | Force the controller selection menu |
+| `ShikiPad.exe --clear-default-controller` | Clear default launch and show controller selection |
+| `ShikiPad.exe --identity` | Print the exact executable path to add to HidHide |
+| `ShikiPad.exe --list-devices` | Enumerate HID devices |
+
+Accepted profile aliases include `ds5`, `ds5bt`, `ds4`, `ds4bt`, `xbox360`, `xbox360bt`, `xboxseries`, and `xboxseriesbt`.
+
+## Home And Manual
+
+Press `Enter` while ShikiPad is running to open the mapping manual. Press `Enter` again from the manual to return to the ShikiPad home screen. The manual footer also shows this return path.
 
 ## Mouse And System Buttons
 
@@ -128,6 +149,9 @@ These values are compiled into the current release.
 
 | Area | Setting | Default |
 |---|---|---:|
+| Runtime | `enabled` | `true` |
+| Injection | `useScanCode` | `true` |
+| Injection | `useInterception` | `true` |
 | Mouse | `mouseMaxSpeed` | `20.0` |
 | Mouse | `mouseSensitivity` | `1.0` |
 | Mouse | `rightStickDeadzone` | `0.03` |
@@ -143,16 +167,13 @@ These values are compiled into the current release.
 | Repeat | `baseRepeatRampMs` | `1000` |
 | Scroll | `scrollSlowIntervalMs` | `180` |
 | Scroll | `scrollFastIntervalMs` | `18` |
+| Scroll | `mouseScrollCurveExponent` | `3.0` |
+| Timing | `comboLayerWindowMs` | `35` |
+| Timing | `actionLayerGraceMs` | `35` |
+| Timing | `actionLayerPostGraceMs` | `25` |
+| Timing | `layerTakeoverWindowMs` | `30` |
+| Timing | `actionLayerSwitchGuardMs` | `35` |
 | Clutch | `clutchLongPressMs` | `250` |
-
-## Command Line
-
-| Command | Purpose |
-|---|---|
-| `ShikiPad.exe --controller ds5` | Start directly with a controller profile |
-| `ShikiPad.exe --controller xboxseries` | Accepted profile aliases include `ds5`, `ds5bt`, `ds4`, `ds4bt`, `xbox360`, `xbox360bt`, `xboxseries`, `xboxseriesbt` |
-| `ShikiPad.exe --identity` | Print the exact executable path to add to HidHide |
-| `ShikiPad.exe --list-devices` | Enumerate HID devices |
 
 ## Troubleshooting
 
