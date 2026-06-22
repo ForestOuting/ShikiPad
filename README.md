@@ -43,7 +43,7 @@ After restarting, double-click `ShikiPad.exe`. In the terminal window, select yo
 | 8 | Xbox Series X\|S | Bluetooth |
 
 The program runs in the background after selection. **Close the terminal window to exit.**
-You will see a glowing `==== Press ENTER for Detailed Manual ====` prompt in the terminal. Press Enter to view the full-screen detailed mapping and operation manual.
+Press `Enter` in the console window at any time to view the full-screen detailed mapping and operation manual.
 
 ### 4. Emergency Toggle
 While running, **hold Share/Create/View + Options/Menu simultaneously for 2 seconds** to toggle ShikiPad on/off — useful when you need to temporarily restore raw controller input.
