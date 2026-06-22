@@ -124,7 +124,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u7a97\u53e3", "R1/L1 \u6216 R2/L2 \u9700\u5728 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u5408\u6309", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u5c42\u786e\u8ba4", "\u52a8\u4f5c\u952e\u540e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u5185\u786e\u8ba4", SeasonSummer(), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u524d\u7f6e / \u540e\u7f6e", "\u52a8\u4f5c\u952e\u540e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u524d\u7f6e; \u677e\u5f00\u952e\u5c42\u540e " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms \u7a7a\u767d\u671f\u5f52\u5c5e", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  \u84c4\u529b", xbox ? "View/Menu \u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b" : "\u89e6\u63a7\u677f\u77ed\u6309=\u5207\u6362\u84c4\u529b, \u957f\u6309=\u6309\u4f4f\u84c4\u529b; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "\u5de6\u6447\u6746\u2197 + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         } else {
@@ -136,7 +136,7 @@ internal static class Program {
             WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combo layers", "R1+L1: 7 8 9 0 - = , .    R2+L2: ' / ; [ ] \\ `", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Combo window", "R1/L1 or R2/L2 must pair within " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms; later overlaps use the newest single layer", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Layer settle", "Action looks forward/back " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms", SeasonSummer(), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Pre / post", "Pre " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after action; post " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms after layer release", SeasonSummer(), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Clutch", xbox ? "View/Menu short press=toggle clutch, long press=hold clutch" : "Touchpad short press=toggle clutch, long press=hold clutch; Share=RAlt Options=RCtrl Home=RShift", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
             WritePanelLine(width, panelWidth, "  Fn", "Left stick UpRight + 1..0,-,= => F1..F12", new Rgb(255, 255, 255), new Rgb(245, 250, 255));
         }
@@ -957,6 +957,7 @@ internal static class Program {
         }
         Console.WriteLine("Layer priority: latest triggered layer wins; R1+L1 and R2+L2 activate only inside comboLayerWindowMs.");
         Console.WriteLine("actionLayerGraceMs = " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture));
+        Console.WriteLine("actionLayerPostGraceMs = " + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("layerTakeoverWindowMs = " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("comboLayerWindowMs = " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine();
@@ -987,6 +988,7 @@ internal static class Program {
         Console.WriteLine("Pending timing checks:");
         bool ok = true;
         ok = PrintComboTakeoverCheck(config, mapping) && ok;
+        ok = PrintPostReleaseGraceCheck(config, mapping) && ok;
         ok = PrintControllerParityCheck(config, mapping) && ok;
         ok = PrintUserScenarioCheck(config, mapping) && ok;
         ok = PrintRequestedLayerScenarioCheck(config, mapping) && ok;
@@ -1179,6 +1181,35 @@ internal static class Program {
         Console.WriteLine("rightStickBoundaryNoise = " + (boundaryNoiseOk ? "PASS" : "FAIL"));
         Console.WriteLine("rightStickFirstMoveMs = " + firstMoveMs.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("rightStickMotion = " + (ok ? "PASS" : "FAIL"));
+        return ok;
+    }
+
+    private static bool PrintPostReleaseGraceCheck(Config config, MappingEngine mapping) {
+        double oldLayerUpMs = 100.0;
+        double actionMs = oldLayerUpMs + Math.Min(20.0, Math.Max(1.0, config.ActionLayerPostGraceMs - 1.0));
+        double expiredActionMs = oldLayerUpMs + config.ActionLayerPostGraceMs + 1.0;
+        double newLayerMs = actionMs + Math.Min(10.0, Math.Max(1.0, config.ActionLayerGraceMs - 1.0));
+
+        Layer initialInBlank = MapperForm.ResolveInitialActionLayer(Layer.Base, Layer.L2, actionMs, oldLayerUpMs, config.ActionLayerPostGraceMs);
+        Layer initialExpired = MapperForm.ResolveInitialActionLayer(Layer.Base, Layer.L2, expiredActionMs, oldLayerUpMs, config.ActionLayerPostGraceMs);
+        Layer l1Layer = mapping.Resolve(true, false, false, false, newLayerMs, 0, 0, 0, config.ComboLayerWindowMs);
+        Layer coveredByNewLayer = MapperForm.ResolvePendingLayer(initialInBlank, initialInBlank, actionMs, l1Layer, newLayerMs, oldLayerUpMs, oldLayerUpMs, config.ActionLayerGraceMs, config.LayerTakeoverWindowMs);
+
+        PhysicalKey blankKey = mapping.Lookup(initialInBlank, ActionButton.Square);
+        bool ok = initialInBlank == Layer.L2 &&
+                  blankKey == PhysicalKey.Num9 &&
+                  initialExpired == Layer.Base &&
+                  coveredByNewLayer == Layer.L1;
+
+        Console.WriteLine("Post-release blank action = " +
+                          LayerDisplayName(initialInBlank) + " / " + LayerTestKeyName(blankKey) +
+                          (initialInBlank == Layer.L2 && blankKey == PhysicalKey.Num9 ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("Post-release grace expired = " +
+                          LayerDisplayName(initialExpired) +
+                          (initialExpired == Layer.Base ? " [PASS]" : " [FAIL]"));
+        Console.WriteLine("Post-release action covered by new layer pre-grace = " +
+                          LayerDisplayName(coveredByNewLayer) +
+                          (coveredByNewLayer == Layer.L1 ? " [PASS]" : " [FAIL]"));
         return ok;
     }
 

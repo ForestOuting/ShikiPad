@@ -3,7 +3,7 @@ using System;
 internal sealed class LeftStickScrollIntegrator {
     internal const int WheelDelta = 120;
     private const double StartupCurveEnd = 0.20;
-    private const double StartupWheelDeltaPerSecond = 500.0;
+    private const double StartupWheelDeltaPerSecond = 420.0;
 
     private double _accumulatedWheelDelta;
 

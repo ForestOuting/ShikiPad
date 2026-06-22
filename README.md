@@ -152,10 +152,11 @@ ShikiPad uses a precise timing system to correctly determine whether you intende
 | Parameter | Default | Purpose |
 |---|---|---|
 | `comboLayerWindowMs` | 30ms | R1+L1 or R2+L2 must be pressed within this time gap to be recognized as a combo layer |
-| `actionLayerGraceMs` | 35ms | After pressing an action button, the system waits within this window for shoulder/trigger state changes to determine the final layer. Similarly, action buttons pressed within this window after releasing a shoulder/trigger are still attributed to that layer |
-| `layerTakeoverWindowMs` | 25ms | The maximum overlap allowed for a new layer to take over an action key that was pressed while a previous layer modifier was held. Limits how deep into the previous layer the new layer can reach |
+| `actionLayerGraceMs` | 35ms | Pre-confirmation window. After an action button is pressed, a shoulder/trigger pressed within this window can still define the final layer |
+| `actionLayerPostGraceMs` | 35ms | Post-release attribution window. After a layer modifier is released, action buttons pressed during this blank gap start as the released layer unless a later pre-confirmed layer covers them |
+| `layerTakeoverWindowMs` | 30ms | Held-layer takeover window. Only applies when the old layer was still held after the action button press; it limits how much overlap a later layer may take over |
 
-In short: single-layer confirmation remains **35ms**, and combo layers use a **30ms** pairing window.
+In short: pre-confirmation is **35ms**, post-release attribution is **35ms**, combo layers use a **30ms** pairing window, and held-layer takeover allows **30ms** of overlap.
 
 ---
 
@@ -171,7 +172,7 @@ See `shikipad.example.json` for a clean default template.
 |---|---|---|
 | `mouseMaxSpeed` | `20.0` | Maximum cursor speed unit when the right stick is fully pushed. Effective maximum is `mouseMaxSpeed * 120 * mouseSensitivity` pixels/second |
 | `mouseSensitivity` | `1.0` | Global multiplier for mouse speed |
-| `rightStickDeadzone` | `0.055` | Right stick idle-noise deadzone. This filters hardware rest drift while preserving light intentional movement above the idle band |
+| `rightStickDeadzone` | `0.03` | Right stick idle-noise deadzone. This filters hardware rest drift while preserving light intentional movement above the idle band |
 | `rightStickCurveExponent` | `3.0` | Power curve exponent. Higher values = more precise at low deflection |
 | `mouseScrollCurveExponent`| `3.0` | Left stick scroll curve exponent. Higher values = more precise at low deflection |
 | `r3FreezeMs` | `60` | Cursor freeze duration (ms) after pressing R3. Clicking the stick often causes accidental nudges; this briefly ignores stick movement to ensure stable clicks |
@@ -195,9 +196,10 @@ See `shikipad.example.json` for a clean default template.
 | Parameter | Default | Description |
 |---|---|---|
 | `comboLayerWindowMs` | `30` | Max time gap (ms) between R1+L1 or R2+L2 to trigger a combo layer |
-| `actionLayerGraceMs` | `35` | Layer confirmation window (ms). Higher = more forgiving but slower response |
-| `layerTakeoverWindowMs` | `25` | New layer takeover window (ms) for resolving cross-layer action presses |
-| `actionLayerSwitchGuardMs` | `35` | Layer-switch typo guard (ms). If you type quickly but release the shoulder button slightly too early, the action button might accidentally trigger the Base layer (e.g. Space). This detects recent typing activity and suppresses such accidental Base layer inputs. If you find your intentional Space presses after typing are being ignored, lower this value |
+| `actionLayerGraceMs` | `35` | Pre-confirmation window (ms). After an action button is pressed, a new layer pressed within this window may cover it |
+| `actionLayerPostGraceMs` | `35` | Post-release attribution window (ms). Starts after the layer modifier is released and covers only the blank gap before another layer is pressed |
+| `layerTakeoverWindowMs` | `30` | Held-layer takeover window (ms). Applies only to overlap while the old layer was still held; it is not used for the post-release blank gap |
+| `actionLayerSwitchGuardMs` | `35` | Already-sent character switch guard (ms). This is separate from post-release attribution; it suppresses residue when a held character key changes layers after it has already been sent |
 | `clutchLongPressMs` | `250` | Press duration that separates a clutch short press from a clutch long press |
 
 ### Repeat / Scroll
@@ -208,14 +210,14 @@ See `shikipad.example.json` for a clean default template.
 | `repeatIntervalMs` | `32` | Fastest repeat interval at full speed, matching a high keyboard repeat rate |
 | `baseRepeatSlowIntervalMs` | `240` | Starting repeat interval before the acceleration ramp |
 | `baseRepeatRampMs` | `2500` | Time spent ramping from the slow repeat interval to the fastest interval |
-| `scrollSlowIntervalMs` | `120` | Reference slow scroll interval (ms). Scroll now ramps up from zero near the deadzone instead of starting with a full wheel notch |
-| `scrollFastIntervalMs` | `12` | Fastest scroll interval when the stick is fully held (ms) |
+| `scrollSlowIntervalMs` | `160` | Reference slow scroll interval (ms). Scroll ramps up from zero near the deadzone instead of starting with a full wheel notch |
+| `scrollFastIntervalMs` | `18` | Fastest scroll interval when the stick is fully held (ms) |
 
 ### System
 
 | Parameter | Default | Description |
 |---|---|---|
-| `configVersion` | `4` | Config file schema marker. Keep this value unless release notes say otherwise |
+| `configVersion` | `6` | Config file schema marker. Keep this value unless release notes say otherwise |
 | `useInterception` | `true` | Use the Interception kernel driver. Set `false` to fall back to `SendInput` |
 | `useScanCode` | `true` | Send hardware scan codes (better compatibility with some games and VMs) |
 

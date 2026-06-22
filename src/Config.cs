@@ -5,15 +5,17 @@ using System.IO;
 using System.Text;
 
 internal sealed class Config {
-    private const int CurrentConfigVersion = 5;
+    private const int CurrentConfigVersion = 6;
     private const double DefaultMouseScrollCurveExponent = 3.0;
-    private const int DefaultScrollSlowIntervalMs = 120;
-    private const int DefaultScrollFastIntervalMs = 12;
+    private const int DefaultScrollSlowIntervalMs = 160;
+    private const int DefaultScrollFastIntervalMs = 18;
     private const int DefaultComboLayerWindowMs = 30;
+    private const int DefaultLayerTakeoverWindowMs = 30;
+    private const int DefaultActionLayerPostGraceMs = 35;
     private const int DefaultRepeatIntervalMs = 32;
     private const int DefaultBaseRepeatSlowIntervalMs = 240;
     private const int DefaultBaseRepeatRampMs = 2500;
-    private const double DefaultRightStickDeadzone = 0.055;
+    private const double DefaultRightStickDeadzone = 0.03;
 
     public int ConfigVersion = CurrentConfigVersion;
     public bool Enabled = true;
@@ -32,7 +34,8 @@ internal sealed class Config {
     public int BaseRepeatSlowIntervalMs = DefaultBaseRepeatSlowIntervalMs;
     public int BaseRepeatRampMs = DefaultBaseRepeatRampMs;
     public int ActionLayerGraceMs = 35;
-    public int LayerTakeoverWindowMs = 25;
+    public int ActionLayerPostGraceMs = DefaultActionLayerPostGraceMs;
+    public int LayerTakeoverWindowMs = DefaultLayerTakeoverWindowMs;
     public int ActionLayerSwitchGuardMs = 35;
     public int ComboLayerWindowMs = DefaultComboLayerWindowMs;
     public bool UseScanCode = true;
@@ -70,6 +73,7 @@ internal sealed class Config {
             cfg.BaseRepeatSlowIntervalMs = GetInt(json, "baseRepeatSlowIntervalMs", cfg.BaseRepeatSlowIntervalMs);
             cfg.BaseRepeatRampMs = GetInt(json, "baseRepeatRampMs", cfg.BaseRepeatRampMs);
             cfg.ActionLayerGraceMs = GetInt(json, "actionLayerGraceMs", cfg.ActionLayerGraceMs);
+            cfg.ActionLayerPostGraceMs = GetInt(json, "actionLayerPostGraceMs", cfg.ActionLayerPostGraceMs);
             cfg.LayerTakeoverWindowMs = GetInt(json, "layerTakeoverWindowMs", cfg.LayerTakeoverWindowMs);
             cfg.ActionLayerSwitchGuardMs = GetInt(json, "actionLayerSwitchGuardMs", cfg.ActionLayerSwitchGuardMs);
             cfg.ComboLayerWindowMs = GetInt(json, "comboLayerWindowMs", cfg.ComboLayerWindowMs);
@@ -132,7 +136,7 @@ internal sealed class Config {
                 shouldSaveConfig = true;
             }
             if (cfg.LayerTakeoverWindowMs < 0 || cfg.LayerTakeoverWindowMs > cfg.ActionLayerGraceMs) {
-                int fallbackLayerTakeoverMs = Math.Min(25, Math.Max(0, cfg.ActionLayerGraceMs));
+                int fallbackLayerTakeoverMs = Math.Min(DefaultLayerTakeoverWindowMs, Math.Max(0, cfg.ActionLayerGraceMs));
                 Logger.Warn("invalid layerTakeoverWindowMs; using " + fallbackLayerTakeoverMs.ToString(CultureInfo.InvariantCulture));
                 cfg.LayerTakeoverWindowMs = fallbackLayerTakeoverMs;
                 shouldSaveConfig = true;
@@ -186,6 +190,11 @@ internal sealed class Config {
             if (cfg.ActionLayerGraceMs < 0) {
                 Logger.Warn("invalid actionLayerGraceMs; using 35");
                 cfg.ActionLayerGraceMs = 35;
+                shouldSaveConfig = true;
+            }
+            if (cfg.ActionLayerPostGraceMs < 0) {
+                Logger.Warn("invalid actionLayerPostGraceMs; using " + DefaultActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture));
+                cfg.ActionLayerPostGraceMs = DefaultActionLayerPostGraceMs;
                 shouldSaveConfig = true;
             }
             if (cfg.ActionLayerSwitchGuardMs < 0) {
@@ -242,6 +251,7 @@ internal sealed class Config {
         Write(sb, "baseRepeatSlowIntervalMs", BaseRepeatSlowIntervalMs, true);
         Write(sb, "baseRepeatRampMs", BaseRepeatRampMs, true);
         Write(sb, "actionLayerGraceMs", ActionLayerGraceMs, true);
+        Write(sb, "actionLayerPostGraceMs", ActionLayerPostGraceMs, true);
         Write(sb, "layerTakeoverWindowMs", LayerTakeoverWindowMs, true);
         Write(sb, "actionLayerSwitchGuardMs", ActionLayerSwitchGuardMs, true);
         Write(sb, "comboLayerWindowMs", ComboLayerWindowMs, true);
@@ -312,11 +322,14 @@ internal sealed class Config {
         if (Math.Abs(cfg.MouseScrollCurveExponent - 3.5) < 0.000001) {
             cfg.MouseScrollCurveExponent = DefaultMouseScrollCurveExponent;
         }
-        if (cfg.ScrollSlowIntervalMs == 180) {
+        if (cfg.ScrollSlowIntervalMs == 180 || cfg.ScrollSlowIntervalMs == 120) {
             cfg.ScrollSlowIntervalMs = DefaultScrollSlowIntervalMs;
         }
-        if (cfg.ScrollFastIntervalMs == 18) {
+        if (cfg.ScrollFastIntervalMs == 12) {
             cfg.ScrollFastIntervalMs = DefaultScrollFastIntervalMs;
+        }
+        if (cfg.LayerTakeoverWindowMs == 25) {
+            cfg.LayerTakeoverWindowMs = DefaultLayerTakeoverWindowMs;
         }
         if (cfg.ComboLayerWindowMs == 35) {
             cfg.ComboLayerWindowMs = DefaultComboLayerWindowMs;
@@ -330,7 +343,8 @@ internal sealed class Config {
         if (cfg.BaseRepeatRampMs == 1200) {
             cfg.BaseRepeatRampMs = DefaultBaseRepeatRampMs;
         }
-        if (Math.Abs(cfg.RightStickDeadzone - 0.025) < 0.000001) {
+        if (Math.Abs(cfg.RightStickDeadzone - 0.025) < 0.000001 ||
+            Math.Abs(cfg.RightStickDeadzone - 0.055) < 0.000001) {
             cfg.RightStickDeadzone = DefaultRightStickDeadzone;
         }
         Logger.Info("migrated config defaults to version " + CurrentConfigVersion.ToString(CultureInfo.InvariantCulture));
@@ -362,6 +376,7 @@ internal sealed class Config {
             "baseRepeatSlowIntervalMs",
             "baseRepeatRampMs",
             "actionLayerGraceMs",
+            "actionLayerPostGraceMs",
             "layerTakeoverWindowMs",
             "actionLayerSwitchGuardMs",
             "comboLayerWindowMs",

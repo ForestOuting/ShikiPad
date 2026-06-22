@@ -108,6 +108,9 @@ internal sealed class MapperForm : Form {
     private bool _prevL1, _prevR1;
     private double _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs;
     private double _l1UpMs, _r1UpMs, _l2UpMs, _r2UpMs;
+    private Layer _previousActionLayer = Layer.Base;
+    private Layer _lastReleasedActionLayer = Layer.Base;
+    private double _lastReleasedActionLayerUpMs;
 
     private void OnTick() {
         ControllerState s = _hid.State;
@@ -339,6 +342,7 @@ internal sealed class MapperForm : Form {
         bool[] currentDown = new bool[] { s.Up, s.Right, s.Square, s.Triangle, s.Left, s.Down, s.Cross, s.Circle };
         Layer layer = _mapping.Resolve(s.L1, s.R1, _l2Pressed, _r2Pressed, _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs, _config.ComboLayerWindowMs);
         double layerMs = LayerTimestamp(layer);
+        RememberReleasedActionLayer(layer, now);
 
         for (int i = 0; i < 8; i++) {
             bool prev = _prevDown[i];
@@ -406,13 +410,14 @@ internal sealed class MapperForm : Form {
             }
 
             if (!prev && curr) {
-                PhysicalKey key = layerKey;
+                Layer initialLayer = InitialActionLayer(layer, now);
+                PhysicalKey key = ApplyFnLayer(_mapping.Lookup(initialLayer, (ActionButton)i));
                 if (ShouldDeferInitialAction()) {
                     hold = new ButtonHold();
                     hold.Pending = true;
-                    hold.OriginalPendingLayer = layer;
-                    hold.PendingLayer = layer;
-                    hold.PendingLayerMs = layerMs;
+                    hold.OriginalPendingLayer = initialLayer;
+                    hold.PendingLayer = initialLayer;
+                    hold.PendingLayerMs = initialLayer == layer ? layerMs : LayerTimestamp(initialLayer);
                     hold.PendingSinceMs = now;
                     _holds[i] = hold;
                     _prevDown[i] = curr;
@@ -512,6 +517,28 @@ internal sealed class MapperForm : Form {
 
     private bool ShouldDeferInitialAction() {
         return _config.ActionLayerGraceMs > 0;
+    }
+
+    private void RememberReleasedActionLayer(Layer layer, double now) {
+        bool previousWasLayer = _previousActionLayer != Layer.Base && _previousActionLayer != Layer.Reserved;
+        bool currentIsBlank = layer == Layer.Base || layer == Layer.Reserved;
+        if (previousWasLayer && currentIsBlank) {
+            _lastReleasedActionLayer = _previousActionLayer;
+            double upMs = LayerUpTimestamp(_previousActionLayer);
+            _lastReleasedActionLayerUpMs = upMs > 0.0 ? upMs : now;
+        }
+        _previousActionLayer = layer;
+    }
+
+    private Layer InitialActionLayer(Layer layer, double now) {
+        return ResolveInitialActionLayer(layer, _lastReleasedActionLayer, now, _lastReleasedActionLayerUpMs, _config.ActionLayerPostGraceMs);
+    }
+
+    internal static Layer ResolveInitialActionLayer(Layer layer, Layer lastReleasedLayer, double now, double lastReleasedLayerUpMs, double postGraceMs) {
+        if (layer != Layer.Base && layer != Layer.Reserved) return layer;
+        if (lastReleasedLayer == Layer.Base || lastReleasedLayer == Layer.Reserved) return layer;
+        if (now - lastReleasedLayerUpMs <= postGraceMs) return lastReleasedLayer;
+        return layer;
     }
 
     private double LayerTimestamp(Layer layer) {
@@ -785,6 +812,9 @@ internal sealed class MapperForm : Form {
         _r1UpMs = 0;
         _l2UpMs = 0;
         _r2UpMs = 0;
+        _previousActionLayer = Layer.Base;
+        _lastReleasedActionLayer = Layer.Base;
+        _lastReleasedActionLayerUpMs = 0;
         _l2Pressed = false;
         _r2Pressed = false;
         _clutchButton.Reset();
