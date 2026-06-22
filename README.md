@@ -52,16 +52,18 @@ While running, **hold Share/Create/View + Options/Menu simultaneously for 2 seco
 
 ## 🎮 Complete Controls Guide
 
-### 🖱️ Mouse Control (Right Stick)
+### 🖱️ Mouse Control (Right & Left Stick)
 
 | Controller Input | Output | Notes |
 |---|---|---|
 | **Right Stick** movement | Mouse cursor movement | **Fully continuous power-curve acceleration**. Smoothly transitions from micro-adjustments at a gentle tilt to maximum speed when fully pushed, with no piecewise segments. |
 | **R3** (Right Stick click) | Right Mouse Button | Cursor freezes briefly on click to prevent accidental movement |
 | **L3** (Left Stick click) | Left Mouse Button | — |
-| **PS Share/Create** (DS4/DS5) | `Right Alt` | Hold to press, release to let go |
-| **PS Options/Menu** (DS4/DS5) | `Right Ctrl` | Hold to press, release to let go |
-| **PS Home Button** (DS4/DS5) | `Right Shift` | Hold to press, release to let go. Xbox Home button is intercepted by Windows for Xbox Game Bar and cannot be mapped |
+| **Left Stick ↑ Up** | Mouse Wheel ↑ | **Fully continuous power-curve acceleration**. Scroll up smoothly when tilted, accelerating seamlessly when held deeper. |
+| **Left Stick ↓ Down** | Mouse Wheel ↓ | **Fully continuous power-curve acceleration**. Scroll down smoothly when tilted, accelerating seamlessly when held deeper. |
+| **PS Share/Create** | `Right Alt` | Hold to press, release to let go |
+| **PS Options/Menu** | `Right Ctrl` | Hold to press, release to let go |
+| **PS Home Button** | `Right Shift` | Hold to press, release to let go. Xbox Home button is intercepted by Windows for Xbox Game Bar and cannot be mapped |
 
 ---
 
@@ -76,9 +78,8 @@ The Left Stick acts as an **8-way function dial**: push in a direction to hold t
 | **↘ Down-Right** | `Left Alt` | Shortcuts (e.g., Alt+Tab to switch windows) |
 | **→ Right** | `Win` | Start menu, system shortcuts |
 | **↖ Up-Left** | `Esc` | Cancel, exit |
-| **↑ Up** | Mouse Wheel ↑ | **Fully continuous power-curve acceleration**. Scroll up smoothly when tilted, accelerating seamlessly when held deeper. |
-| **↓ Down** | Mouse Wheel ↓ | **Fully continuous power-curve acceleration**. Scroll down smoothly when tilted, accelerating seamlessly when held deeper. |
 | **↗ Up-Right** | Activate `Fn` layer | Converts number keys to F1–F12 |
+| **↑ Up / ↓ Down** | Mouse Wheel | (Moved to Mouse Control section above) |
 
 #### ⚡ Clutch System (Modifier Accumulator)
 
