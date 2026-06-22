@@ -547,7 +547,6 @@ internal sealed class MapperForm : Form {
     }
 
     private bool ShouldDeferInitialAction(Layer initialLayer) {
-        if (initialLayer != Layer.Base && initialLayer != Layer.Reserved) return false;
         return _config.ActionLayerGraceMs > 0;
     }
 
