@@ -626,6 +626,7 @@ internal static class Program {
 
     [STAThread]
     private static int Main(string[] args) {
+        try { Console.Title = "ShikiPad"; } catch { }
         PrintGradientBanner();
 
         string root = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
