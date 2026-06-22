@@ -70,7 +70,6 @@ internal sealed class MapperForm : Form {
             var pc = new System.Diagnostics.PerformanceCounter("Process", "Creating Process ID", Process.GetCurrentProcess().ProcessName);
             parentId = (int)pc.NextValue();
         } catch { }
-        Program.PrintRuntimeStatus(Process.GetCurrentProcess().MainModule.FileName, Process.GetCurrentProcess().Id, parentId, _hid.DisplayName, true);
 
         _lastTickMs = NowMs();
         _pollRunning = true;
@@ -79,6 +78,22 @@ internal sealed class MapperForm : Form {
         _pollThread.IsBackground = true;
         _pollThread.Priority = ThreadPriority.AboveNormal;
         _pollThread.Start();
+
+        Thread guideThread = new Thread(() => {
+            while (true) {
+                try {
+                    if (Console.KeyAvailable) {
+                        var key = Console.ReadKey(true);
+                        if (key.Key == ConsoleKey.Enter) {
+                            Program.PrintDetailedManual(_controllerProfile, _config);
+                        }
+                    }
+                } catch { }
+                Thread.Sleep(100);
+            }
+        });
+        guideThread.IsBackground = true;
+        guideThread.Start();
     }
 
     private void PollLoop() {
@@ -140,7 +155,7 @@ internal sealed class MapperForm : Form {
         }
         _runtimeReleased = false;
         if (!_printedConnectedGuide) {
-            Program.PrintControllerGuide(_controllerProfile, _hid.DisplayName, _config);
+            Console.WriteLine("\x1b[38;2;113;255;194m[ShikiPad] Controller connected: " + _hid.DisplayName + "\x1b[0m");
             _printedConnectedGuide = true;
         }
         UpdateTriggers(s, now);
@@ -468,7 +483,12 @@ internal sealed class MapperForm : Form {
                         if (hold.KeyIsDown) {
                             ReleaseActionKey(i, hold.Key, "Button " + ActionButtonName(i) + " base release before layer change");
                         }
-                        hold.Key = KeyStroke.None;
+                        if (!currentLayerKey.IsNone) {
+                            _fnArmed = false;
+                            TapActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " base-to-layer virtual tap");
+                        }
+                        hold.Key = currentLayerKey;
+                        hold.KeyLayer = layer;
                         hold.KeyIsDown = false;
                         hold.RepeatEnabled = false;
                         hold.SuppressUntilRelease = true;

@@ -13,7 +13,7 @@ internal sealed class Config {
     private const double DefaultTriggerPressThreshold = 0.0;
     private const double DefaultTriggerReleaseThreshold = 0.0;
     private const int DefaultLayerTakeoverWindowMs = 30;
-    private const int DefaultActionLayerPostGraceMs = 35;
+    private const int DefaultActionLayerPostGraceMs = 25;
     private const int DefaultRepeatIntervalMs = 32;
     private const int DefaultBaseRepeatSlowIntervalMs = 240;
     private const int DefaultBaseRepeatRampMs = 2500;

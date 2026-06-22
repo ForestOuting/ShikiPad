@@ -65,14 +65,8 @@ internal static class Program {
     }
 
     private static void WriteBannerStatus(int width, int panelWidth, bool zh) {
-        string text = zh
-            ? "\u25c7  \u7269\u7406\u6309\u952e  \u2022  \u9f20\u6807\u66f2\u7ebf  \u2022  \u89e6\u63a7\u677f\u84c4\u529b  \u25c7"
-            : "\u25c7  Physical keys  \u2022  Mouse curve  \u2022  Clutch  \u25c7";
-        string sub = zh
-            ? "\u2014\u2014 \u5c31\u7eea  \u2022  \u5173\u95ed\u65f6\u81ea\u52a8\u91ca\u653e\u6240\u6709\u6309\u952e \u2014\u2014"
-            : "\u2014\u2014 Ready  \u2022  Releases all held keys on exit \u2014\u2014";
-        WriteEmbossedCenteredText(width, panelWidth, text, SeasonFlowStops(), false);
-        WriteEmbossedCenteredText(width, panelWidth, sub, SeasonFlowStops(), false);
+        string text = zh ? "==== \u6309\u4e0b Enter \u952e\u67e5\u770b\u8be6\u7ec6\u8bf4\u660e ====" : "==== Press ENTER for Detailed Manual ====";
+        WriteEmbossedCenteredText(width, panelWidth, text, SeasonGlowStops(), true);
     }
 
     private static string[] BuildShikiPadBlockLogo() {
@@ -92,54 +86,64 @@ internal static class Program {
         return pattern.Replace('#', '\u2588');
     }
 
-    public static void PrintRuntimeStatus(string processPath, int processId, int parentId, string backend, bool readsController) {
-        EnableAnsi();
-        int width = GetConsoleWidth();
-        int panelWidth = Math.Min(104, Math.Max(66, width - 6));
-        string fileName = Path.GetFileName(processPath);
-        bool zh = IsChineseUi();
-
-        WriteSeasonPanelBorder(width, panelWidth, true);
-        WriteSeasonPanelTitle(width, panelWidth, zh ? "\u25c7 \u8fd0\u884c\u72b6\u6001 \u25c7" : "\u25c7 RUNTIME STATUS \u25c7");
-        WriteSeasonPanelSeparator(width, panelWidth);
-        WritePanelLine(width, panelWidth, zh ? "  \u8fdb\u7a0b" : "  Process", fileName + "  PID " + processId.ToString(CultureInfo.InvariantCulture), SeasonGold(), new Rgb(222, 238, 244));
-        WritePanelLine(width, panelWidth, zh ? "  \u624b\u67c4\u540e\u7aef" : "  Controller backend", backend, SeasonSpring(), new Rgb(222, 238, 244));
-        WritePanelLine(width, panelWidth, zh ? "  \u624b\u67c4\u8bfb\u53d6" : "  Controller read", readsController ? (zh ? "\u672c\u8fdb\u7a0b\u6d3b\u8dc3" : "active in this process") : (zh ? "\u672a\u6d3b\u8dc3" : "inactive"), SeasonAutumn(), new Rgb(222, 238, 244));
-        WriteSeasonPanelBorder(width, panelWidth, false);
-        Console.Write("\x1b[0m");
-    }
-
-    public static void PrintControllerGuide(ControllerProfile profile, string backend, Config config) {
+    public static void PrintDetailedManual(ControllerProfile profile, Config config) {
+        try { Console.Clear(); } catch { }
         EnableAnsi();
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(112, Math.Max(72, width - 6));
         bool zh = IsChineseUi();
         bool xbox = profile == ControllerProfile.Xbox360 || profile == ControllerProfile.XboxSeries ||
                     profile == ControllerProfile.Xbox360BT || profile == ControllerProfile.XboxSeriesBT;
-        bool ds4 = profile == ControllerProfile.DualShock4 || profile == ControllerProfile.DualShock4BT;
 
+        Console.WriteLine();
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
-        WritePanelTitle(width, panelWidth, zh ? "\u25c7 \u6620\u5c04\u901f\u67e5 \u25c7" : "\u25c7 MAPPING QUICK REFERENCE \u25c7", new Rgb(235, 247, 252));
+        WritePanelTitle(width, panelWidth, zh ? "\u25c7 \u8be6\u7ec6\u6620\u5c04\u4e0e\u64cd\u4f5c\u8bf4\u660e \u25c7" : "\u25c7 DETAILED MAPPING MANUAL \u25c7", new Rgb(235, 247, 252));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
         if (zh) {
-            WritePanelLine(width, panelWidth, "  \u53f3\u6447\u6746", "\u9f20\u6807\u79fb\u52a8, L3=\u5de6\u952e, R3=\u53f3\u952e", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u5de6\u6447\u6746", "\u2191/\u2193 \u6eda\u8f6e, \u2197 Fn, \u2192 Win, \u2198 Alt, \u2199 Ctrl, \u2190 Shift, \u2196 Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, \u25a1=Space, \u25b3=Backspace, \u00d7=Enter, \u25cb=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42 1", "R1+L1: 7 8 9 0 - = , .    R2+L2: < ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u7ec4\u5408\u5c42 2", "L1+R2: ` \\ ' \" ; ~ / ?    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  \u65f6\u5e8f", "\u7ec4\u5408 " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms, \u524d/\u540e\u7f6e " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "/" + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms, \u63a5\u7ba1 " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u3010\u6447\u6746\u4e0e\u9f20\u6807\u3011", "", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u53f3\u6447\u6746", "\u63a7\u5236\u9f20\u6807\u79fb\u52a8, L3=\u5de6\u952e, R3=\u53f3\u952e", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5de6\u6447\u6746 (\u6eda\u8f6e)", "\u5411\u4e0a/\u5411\u4e0b\u63a8\u52a8\u4e3a\u9f20\u6807\u6eda\u8f6e\u3002\u63a8\u52a8\u8d8a\u6df1\u6eda\u52a8\u8d8a\u5feb", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5de6\u6447\u6746 (\u4fee\u9970\u952e)", "\u5176\u4ed6\u65b9\u5411\u6620\u5c04: \u2197 Fn, \u2192 Win, \u2198 Alt, \u2199 Ctrl, \u2190 Shift, \u2196 Esc", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+            
+            WritePanelLine(width, panelWidth, "  \u3010\u5b57\u7b26\u8f93\u5165\u5c42\u3011", "\u57fa\u7840\u6309\u952e = " + (xbox ? "D-pad + X Y A B" : "D-pad + \u25a1 \u25b3 \u00d7 \u25cb"), new Rgb(255, 211, 106), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u57fa\u7840\u5c42 (\u65e0\u80a9\u952e)", xbox ? "D-pad=\u65b9\u5411\u952e, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=\u65b9\u5411\u952e, \u25a1=Space, \u25b3=Backspace, \u00d7=Enter, \u25cb=Tab", new Rgb(255, 235, 180), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1 \u5c42", "i n e a o t h u (\u5bf9\u5e94\u516b\u4e2a\u57fa\u7840\u6309\u952e\u987a\u5e8f:\u4e0a\u53f3 \u25a1\u25b3 \u5de6\u4e0b \u00d7\u25cb)", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  L1 \u5c42", "s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R2 \u5c42", "m w j x q f p b", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  L2 \u5c42", "k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1+L1 \u7ec4\u5408\u5c42", "7 8 9 0 - = , . (\u540c\u65f6\u6309\u4e0b\u4e24\u4e2a\u80a9\u952e)", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R2+L2 \u7ec4\u5408\u5c42", "< ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  L1+R2 \u7ec4\u5408\u5c42", "` \\ ' \" ; ~ / ?", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1+L2 \u7ec4\u5408\u5c42", "! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+
+            WritePanelLine(width, panelWidth, "  \u3010\u9ad8\u7ea7\u673a\u5236\u3011", "", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u84c4\u529b\u4fee\u9970 (\u89e6\u63a7\u677f)", "\u77ed\u6309\u5207\u6362\u5f00\u5173\uff0c\u957f\u6309\u5219\u4e3a\u6309\u4f4f\u751f\u6548\u3002", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  \u5bbd\u5bb9\u7a97\u53e3", "\u5148\u6309\u5b57\u7b26\u952e\u518d\u6309\u80a9\u952e(\u6216\u76f8\u53cd)\u5728 " + config.ActionLayerGraceMs + "ms \u5185\u5747\u53ef\u8bc6\u522b\u4e3a\u540c\u65f6\u6309\u4e0b", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
         } else {
-            WritePanelLine(width, panelWidth, "  Right stick", "Move mouse, R3 right click, L3 left click", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Left stick", "Up/Down wheel, UpRight Fn, Right Win, DownRight Alt, DownLeft Ctrl, Left Shift, UpLeft Esc", new Rgb(128, 224, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Base layer", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 211, 106), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  R1 / L1", "R1: i n e a o t h u    L1: s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  R2 / L2", "R2: m w j x q f p b    L2: k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combos 1", "R1+L1: 7 8 9 0 - = , .    R2+L2: < ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Combos 2", "L1+R2: ` \\ ' \" ; ~ / ?    R1+L2: ! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, "  Timing", "combo " + config.ComboLayerWindowMs.ToString(CultureInfo.InvariantCulture) + "ms, pre/post " + config.ActionLayerGraceMs.ToString(CultureInfo.InvariantCulture) + "/" + config.ActionLayerPostGraceMs.ToString(CultureInfo.InvariantCulture) + "ms, takeover " + config.LayerTakeoverWindowMs.ToString(CultureInfo.InvariantCulture) + "ms", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  [ JOYSICKS & MOUSE ]", "", new Rgb(113, 255, 194), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Right stick", "Move mouse, L3 left click, R3 right click", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Left stick (Scroll)", "Up/Down pushes scroll wheel. Deeper push means faster scroll", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Left stick (Mods)", "UpRight Fn, Right Win, DownRight Alt, DownLeft Ctrl, Left Shift, UpLeft Esc", new Rgb(200, 255, 220), new Rgb(245, 250, 255));
+            WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+            
+            WritePanelLine(width, panelWidth, "  [ CHARACTER LAYERS ]", "Base Action Keys = " + (xbox ? "D-pad + X Y A B" : "D-pad + Square Triangle Cross Circle"), new Rgb(255, 211, 106), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Base Layer (No L/R)", xbox ? "D-pad=arrows, X=Space, Y=Backspace, A=Enter, B=Tab" : "D-pad=arrows, Square=Space, Triangle=Backspace, Cross=Enter, Circle=Tab", new Rgb(255, 235, 180), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1 Layer", "i n e a o t h u", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  L1 Layer", "s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R2 Layer", "m w j x q f p b", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  L2 Layer", "k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1+L1 Combo", "7 8 9 0 - = , .", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R2+L2 Combo", "< ) [ { ( > } ]", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  L1+R2 Combo", "` \\ ' \" ; ~ / ?", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  R1+L2 Combo", "! @ # $ % ^ & *", new Rgb(255, 169, 85), new Rgb(245, 250, 255));
+            WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+
+            WritePanelLine(width, panelWidth, "  [ ADVANCED MECHS ]", "", new Rgb(126, 226, 244), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Clutch (Touchpad)", "Short tap to toggle ON/OFF. Long hold for push-to-hold.", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
+            WritePanelLine(width, panelWidth, "  Grace Windows", "Pressing character then layer within " + config.ActionLayerGraceMs + "ms forms a valid layer stroke.", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
         }
 
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));

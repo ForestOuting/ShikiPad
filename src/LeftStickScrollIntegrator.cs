@@ -41,7 +41,7 @@ internal sealed class LeftStickScrollIntegrator {
         double slowSpeed = WheelDelta * 1000.0 / slowInterval;
         double fastSpeed = WheelDelta * 1000.0 / fastInterval;
         double power = Math.Pow(normalized, Math.Max(0.001, config.MouseScrollCurveExponent));
-        return slowSpeed * normalized + (fastSpeed - slowSpeed) * power;
+        return slowSpeed + (fastSpeed - slowSpeed) * power;
     }
 
     private static double Clamp(double value, double min, double max) {
