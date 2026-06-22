@@ -644,7 +644,7 @@ internal static class Program {
         string root = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         Directory.SetCurrentDirectory(root);
         Logger.Init(root);
-        Config config = Config.Load(Path.Combine(root, "shikipad.json"));
+        Config config = new Config();
         RegisterShutdownRelease();
         bool debugSources = HasArg(args, "--debug-sources");
         bool traceInput = HasArg(args, "--trace-input");
