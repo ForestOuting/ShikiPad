@@ -14,33 +14,33 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.R1L1] = Row(PhysicalKey.Num7, PhysicalKey.Num8, PhysicalKey.Num9, PhysicalKey.Num0, PhysicalKey.Minus, PhysicalKey.Equals, PhysicalKey.Comma, PhysicalKey.Period);
         _tables[(int)Layer.R2L2] = new KeyStroke[] {
             KeyStroke.Shifted(PhysicalKey.Num9),
-            KeyStroke.Of(PhysicalKey.RightBracket),
-            KeyStroke.Shifted(PhysicalKey.Semicolon),
+            KeyStroke.Of(PhysicalKey.Minus),
             KeyStroke.Shifted(PhysicalKey.Apostrophe),
-            KeyStroke.Of(PhysicalKey.LeftBracket),
-            KeyStroke.Shifted(PhysicalKey.Num0),
             KeyStroke.Of(PhysicalKey.Apostrophe),
-            KeyStroke.Of(PhysicalKey.Slash)
+            KeyStroke.Shifted(PhysicalKey.Semicolon),
+            KeyStroke.Shifted(PhysicalKey.Num0),
+            KeyStroke.Of(PhysicalKey.LeftBracket),
+            KeyStroke.Of(PhysicalKey.RightBracket)
         };
         _tables[(int)Layer.L1R2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.LeftBracket),
-            KeyStroke.Shifted(PhysicalKey.Num1),
-            KeyStroke.Of(PhysicalKey.Semicolon),
+            KeyStroke.Of(PhysicalKey.Grave),
+            KeyStroke.Of(PhysicalKey.Slash),
             KeyStroke.Shifted(PhysicalKey.Num2),
             KeyStroke.Shifted(PhysicalKey.Slash),
-            KeyStroke.Shifted(PhysicalKey.RightBracket),
+            KeyStroke.Shifted(PhysicalKey.Num8),
             KeyStroke.Shifted(PhysicalKey.Num3),
-            KeyStroke.Shifted(PhysicalKey.Num8)
+            KeyStroke.Shifted(PhysicalKey.Num1),
+            KeyStroke.Of(PhysicalKey.Semicolon)
         };
         _tables[(int)Layer.R1L2] = new KeyStroke[] {
             KeyStroke.Of(PhysicalKey.Backslash),
-            KeyStroke.Shifted(PhysicalKey.Equals),
             KeyStroke.Shifted(PhysicalKey.Num4),
-            KeyStroke.Of(PhysicalKey.Grave),
+            KeyStroke.Shifted(PhysicalKey.Num4),
+            KeyStroke.Shifted(PhysicalKey.Num7),
+            KeyStroke.Shifted(PhysicalKey.Equals),
             KeyStroke.Shifted(PhysicalKey.Num5),
-            KeyStroke.Shifted(PhysicalKey.Backslash),
             KeyStroke.Shifted(PhysicalKey.Num6),
-            KeyStroke.Of(PhysicalKey.Grave)
+            KeyStroke.Shifted(PhysicalKey.Num6)
         };
     }
 

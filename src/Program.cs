@@ -66,20 +66,20 @@ internal static class Program {
         WriteEmbossedCenteredText(width, panelWidth, "映 射 说 明", SeasonGlowStops(), true);
         Console.WriteLine();
         
-        int blockWidth = 74;
+        int blockWidth = 86;
         int indent = Math.Max(0, (panelWidth - blockWidth) / 2);
         string pad = new string(' ', indent);
 
-        WriteManualGradientLine(width, panelWidth, pad + "按键顺序    " + (xbox ? "↑  →  X  Y  ←  ↓  A  B" : "↑  →  □  △  ←  ↓  ×  ○"), blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "基础层      ↑  →  Space  Back  ←  ↓  Enter  Tab", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "按键顺序    " + (xbox ? "↑  ↓  ←  →  X  Y  A  B" : "↑  ↓  ←  →  □  △  ×  ○"), blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "基础层      ↑  ↓  ←  →  Space  Back  Enter  Tab", blockWidth);
         Console.WriteLine();
-        WriteManualGradientLine(width, panelWidth, pad + "R1/RB       i  n  e  a  o  t  h  u        L1/LB      s  r  d  g  l  c  y  z", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "R2/RT       m  w  j  x  q  f  p  b        L2/LT      k  v  1  2  3  4  5  6", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "R1+L1       7  8  9  0  -  =  ,  .", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L2+R2       (  ]  :  \"  [  )  '  /", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L1+R2       {  !  ;  @  ?  }  #  *", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L2+R1       \\  +  $  `  %  |  …  ·", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "Shift       ,→<  .→>  -→—", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R1/RB       i  t  o  n  e  a  h  u        L1/LB      s  c  l  r  d  g  y  z", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R2/RT       m  f  q  w  j  x  p  b        L2/LT      k  4  3  v  1  2  5  6", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R1+L1       7  =  -  8  9  0  ,  .", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "L2+R2       (（  )）  :：  —_  \"“”  '‘’  [【{  ]】}", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "L1+R2       `·~～  #  *  /  @  ?？  !！  ;；", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "L2+R1       \\|、  %  +  $  ￥  &  ^  ...……", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "同格变体由左摇杆 Shift 或当前输入法标点模式决定", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动；L3 左键；R3 右键", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↑/↓ 滚轮；← Shift；↙ Ctrl；↘ Alt；→ Win；↖ Esc；↗ Fn", blockWidth);
@@ -89,7 +89,7 @@ internal static class Program {
         WriteManualGradientLine(width, panelWidth, pad + "Fn          1..0 / - / =  →  F1..F12", blockWidth);
         
         Console.WriteLine();
-        WriteEmbossedCenteredText(width, panelWidth, "Enter 初始页   |   Esc 关闭软件", SeasonGlowStops(), false);
+        WriteEmbossedCenteredText(width, panelWidth, "Enter 主界面   |   Esc 关闭软件", SeasonGlowStops(), false);
         Console.WriteLine("\x1b[0m");
     }
 
