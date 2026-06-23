@@ -5,6 +5,7 @@ using System.Threading;
 
 internal sealed class DirectHidController {
     public volatile ControllerState State = new ControllerState();
+    public event Action<ControllerState> StateUpdated;
     private readonly ControllerProfile _profile;
     private Thread _thread;
     private volatile bool _running;
@@ -84,6 +85,7 @@ internal sealed class DirectHidController {
                     Buffer.BlockCopy(buffer, 0, report, 0, (int)bytesRead);
                     try {
                         ParseReport(report);
+                        StateUpdated?.Invoke(State);
                     } catch {
                     }
                 }
@@ -104,7 +106,8 @@ internal sealed class DirectHidController {
                     wasConnected = true;
                 }
                 ParseXInput(state.Gamepad);
-                Thread.Sleep(1);
+                StateUpdated?.Invoke(State);
+                Thread.Sleep(0);
             } else {
                 if (wasConnected) {
                     wasConnected = false;
@@ -341,6 +344,7 @@ internal sealed class DirectHidController {
                 if (r.Length > offset + 9) {
                     s.Home = (r[offset + 9] & 0x01) != 0;
                     s.TouchClick = (r[offset + 9] & 0x02) != 0;
+                    s.Mute = (r[offset + 9] & 0x04) != 0;
                 }
             }
         }

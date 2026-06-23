@@ -4,7 +4,7 @@ internal sealed class Config {
     public bool Enabled = true;
     public double MouseSensitivity = 1.0;
     public double MouseMaxSpeed = 20.0;
-    public double RightStickDeadzone = 0.03;
+    public double RightStickDeadzone = 0.015;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 3.0;
     public double MouseScrollCurveExponent = 3.0;

@@ -205,6 +205,7 @@ internal sealed class InputInjector {
         Add(PhysicalKey.RAlt, 0xA5, true);
         Add(PhysicalKey.RCtrl, 0xA3, true);
         Add(PhysicalKey.RShift, 0xA1, false);
+        Add(PhysicalKey.CapsLock, 0x14, false);
     }
 
     private void Add(PhysicalKey key, ushort vk, bool extended) {

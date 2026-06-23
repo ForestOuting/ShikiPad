@@ -13,34 +13,34 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.L2] = Row(PhysicalKey.K, PhysicalKey.V, PhysicalKey.Num1, PhysicalKey.Num2, PhysicalKey.Num3, PhysicalKey.Num4, PhysicalKey.Num5, PhysicalKey.Num6);
         _tables[(int)Layer.R1L1] = Row(PhysicalKey.Num7, PhysicalKey.Num8, PhysicalKey.Num9, PhysicalKey.Num0, PhysicalKey.Minus, PhysicalKey.Equals, PhysicalKey.Comma, PhysicalKey.Period);
         _tables[(int)Layer.R2L2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.Comma),
-            KeyStroke.Shifted(PhysicalKey.Num0),
-            KeyStroke.Of(PhysicalKey.LeftBracket),
-            KeyStroke.Shifted(PhysicalKey.LeftBracket),
             KeyStroke.Shifted(PhysicalKey.Num9),
-            KeyStroke.Shifted(PhysicalKey.Period),
-            KeyStroke.Shifted(PhysicalKey.RightBracket),
-            KeyStroke.Of(PhysicalKey.RightBracket)
+            KeyStroke.Of(PhysicalKey.RightBracket),
+            KeyStroke.Shifted(PhysicalKey.Semicolon),
+            KeyStroke.Shifted(PhysicalKey.Apostrophe),
+            KeyStroke.Of(PhysicalKey.LeftBracket),
+            KeyStroke.Shifted(PhysicalKey.Num0),
+            KeyStroke.Of(PhysicalKey.Apostrophe),
+            KeyStroke.Of(PhysicalKey.Slash)
         };
         _tables[(int)Layer.L1R2] = new KeyStroke[] {
-            KeyStroke.Of(PhysicalKey.Grave),
-            KeyStroke.Of(PhysicalKey.Backslash),
-            KeyStroke.Of(PhysicalKey.Apostrophe),
-            KeyStroke.Shifted(PhysicalKey.Apostrophe),
+            KeyStroke.Shifted(PhysicalKey.LeftBracket),
+            KeyStroke.Shifted(PhysicalKey.Num1),
             KeyStroke.Of(PhysicalKey.Semicolon),
-            KeyStroke.Shifted(PhysicalKey.Grave),
-            KeyStroke.Of(PhysicalKey.Slash),
-            KeyStroke.Shifted(PhysicalKey.Slash)
+            KeyStroke.Shifted(PhysicalKey.Num2),
+            KeyStroke.Shifted(PhysicalKey.Slash),
+            KeyStroke.Shifted(PhysicalKey.RightBracket),
+            KeyStroke.Shifted(PhysicalKey.Num3),
+            KeyStroke.Shifted(PhysicalKey.Num8)
         };
         _tables[(int)Layer.R1L2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.Num1),
-            KeyStroke.Shifted(PhysicalKey.Num2),
-            KeyStroke.Shifted(PhysicalKey.Num3),
+            KeyStroke.Of(PhysicalKey.Backslash),
+            KeyStroke.Shifted(PhysicalKey.Equals),
             KeyStroke.Shifted(PhysicalKey.Num4),
+            KeyStroke.Of(PhysicalKey.Grave),
             KeyStroke.Shifted(PhysicalKey.Num5),
+            KeyStroke.Shifted(PhysicalKey.Backslash),
             KeyStroke.Shifted(PhysicalKey.Num6),
-            KeyStroke.Shifted(PhysicalKey.Num7),
-            KeyStroke.Shifted(PhysicalKey.Num8)
+            KeyStroke.Of(PhysicalKey.Grave)
         };
     }
 
@@ -58,8 +58,8 @@ internal sealed class MappingEngine {
         ConsiderLayer(r2, Layer.R2, r2Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(IsComboWithinWindow(r1, l1, r1Ms, l1Ms, comboWindow), Layer.R1L1, Math.Max(r1Ms, l1Ms), 2, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(IsComboWithinWindow(r2, l2, r2Ms, l2Ms, comboWindow), Layer.R2L2, Math.Max(r2Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(l1, r2, l1Ms, r2Ms, comboWindow), Layer.L1R2, Math.Max(l1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(r1, l2, r1Ms, l2Ms, comboWindow), Layer.R1L2, Math.Max(r1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(l1, r2, l1Ms, r2Ms, comboWindow + 10.0), Layer.L1R2, Math.Max(l1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(r1, l2, r1Ms, l2Ms, comboWindow + 10.0), Layer.R1L2, Math.Max(r1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
 
         return layer;
     }

@@ -41,8 +41,8 @@ The ShikiPad console uses three page types:
 | Page | When it appears | What to do |
 |---|---|---|
 | Initial controller page | No default controller exists, or you return from the home screen with `Esc` | Type `1` through `8`, then press `Enter`; press `Esc` to exit |
-| Welcome home | The controller connects successfully | Press `Enter` to open the mapping manual; press `Esc` to return to the initial page; closing the window also releases held inputs |
-| Mapping manual | After pressing `Enter` while running | Press `Enter` again to return home; press `Esc` to exit |
+| Welcome home | The controller connects successfully | Press `Enter` to open the mapping manual; press `Esc` to return to the initial page |
+| Mapping manual | After pressing `Enter` while running | Press `Esc` to exit ShikiPad |
 
 | # | Controller | Connection |
 |:---:|---|---|
@@ -72,7 +72,7 @@ Hold `Share/Create/View` and `Options/Menu` together for about 1 second to toggl
 
 ## Home And Manual
 
-Press `Enter` while ShikiPad is running to open the mapping manual. Press `Enter` again from the manual to return to the ShikiPad home screen. The manual footer also shows this return path.
+Press `Enter` while ShikiPad is running to open the mapping manual. Press `Esc` from the manual to return to the ShikiPad home screen.
 
 ## Mouse And System Buttons
 
@@ -85,6 +85,7 @@ Press `Enter` while ShikiPad is running to open the mapping manual. Press `Enter
 | PS Share/Create | `Right Alt` | Sony controllers only |
 | PS Options/Menu | `Right Ctrl` | Sony controllers only |
 | PS Home | `Right Shift` | Sony controllers only; Xbox Home is intercepted by Windows |
+| PS Mute | `Caps Lock` | DualSense (PS5) only |
 
 Right-stick feel is one of ShikiPad's core interaction details: deadzone, power exponent, maximum speed, and sensitivity work together to define cursor movement. This release keeps the fixed power-curve execution path intact.
 
@@ -127,13 +128,13 @@ Button order in the table: `Up`, `Right`, `Square/X`, `Triangle/Y`, `Left`, `Dow
 | R2 / RT | m | w | j | x | q | f | p | b |
 | L2 / LT | k | v | 1 | 2 | 3 | 4 | 5 | 6 |
 | R1 + L1 | 7 | 8 | 9 | 0 | - | = | , | . |
-| R2 + L2 | `<` | `)` | `[` | `{` | `(` | `>` | `}` | `]` |
-| L1 + R2 | `` ` `` | `\` | `'` | `"` | `;` | `~` | `/` | `?` |
-| R1 + L2 | `!` | `@` | `#` | `$` | `%` | `^` | `&` | `*` |
+| L2 + R2 | `(` | `]` | `:` | `"` | `[` | `)` | `'` | `/` |
+| L1 + R2 | `{` | `!` | `;` | `@` | `?` | `}` | `#` | `*` |
+| L2 + R1 | `\` | `+` | `$` | `` ` `` | `%` | `\|` | `^` | `` ` `` |
 
-Base-layer keys repeat while held. Character-layer keys are virtual taps: one press sends one character, and holding does not repeat. For uppercase letters and less common shifted symbols, hold left-stick `Shift` while pressing the target key.
-
-Voice typing shortcut: hold left-stick `Win` and press `R1 + Square/X` to send `Win + H`.
+Base-layer keys repeat while held. Character-layer keys are virtual taps: one press sends one character, and holding does not repeat.
+Due to ergonomics, cross-side combos (like L1+R2, L2+R1) are harder to press perfectly synchronously. The system assigns these combinations an extra +10ms tolerance window to guarantee pure layer activation.
+Low-frequency shifted companions do not take separate keys: hold left-stick `Shift`, then press right-hand face-button base keys such as `,`, `.`, or `-` to enter `<`, `>`, or `_`.
 
 ## Timing Model
 
@@ -142,7 +143,7 @@ ShikiPad uses short timing windows so fast rolling inputs still resolve to the i
 | Setting | Default | Purpose |
 |---|---:|---|
 | `comboLayerWindowMs` | 35 ms | Max gap for a two-layer combo such as R1+L1 |
-| `actionLayerGraceMs` | 35 ms | Lets an action button join a layer pressed immediately after it |
+| `actionLayerGraceMs` | 35 ms | Recognition grace window for action-button and layer timing |
 | `actionLayerPostGraceMs` | 25 ms | Covers the small blank gap after one layer releases before another starts |
 | `layerTakeoverWindowMs` | 30 ms | Limits how long an old held layer may overlap a new intended layer |
 | `actionLayerSwitchGuardMs` | 35 ms | Suppresses residue while changing layer after a character was sent |
@@ -157,7 +158,7 @@ These values are compiled into the current release.
 | Injection | `useScanCode` | `true` |
 | Mouse | `mouseMaxSpeed` | `20.0` |
 | Mouse | `mouseSensitivity` | `1.0` |
-| Mouse | `rightStickDeadzone` | `0.03` |
+| Mouse | `rightStickDeadzone` | `0.015` |
 | Mouse | `rightStickCurveExponent` | `3.0` |
 | Mouse | `r3FreezeMs` | `60` |
 | Left stick | `leftStickEnterDeadzone` | `0.35` |

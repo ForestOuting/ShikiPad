@@ -65,6 +65,7 @@ internal sealed class MapperForm : Form {
 
     protected override void OnLoad(EventArgs e) {
         base.OnLoad(e);
+        _hid.StateUpdated += OnStateUpdated;
         _hid.Start();
         int parentId = 0;
         try {
@@ -125,11 +126,31 @@ internal sealed class MapperForm : Form {
     }
 
     private void PollLoop() {
+        double nextTick = _clock.Elapsed.TotalMilliseconds;
         while (_pollRunning) {
             lock (_tickLock) {
                 try { OnTick(); } catch { }
             }
-            Thread.Sleep(PollSleepMs);
+            
+            double now = _clock.Elapsed.TotalMilliseconds;
+            if (nextTick < now) {
+                nextTick = now;
+            }
+            nextTick += 1.0;
+            
+            while (_pollRunning) {
+                now = _clock.Elapsed.TotalMilliseconds;
+                double diff = nextTick - now;
+                if (diff <= 0) break;
+                
+                if (diff > 2.0) {
+                    Thread.Sleep(1);
+                } else if (diff > 0.1) {
+                    Thread.Sleep(0);
+                } else {
+                    Thread.SpinWait(10);
+                }
+            }
         }
     }
 
@@ -141,6 +162,7 @@ internal sealed class MapperForm : Form {
             _pollThread.Join(500);
         }
         NativeMethods.timeEndPeriod(1);
+        _hid.StateUpdated -= OnStateUpdated;
         _hid.Stop();
         ReleaseRuntimeHolds();
 
@@ -154,6 +176,13 @@ internal sealed class MapperForm : Form {
     private Layer _lastReleasedActionLayer = Layer.Base;
     private double _lastReleasedActionLayerUpMs;
     private double _lastReleasedActionLayerDownMs;
+
+    private void OnStateUpdated(ControllerState s) {
+        if (!_pollRunning) return;
+        lock (_tickLock) {
+            try { OnTick(); } catch { }
+        }
+    }
 
     private void OnTick() {
         ControllerState s = _hid.State;
@@ -194,7 +223,7 @@ internal sealed class MapperForm : Form {
         UpdateActionButtons(s, now);
         UpdateMouseButtons(s, now);
         UpdateRightStick(s, now, deltaSec);
-        UpdateSystemButtons(s);
+        UpdateSystemButtons(s, now);
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
@@ -856,12 +885,22 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private void UpdateSystemButtons(ControllerState s) {
+    private bool _prevMute;
+
+    private void UpdateSystemButtons(ControllerState s, double now) {
         if (!IsSonyController()) return;
 
         UpdateMappedSystemButton("Share/Create", s.Create, PhysicalKey.RAlt, ref _prevCreate, ref _createKeyDown);
         UpdateMappedSystemButton("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
         UpdateMappedSystemButton("Home", s.Home, PhysicalKey.RShift, ref _prevHome, ref _homeKeyDown);
+        
+        if (s.Mute && !_prevMute) {
+            _injector.CurrentSource = "Mute";
+            _injector.CurrentReason = "Mute press CapsLock toggle";
+            _injector.KeyDown(PhysicalKey.CapsLock);
+            _injector.KeyUp(PhysicalKey.CapsLock);
+        }
+        _prevMute = s.Mute;
     }
 
     private void UpdateMappedSystemButton(string source, bool down, PhysicalKey key, ref bool prev, ref bool keyDown) {
