@@ -65,19 +65,6 @@ When a default is saved, ShikiPad no longer shows a default launch page. It star
 
 - Press `Esc` on the welcome home screen to return to the initial controller page and choose another controller for this run.
 - Press `Esc` on the initial controller page to exit ShikiPad.
-- Use `--clear-default-controller` if you want to remove the saved default profile.
-
-Command-line controls are also available:
-
-| Command | Purpose |
-|---|---|
-| `ShikiPad.exe --controller ds5` | Start this run with a controller profile without changing the saved default |
-| `ShikiPad.exe --controller-menu` | Force the controller selection menu |
-| `ShikiPad.exe --clear-default-controller` | Clear default launch and show controller selection |
-| `ShikiPad.exe --identity` | Print the exact executable path to add to HidHide |
-| `ShikiPad.exe --list-devices` | Enumerate HID devices |
-
-Accepted profile aliases include `ds5`, `ds5bt`, `ds4`, `ds4bt`, `xbox360`, `xbox360bt`, `xboxseries`, and `xboxseriesbt`.
 
 ## Emergency Toggle
 
@@ -168,7 +155,6 @@ These values are compiled into the current release.
 |---|---|---:|
 | Runtime | `enabled` | `true` |
 | Injection | `useScanCode` | `true` |
-| Injection | `useInterception` | `true` |
 | Mouse | `mouseMaxSpeed` | `20.0` |
 | Mouse | `mouseSensitivity` | `1.0` |
 | Mouse | `rightStickDeadzone` | `0.03` |
@@ -196,14 +182,10 @@ These values are compiled into the current release.
 
 ### No input is sent
 
-Install the driver, restart Windows, then run ShikiPad as administrator. If Interception is unavailable, ShikiPad falls back to `SendInput`, but driver mode is recommended for VM and game compatibility.
+Install the driver, restart Windows, then run ShikiPad as administrator. This version requires Interception; if Interception is unavailable, ShikiPad stops with an install/restart/admin prompt and does not fall back to `SendInput`.
 
 ### Double input in games
 
 Sony controllers can be hidden with [HidHide](https://github.com/nefarius/HidHide/releases). Hide the physical controller and add the exact `ShikiPad.exe` path to HidHide applications.
 
 Xbox controllers use XInput, so HidHide cannot hide them at the HID device layer. If hiding is required, use a controller that can switch to PS or DirectInput mode.
-
-### Logs
-
-Runtime logs are written to `logs/shikipad.log` next to `ShikiPad.exe`.

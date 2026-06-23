@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -249,6 +248,22 @@ internal static class Program {
             Thread.Sleep(55);
         }
         Console.WriteLine();
+    }
+
+    private static void PrintFatalStartupError(string message) {
+        try { Console.Clear(); } catch { }
+        EnableAnsi();
+        int width = GetConsoleWidth();
+        int panelWidth = Math.Min(104, Math.Max(66, width - 6));
+        Console.WriteLine();
+        WriteNeonRule(width, panelWidth, "ShikiPad 无法启动");
+        WritePanelBorder(width, panelWidth, true, new Rgb(255, 148, 82));
+        WritePanelTitle(width, panelWidth, "Interception 驱动不可用", new Rgb(255, 215, 92));
+        WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+        WritePanelWrappedLine(width, panelWidth, "  原因", message, SeasonAutumn(), new Rgb(245, 250, 255));
+        WritePanelWrappedLine(width, panelWidth, "  处理", "请安装 Interception 驱动、重启 Windows，并以管理员权限运行 ShikiPad。当前版本不会回退到 SendInput。", SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelBorder(width, panelWidth, false, new Rgb(255, 148, 82));
+        Console.WriteLine("\x1b[0m");
     }
 
     private static void WriteDenseSignalBand(int width, int panelWidth, int rows, string seed) {
@@ -986,12 +1001,8 @@ internal static class Program {
 
         string root = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         Directory.SetCurrentDirectory(root);
-        Logger.Init(root);
         Config config = new Config();
         RegisterShutdownRelease();
-        bool debugSources = HasArg(args, "--debug-sources");
-        bool traceInput = HasArg(args, "--trace-input");
-        bool traceSendinput = HasArg(args, "--trace-sendinput");
         if (HasArg(args, "--list-devices") || HasArg(args, "--enum-hid")) {
             RunHidEnumTest();
             return 0;
@@ -1018,40 +1029,23 @@ internal static class Program {
             return 0;
         }
 
-        if (debugSources) Logger.Info("debug-sources enabled");
-        if (traceInput) Logger.Info("trace-input enabled");
-        if (traceSendinput) Logger.Info("trace-sendinput enabled");
-
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
-        string[] selectionArgs = args;
         bool forceControllerMenuAfterRestart = false;
         while (true) {
-            if (forceControllerMenuAfterRestart) {
-                selectionArgs = new string[] { "--controller-menu" };
-            }
-
-            ControllerProfile controllerProfile = SelectControllerProfile(selectionArgs, root);
+            ControllerProfile controllerProfile = SelectControllerProfile(root, forceControllerMenuAfterRestart);
             if (_controllerSelectionExitRequested) return 0;
             PrintStartupSpinner(controllerProfile);
-            Logger.Info("startup");
-            Logger.Info("controller profile: " + ControllerProfileName(controllerProfile));
-            Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ", rightStickCurve = " + config.RightStickCurve +
-                        ", rightStickCurveExponent = " + config.RightStickCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ", mouseMaxSpeed = " + config.MouseMaxSpeed.ToString(CultureInfo.InvariantCulture) +
-                        ", mouseSensitivity = " + config.MouseSensitivity.ToString(CultureInfo.InvariantCulture) +
-                        ", neutralCalibration = enabled");
-            Logger.Info("scroll settings: mouseScrollCurveExponent = " + config.MouseScrollCurveExponent.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ", leftStickEnterDeadzone = " + config.LeftStickEnterDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ", leftStickExitDeadzone = " + config.LeftStickExitDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ", scrollSlowIntervalMs = " + config.ScrollSlowIntervalMs.ToString(CultureInfo.InvariantCulture) +
-                        ", scrollFastIntervalMs = " + config.ScrollFastIntervalMs.ToString(CultureInfo.InvariantCulture));
-            Logger.Info("left stick modifiers = physical held keys");
 
             PrintRunHint();
-            MapperForm form = new MapperForm(config, controllerProfile, debugSources, traceInput, traceSendinput);
+            MapperForm form;
+            try {
+                form = new MapperForm(config, controllerProfile);
+            } catch (Exception ex) {
+                PrintFatalStartupError(ex.Message);
+                return 1;
+            }
             Application.Run(form);
             if (!form.RestartControllerSelectionRequested) break;
             forceControllerMenuAfterRestart = true;
@@ -1090,16 +1084,8 @@ internal static class Program {
         InterceptionDriver.Cleanup();
     }
 
-    private static ControllerProfile SelectControllerProfile(string[] args, string root) {
-        ControllerProfile fromArgs;
-        if (TryGetControllerProfileArg(args, out fromArgs)) return fromArgs;
+    private static ControllerProfile SelectControllerProfile(string root, bool forceMenu) {
         string defaultPath = Path.Combine(root, DefaultControllerFileName);
-        bool forceMenu = HasAnyArg(args, "--controller-menu", "--choose-controller", "--select-controller");
-        if (HasAnyArg(args, "--clear-default-controller", "--reset-default-controller", "--forget-controller")) {
-            ClearDefaultControllerProfile(defaultPath);
-            PrintDefaultControllerCleared();
-            forceMenu = true;
-        }
 
         ControllerProfile savedDefault;
         bool hasSavedDefault = TryLoadDefaultControllerProfile(defaultPath, out savedDefault);
@@ -1173,20 +1159,6 @@ internal static class Program {
         }
     }
 
-    public static bool ClearSavedDefaultControllerForRuntime() {
-        string defaultPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DefaultControllerFileName);
-        bool existed = false;
-        try { existed = File.Exists(defaultPath); } catch { }
-        ClearDefaultControllerProfile(defaultPath);
-        return existed;
-    }
-
-    public static bool HasDefaultControllerForRuntime() {
-        string defaultPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DefaultControllerFileName);
-        ControllerProfile ignored;
-        return TryLoadDefaultControllerProfile(defaultPath, out ignored);
-    }
-
     private static void MaybeSaveDefaultControllerProfile(string defaultPath, ControllerProfile profile) {
         bool zh = IsChineseUi();
         WriteRgb(SeasonGold(), zh ? "将「" + ControllerProfileName(profile) + "」设为默认启动？[Enter/Y = 保存，N = 仅本次] > " : "Save \"" + ControllerProfileName(profile) + "\" as the default launch profile? [Enter/Y = yes, N = once] > ");
@@ -1232,19 +1204,6 @@ internal static class Program {
         }
     }
 
-    private static void ClearDefaultControllerProfile(string defaultPath) {
-        try {
-            if (File.Exists(defaultPath)) File.Delete(defaultPath);
-        } catch { }
-    }
-
-    private static void PrintDefaultControllerCleared() {
-        EnableAnsi();
-        bool zh = IsChineseUi();
-        WriteRgb(SeasonGold(), zh ? "默认启动已关闭；ShikiPad 会重新显示手柄选择。\n" : "Default launch has been cleared; ShikiPad will show controller selection.\n");
-        Console.Write("\x1b[0m");
-    }
-
     private static string ControllerProfileKey(ControllerProfile profile) {
         switch (profile) {
             case ControllerProfile.DualSenseBT: return "dualsensebt";
@@ -1256,21 +1215,6 @@ internal static class Program {
             case ControllerProfile.XboxSeriesBT: return "xboxseriesbt";
             default: return "dualsense";
         }
-    }
-
-    private static bool TryGetControllerProfileArg(string[] args, out ControllerProfile profile) {
-        profile = ControllerProfile.DualSense;
-        for (int i = 0; i < args.Length; i++) {
-            string arg = args[i] ?? "";
-            string value = null;
-            if (arg.StartsWith("--controller=", StringComparison.OrdinalIgnoreCase)) {
-                value = arg.Substring("--controller=".Length);
-            } else if (String.Equals(arg, "--controller", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) {
-                value = args[i + 1];
-            }
-            if (value != null) return TryParseControllerProfile(value, out profile);
-        }
-        return false;
     }
 
     private static bool TryParseControllerProfile(string value, out ControllerProfile profile) {
@@ -1328,14 +1272,6 @@ internal static class Program {
         for (int i = 0; i < args.Length; i++) if (String.Equals(args[i], value, StringComparison.OrdinalIgnoreCase)) return true;
         return false;
     }
-
-    private static bool HasAnyArg(string[] args, params string[] values) {
-        for (int i = 0; i < values.Length; i++) {
-            if (HasArg(args, values[i])) return true;
-        }
-        return false;
-    }
-
 
     private static void RunHidEnumTest() {
         Console.WriteLine("\n--- HID DEVICE ENUMERATION TEST ---");

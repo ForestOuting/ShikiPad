@@ -20,26 +20,16 @@ internal sealed class InputInjector {
     private readonly KeyDef _alt;
     private readonly KeyDef _win;
     private readonly bool _useScanCode;
-    private readonly bool _useInterception;
-    private readonly bool _interceptionAvailable;
     private bool _leftMouseHeld;
     private bool _rightMouseHeld;
 
-    public bool TraceInput;
-    public bool TraceSendinput;
     public string CurrentSource = "Unknown";
     public string CurrentReason = "";
 
-    public InputInjector(bool useScanCode, bool useInterception) {
+    public InputInjector(bool useScanCode) {
         _useScanCode = useScanCode;
-        _useInterception = useInterception;
-        if (_useInterception) {
-            _interceptionAvailable = InterceptionDriver.Initialize();
-            if (_interceptionAvailable) {
-                Logger.Info("Interception driver initialized successfully.");
-            } else {
-                Logger.Warn("Interception driver not found or failed to initialize. Falling back to SendInput.");
-            }
+        if (!InterceptionDriver.Initialize()) {
+            throw new InvalidOperationException("Interception 驱动不可用。请安装驱动、重启 Windows，并以管理员权限运行 ShikiPad。");
         }
         InitKeys();
         _shift = Resolve(0xA0, false);
@@ -261,41 +251,30 @@ internal sealed class InputInjector {
     }
     private void Send(List<INPUT> inputs, string actionType) {
         if (inputs.Count == 0) return;
-        if (TraceInput || TraceSendinput) {
-            string log = string.Format("[{0:HH:mm:ss.fff}] Source={1} Reason={2} Action={3}", DateTime.Now, CurrentSource, CurrentReason, actionType);
-            Logger.Info(log);
-            Console.WriteLine(log);
-        }
-        if (!TraceInput) {
-            if (_useInterception && _interceptionAvailable) {
-                foreach (var input in inputs) {
-                    if (input.type == INPUT_KEYBOARD) {
-                        InterceptionDriver.KeyState state;
-                        if ((input.ki.dwFlags & KEYEVENTF_KEYUP) != 0) {
-                            state = (input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0 ? (InterceptionDriver.KeyState.E0 | InterceptionDriver.KeyState.Up) : InterceptionDriver.KeyState.Up;
-                        } else {
-                            state = (input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0 ? (InterceptionDriver.KeyState.E0 | InterceptionDriver.KeyState.Down) : InterceptionDriver.KeyState.Down;
-                        }
-                        InterceptionDriver.SendKey(input.ki.wScan, state);
-                    } else if (input.type == INPUT_MOUSE) {
-                        if ((input.mi.dwFlags & MOUSEEVENTF_MOVE) != 0) {
-                            InterceptionDriver.SendMouseDelta(input.mi.dx, input.mi.dy);
-                        } else if ((input.mi.dwFlags & MOUSEEVENTF_WHEEL) != 0) {
-                            InterceptionDriver.SendMouseWheel(input.mi.mouseData);
-                        } else {
-                            InterceptionDriver.MouseState state = 0;
-                            if ((input.mi.dwFlags & MOUSEEVENTF_LEFTDOWN) != 0) state |= InterceptionDriver.MouseState.LeftButtonDown;
-                            if ((input.mi.dwFlags & MOUSEEVENTF_LEFTUP) != 0) state |= InterceptionDriver.MouseState.LeftButtonUp;
-                            if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTDOWN) != 0) state |= InterceptionDriver.MouseState.RightButtonDown;
-                            if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTUP) != 0) state |= InterceptionDriver.MouseState.RightButtonUp;
-                            if (state != 0) {
-                                InterceptionDriver.SendMouse(state);
-                            }
-                        }
+        foreach (var input in inputs) {
+            if (input.type == INPUT_KEYBOARD) {
+                InterceptionDriver.KeyState state;
+                if ((input.ki.dwFlags & KEYEVENTF_KEYUP) != 0) {
+                    state = (input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0 ? (InterceptionDriver.KeyState.E0 | InterceptionDriver.KeyState.Up) : InterceptionDriver.KeyState.Up;
+                } else {
+                    state = (input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0 ? (InterceptionDriver.KeyState.E0 | InterceptionDriver.KeyState.Down) : InterceptionDriver.KeyState.Down;
+                }
+                InterceptionDriver.SendKey(input.ki.wScan, state);
+            } else if (input.type == INPUT_MOUSE) {
+                if ((input.mi.dwFlags & MOUSEEVENTF_MOVE) != 0) {
+                    InterceptionDriver.SendMouseDelta(input.mi.dx, input.mi.dy);
+                } else if ((input.mi.dwFlags & MOUSEEVENTF_WHEEL) != 0) {
+                    InterceptionDriver.SendMouseWheel(input.mi.mouseData);
+                } else {
+                    InterceptionDriver.MouseState state = 0;
+                    if ((input.mi.dwFlags & MOUSEEVENTF_LEFTDOWN) != 0) state |= InterceptionDriver.MouseState.LeftButtonDown;
+                    if ((input.mi.dwFlags & MOUSEEVENTF_LEFTUP) != 0) state |= InterceptionDriver.MouseState.LeftButtonUp;
+                    if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTDOWN) != 0) state |= InterceptionDriver.MouseState.RightButtonDown;
+                    if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTUP) != 0) state |= InterceptionDriver.MouseState.RightButtonUp;
+                    if (state != 0) {
+                        InterceptionDriver.SendMouse(state);
                     }
                 }
-            } else {
-                SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf(typeof(INPUT)));
             }
         }
     }
@@ -314,7 +293,6 @@ internal sealed class InputInjector {
     private const int WHEEL_DELTA = 120;
     private const uint MAPVK_VK_TO_VSC_EX = 4;
 
-    [DllImport("user32.dll")] private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
     [DllImport("user32.dll")] private static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
     [StructLayout(LayoutKind.Sequential)]

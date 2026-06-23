@@ -50,15 +50,13 @@ internal sealed class MapperForm : Form {
 
     public bool RestartControllerSelectionRequested { get; private set; }
 
-    public MapperForm(Config config, ControllerProfile controllerProfile, bool debugSources, bool traceInput, bool traceSendinput) {
+    public MapperForm(Config config, ControllerProfile controllerProfile) {
         _config = config;
         _controllerProfile = controllerProfile;
         _hid = new DirectHidController(controllerProfile);
-        _debugSources = debugSources;
+        _debugSources = false;
         _enabled = config.Enabled;
-        _injector = new InputInjector(config.UseScanCode, config.UseInterception);
-        _injector.TraceInput = traceInput;
-        _injector.TraceSendinput = traceSendinput;
+        _injector = new InputInjector(config.UseScanCode);
         ShowInTaskbar = false;
         WindowState = FormWindowState.Minimized;
         FormBorderStyle = FormBorderStyle.FixedToolWindow;
@@ -97,10 +95,8 @@ internal sealed class MapperForm : Form {
                             }
                         } else if (key.Key == ConsoleKey.Escape) {
                             if (_manualVisible) {
-                                Logger.Info("manual escape requested shutdown");
                                 try { BeginInvoke((MethodInvoker)delegate { Close(); }); } catch { try { Close(); } catch { } }
                             } else {
-                                Logger.Info("home escape requested controller selection restart");
                                 RequestControllerSelectionRestart();
                             }
                             break;
@@ -131,7 +127,7 @@ internal sealed class MapperForm : Form {
     private void PollLoop() {
         while (_pollRunning) {
             lock (_tickLock) {
-                try { OnTick(); } catch (Exception ex) { Logger.Error("Tick error: " + ex.Message); }
+                try { OnTick(); } catch { }
             }
             Thread.Sleep(PollSleepMs);
         }
@@ -148,7 +144,6 @@ internal sealed class MapperForm : Form {
         _hid.Stop();
         ReleaseRuntimeHolds();
 
-        Logger.Info("shutdown");
         base.OnFormClosing(e);
     }
 
@@ -599,7 +594,17 @@ internal sealed class MapperForm : Form {
     private void RememberReleasedActionLayer(Layer layer, double now) {
         if (_previousActionLayer != layer && _previousActionLayer != Layer.Base && _previousActionLayer != Layer.Reserved) {
             double upMs = LayerUpTimestamp(_previousActionLayer);
-            if (now - upMs < 100.0) {
+            
+            bool shouldOverwrite = true;
+            if (IsComboLayer(_lastReleasedActionLayer)) {
+                if (IsSubsetOf(_previousActionLayer, _lastReleasedActionLayer)) {
+                    if (LayerTimestamp(_previousActionLayer) <= _lastReleasedActionLayerUpMs) {
+                        shouldOverwrite = false;
+                    }
+                }
+            }
+
+            if (shouldOverwrite && now - upMs < 100.0) {
                 _lastReleasedActionLayer = _previousActionLayer;
                 _lastReleasedActionLayerUpMs = upMs > 0.0 ? upMs : now;
                 _lastReleasedActionLayerDownMs = LayerTimestamp(_previousActionLayer);
@@ -892,7 +897,6 @@ internal sealed class MapperForm : Form {
                 ReleaseRuntimeHolds();
                 _runtimeReleased = true;
             }
-            Logger.Info(_enabled ? "enabled" : "disabled");
         }
     }
 
@@ -966,7 +970,6 @@ internal sealed class MapperForm : Form {
 
     private void DebugSources(string message) {
         if (!_debugSources) return;
-        Logger.Info(message);
         Console.WriteLine(message);
     }
 

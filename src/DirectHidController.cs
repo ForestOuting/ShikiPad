@@ -71,7 +71,6 @@ internal sealed class DirectHidController {
                     ControllerState cs = new ControllerState();
                     cs.Connected = true;
                     State = cs;
-                    Logger.Info("Direct HID device connected: " + _deviceName);
                 } else {
                     Thread.Sleep(1000);
                     continue;
@@ -85,12 +84,10 @@ internal sealed class DirectHidController {
                     Buffer.BlockCopy(buffer, 0, report, 0, (int)bytesRead);
                     try {
                         ParseReport(report);
-                    } catch (Exception ex) {
-                        Logger.Error("Parse error: " + ex.Message);
+                    } catch {
                     }
                 }
             } else {
-                Logger.Warn("ReadFile failed, disconnecting...");
                 NativeMethods.CloseHandle(_handle);
                 _handle = IntPtr.Zero;
             }
@@ -105,13 +102,11 @@ internal sealed class DirectHidController {
             if (result == 0) {
                 if (!wasConnected) {
                     wasConnected = true;
-                    Logger.Info("XInput controller connected: " + DisplayName + " slot " + _xinputUserIndex.ToString(CultureInfo.InvariantCulture));
                 }
                 ParseXInput(state.Gamepad);
                 Thread.Sleep(1);
             } else {
                 if (wasConnected) {
-                    Logger.Warn("XInput controller disconnected");
                     wasConnected = false;
                 }
                 State = new ControllerState();
@@ -212,7 +207,6 @@ internal sealed class DirectHidController {
                             if (NativeMethods.HidD_GetPreparsedData(handle, out preparsedData)) {
                                 NativeMethods.HIDP_CAPS caps;
                                 if (NativeMethods.HidP_GetCaps(preparsedData, out caps) == 0x110000) { // HIDP_STATUS_SUCCESS
-                                    Logger.Info("Found Sony HID device: UsagePage=" + caps.UsagePage + ", Usage=" + caps.Usage);
                                     if (caps.UsagePage == 1 && (caps.Usage == 4 || caps.Usage == 5)) {
                                         isGamepad = true;
                                     }
@@ -266,12 +260,10 @@ internal sealed class DirectHidController {
 
         if (isUsbProfile) {
             if (r[0] != 0x01) {
-                Logger.Warn("Sony (USB) mode rejected report: ID=" + r[0] + ", Length=" + r.Length);
                 return false;
             }
         } else if (isBtProfile) {
             if (r[0] != 0x01 && !isAdvancedBt) {
-                Logger.Warn("Sony (BT) mode rejected report: ID=" + r[0] + ", Length=" + r.Length);
                 return false;
             }
         } else {
