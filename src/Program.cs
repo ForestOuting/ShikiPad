@@ -26,13 +26,11 @@ internal static class Program {
 
     private static ConsoleCtrlHandler _consoleCtrlHandler;
     private const string DefaultControllerFileName = "shikipad.default";
-    private const int DefaultControllerGraceMs = 1800;
+    private static bool _controllerSelectionExitRequested;
 
     public static void PrintGradientBanner() {
         EnableAnsi();
-        int width = GetConsoleWidth();
-        int panelWidth = Math.Min(104, Math.Max(66, width - 6));
-        PrintFullGradientBanner(width, panelWidth);
+        PrintInitialControllerSurface(false, ControllerProfile.DualSense);
     }
 
     public static void PrintRunHint() {
@@ -96,10 +94,10 @@ internal static class Program {
         bool xbox = profile == ControllerProfile.Xbox360 || profile == ControllerProfile.XboxSeries ||
                     profile == ControllerProfile.Xbox360BT || profile == ControllerProfile.XboxSeriesBT;
 
-        WriteHudRail(width, panelWidth, zh ? "\u6620\u5c04\u8bf4\u660e" : "Mapping Manual", zh ? "Enter \u8fd4\u56de ShikiPad \u4e3b\u754c\u9762" : "Enter returns to ShikiPad home");
+        WriteHudRail(width, panelWidth, "映射说明", "Enter 返回主界面 | Esc 退出");
         WriteSignalWeave(width, panelWidth, 1, "MANUAL");
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
-        WritePanelTitle(width, panelWidth, zh ? "[ \u6620\u5c04\u8bf4\u660e | Enter \u8fd4\u56de ShikiPad \u4e3b\u754c\u9762 ]" : "[ MAPPING MANUAL | ENTER RETURNS TO SHIKIPAD HOME ]", new Rgb(235, 247, 252));
+        WritePanelTitle(width, panelWidth, "[ 映射说明 | Enter 返回主界面 | Esc 退出 ]", new Rgb(235, 247, 252));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
 
         if (zh) {
@@ -155,12 +153,12 @@ internal static class Program {
         }
 
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
-        FillViewportWithSignal(width, panelWidth, zh ? "Enter \u8fd4\u56de ShikiPad \u4e3b\u754c\u9762" : "Enter returns to ShikiPad home");
+        FillViewportWithSignal(width, panelWidth, "Enter 返回 ShikiPad 主界面  |  Esc 退出");
         Console.WriteLine("\x1b[0m");
     }
 
     public static void PrintConnectedWelcome(ControllerProfile profile, Config config, string deviceName) {
-        PrintHomeSurface(profile, config, deviceName, true, true);
+        PrintHomeSurface(profile, config, deviceName, true, false);
     }
 
     public static void PrintRunningHome(ControllerProfile profile, Config config, string deviceName, bool connected) {
@@ -176,30 +174,21 @@ internal static class Program {
         }
 
         int width = GetConsoleWidth();
-        int panelWidth = Math.Min(112, Math.Max(72, width - 6));
-        bool zh = IsChineseUi();
+        int panelWidth = Math.Min(118, Math.Max(72, width - 6));
         Console.WriteLine();
-        WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u5df2\u5c31\u7eea" : "ShikiPad Is Ready");
+        WriteNeonRule(width, panelWidth, "ShikiPad 主界面");
         WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
-        Console.WriteLine();
-        WriteEmbossedCenteredText(width, panelWidth, zh ? "\u6b22\u8fce\u6765\u5230 ShikiPad" : "WELCOME TO SHIKIPAD", SeasonGlowStops(), true);
+        WriteDenseSignalBand(width, panelWidth, 2, "WELCOME");
+        WriteEmbossedCenteredText(width, panelWidth, "欢迎来到 ShikiPad", SeasonGlowStops(), true);
+        WriteEmbossedCenteredText(width, panelWidth, "关闭窗口也会自动释放按键", new Rgb[] { SeasonWinter(), SeasonSummer(), SeasonGold() }, false);
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
-        WritePanelTitle(width, panelWidth, zh ? "\u4e3b\u754c\u9762" : "HOME", new Rgb(235, 247, 252));
+        WritePanelTitle(width, panelWidth, "像素信号层", new Rgb(235, 247, 252));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
-        WritePanelTwinLine(width, panelWidth, zh ? "\u624b\u67c4" : "Controller", String.IsNullOrEmpty(deviceName) ? ControllerProfileName(profile) : deviceName, zh ? "\u72b6\u6001" : "Status", connected ? (zh ? "\u5df2\u8fde\u63a5\uff0c\u6b63\u5728\u6620\u5c04" : "Connected and mapping") : (zh ? "\u7b49\u5f85\u8fde\u63a5" : "Waiting"), new Rgb(113, 255, 194), new Rgb(245, 250, 255));
-        WritePanelTwinLine(width, panelWidth, zh ? "\u8bf4\u660e" : "Manual", zh ? "Enter \u6253\u5f00 / Enter \u8fd4\u56de" : "Enter opens / Enter returns", zh ? "\u9000\u51fa" : "Exit", zh ? "\u5173\u95ed\u7a97\u53e3\uff0c\u81ea\u52a8\u91ca\u653e\u6309\u952e" : "Close window; inputs release", new Rgb(200, 240, 255), new Rgb(245, 250, 255));
-        bool hasDefault = HasDefaultControllerForRuntime();
-        WritePanelLine(width, panelWidth, zh ? "  \u9ed8\u8ba4\u542f\u52a8" : "  Default launch", hasDefault ? (zh ? "Esc \u6e05\u9664\u9ed8\u8ba4\u5e76\u56de\u5230\u624b\u67c4\u9009\u62e9" : "Esc clears default and returns to selection") : (zh ? "\u5df2\u5173\u95ed\uff1b\u4e0b\u6b21\u542f\u52a8\u4f1a\u663e\u793a\u624b\u67c4\u9009\u62e9" : "Off; next launch will show controller selection"), SeasonGold(), new Rgb(245, 250, 255));
+        WriteAvatarGallery(width, panelWidth, new string[] { "soyo", "bocchi", "kita" }, 4);
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
-        WritePanelSectionTitle(width, panelWidth, zh ? "> \u5feb\u901f\u5730\u56fe" : "> Quick Map", zh ? "\u5f00\u59cb\u4f7f\u7528\u65f6\u5148\u8bb0\u4f4f\u8fd9\u51e0\u4e2a\u533a\u5757" : "Keep these anchors in mind while using ShikiPad.");
-        WritePanelTwinLine(width, panelWidth, zh ? "\u6253\u5b57" : "Typing", "L1/R1/L2/R2 + " + (IsXboxProfile(profile) ? "D-pad/X/Y/A/B" : "D-pad/\u25a1/\u25b3/\u00d7/\u25cb"), zh ? "\u9f20\u6807" : "Mouse", zh ? "\u53f3\u6447\u6746\u79fb\u52a8\uff0cL3/R3 \u70b9\u51fb" : "Right stick moves; L3/R3 click", SeasonGold(), new Rgb(245, 250, 255));
-        WritePanelTwinLine(width, panelWidth, zh ? "\u5de6\u6447\u6746" : "Left stick", zh ? "\u6eda\u8f6e + Shift/Ctrl/Alt/Win/Esc/Fn" : "Wheel + Shift/Ctrl/Alt/Win/Esc/Fn", zh ? "\u84c4\u529b" : "Clutch", IsXboxProfile(profile) ? (zh ? "View/Menu \u77ed\u6309\u5207\u6362" : "View/Menu toggles") : (zh ? "\u89e6\u63a7\u677f\u77ed\u6309\u5207\u6362" : "Touchpad toggles"), SeasonSpring(), new Rgb(245, 250, 255));
-        WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
-        WritePanelSectionTitle(width, panelWidth, zh ? "> \u5e38\u7528\u8282\u594f" : "> Common Rhythm", zh ? "\u4fdd\u6301\u7a33\u5b9a\u8282\u594f\uff0cShikiPad \u4f1a\u7528\u77ed\u7a97\u53e3\u5438\u6536\u5148\u540e\u8bef\u5dee" : "Short timing windows absorb small ordering mistakes.");
-        WritePanelTwinLine(width, panelWidth, "R1/RB", "i n e a o t h u", "L1/LB", "s r d g l c y z", new Rgb(255, 142, 206), new Rgb(245, 250, 255));
-        WritePanelTwinLine(width, panelWidth, "R2/RT", "m w j x q f p b", "L2/LT", "k v 1 2 3 4 5 6", new Rgb(190, 133, 255), new Rgb(245, 250, 255));
+        WritePanelTwinLine(width, panelWidth, "Enter", "打开映射说明", "Esc", "返回初始页面，再按 Esc 退出", SeasonGold(), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
-        FillViewportWithSignal(width, panelWidth, zh ? "Enter \u6253\u5f00\u6620\u5c04\u8bf4\u660e" : "Enter opens the mapping manual");
+        FillViewportWithSignal(width, panelWidth, "Enter 打开说明  |  Esc 返回初始页面");
         Console.WriteLine("\x1b[0m");
     }
 
@@ -211,24 +200,281 @@ internal static class Program {
         for (int i = 0; i < lines; i++) Console.WriteLine();
     }
 
-    private static void PrintDefaultLaunchSurface(int width, int panelWidth, ControllerProfile savedDefault) {
-        bool zh = IsChineseUi();
+    private static void PrintInitialControllerSurface(bool hasSavedDefault, ControllerProfile savedDefault) {
         try { Console.Clear(); } catch { }
+        EnableAnsi();
+        int width = GetConsoleWidth();
+        int panelWidth = Math.Min(118, Math.Max(72, width - 6));
+
         Console.WriteLine();
-        WriteNeonRule(width, panelWidth, zh ? "ShikiPad \u9ed8\u8ba4\u542f\u52a8" : "ShikiPad Default Launch");
+        WriteNeonRule(width, panelWidth, "ShikiPad 输入页面");
         WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
-        WriteEmbossedCenteredText(width, panelWidth, zh ? "\u5df2\u8bb0\u4f4f\u4f60\u7684\u624b\u67c4\u578b\u53f7" : "YOUR CONTROLLER PROFILE IS SAVED", SeasonGlowStops(), true);
+        WriteDenseSignalBand(width, panelWidth, 2, "INPUT");
         WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
-        WritePanelTitle(width, panelWidth, zh ? "[ \u9ed8\u8ba4\u542f\u52a8 ]" : "[ DEFAULT LAUNCH ]", new Rgb(235, 247, 252));
+        WritePanelTitle(width, panelWidth, "选择手柄型号", new Rgb(235, 247, 252));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
-        WritePanelLine(width, panelWidth, zh ? "  \u9ed8\u8ba4\u624b\u67c4" : "  Saved profile", ControllerProfileName(savedDefault), SeasonGold(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, zh ? "  \u81ea\u52a8\u7ee7\u7eed" : "  Auto start", zh ? "\u7ea6 1.8 \u79d2\u540e\u76f4\u63a5\u542f\u52a8\uff0c\u65e0\u9700\u518d\u8f93\u5165" : "Continues in about 1.8 seconds with no input", SeasonSpring(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, zh ? "  \u91cd\u65b0\u9009\u62e9" : "  Choose again", zh ? "\u6309 Enter \u8fdb\u5165\u624b\u67c4\u9009\u62e9" : "Press Enter to open controller selection", SeasonSummer(), new Rgb(245, 250, 255));
-        WritePanelLine(width, panelWidth, zh ? "  \u4ec5\u672c\u6b21" : "  One run", zh ? "\u547d\u4ee4\u884c --controller ds5 \u4ec5\u6539\u53d8\u672c\u6b21\u542f\u52a8" : "--controller changes only the current run", SeasonAutumn(), new Rgb(245, 250, 255));
+        WriteAvatarGallery(width, panelWidth, new string[] { "subaru", "nina", "anon" }, 2);
+        WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+        WriteControllerPairLine(width, panelWidth, "[1] DualSense", "[2] DualSense (BT)", SeasonSummer());
+        WriteControllerPairLine(width, panelWidth, "[3] DualShock 4", "[4] DualShock 4 (BT)", new Rgb(100, 180, 255));
+        WriteControllerPairLine(width, panelWidth, "[5] Xbox 360", "[6] Xbox 360 (BT)", SeasonSpring());
+        WriteControllerPairLine(width, panelWidth, "[7] Xbox Series X|S", "[8] Xbox Series (BT)", SeasonGold());
         WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
-        FillViewportWithSignal(width, panelWidth, zh ? "\u8fde\u63a5\u540e\u53ef\u5728\u4e3b\u754c\u9762\u7ba1\u7406\u9ed8\u8ba4\u542f\u52a8" : "Default launch is managed from the home screen after connection");
+        FillViewportWithSignal(width, panelWidth, "选择手柄型号后按 Enter；运行中会显示 [-\\|/] 动画");
         Console.WriteLine("\x1b[0m");
     }
+
+    private static void PrintStartupSpinner(ControllerProfile profile) {
+        try { Console.Clear(); } catch { }
+        EnableAnsi();
+        int width = GetConsoleWidth();
+        int panelWidth = Math.Min(98, Math.Max(66, width - 8));
+        Console.WriteLine();
+        WriteNeonRule(width, panelWidth, "ShikiPad 正在启动");
+        WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
+        WritePanelBorder(width, panelWidth, true, new Rgb(126, 226, 244));
+        WritePanelTitle(width, panelWidth, "运行中", new Rgb(235, 247, 252));
+        WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
+        WritePanelLine(width, panelWidth, "  手柄型号", ControllerProfileName(profile), SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelLine(width, panelWidth, "  状态", "正在启动映射并等待手柄连接", SeasonSpring(), new Rgb(245, 250, 255));
+        WritePanelBorder(width, panelWidth, false, new Rgb(126, 226, 244));
+
+        string frames = "-\\|/";
+        for (int i = 0; i < 22; i++) {
+            int left = Math.Max(0, (width - panelWidth) / 2);
+            Console.Write("\r" + new string(' ', left));
+            WriteRgb(SeasonSummer(), "[" + frames[i % frames.Length] + "] ");
+            WriteRgb(SeasonGold(), "ShikiPad 正在运行，连接后进入主界面...");
+            Console.Write("\x1b[0m");
+            Thread.Sleep(55);
+        }
+        Console.WriteLine();
+    }
+
+    private static void WriteDenseSignalBand(int width, int panelWidth, int rows, string seed) {
+        int left = Math.Max(0, (width - panelWidth) / 2);
+        int inner = Math.Max(0, panelWidth - 2);
+        for (int row = 0; row < rows; row++) {
+            Console.Write(new string(' ', left));
+            WriteRgb(Scale(PanelInk(), 0.92), "\u2502");
+            WriteTextureSegment(inner, row, row * 17 + seed.Length * 11);
+            WriteRgb(Scale(PanelInk(), 0.92), "\u2502");
+            Console.WriteLine();
+        }
+    }
+
+    private static void WriteAvatarGallery(int width, int panelWidth, string[] keys, int extraTextureRows) {
+        int left = Math.Max(0, (width - panelWidth) / 2);
+        int inner = Math.Max(0, panelWidth - 2);
+        PixelSprite[] sprites = new PixelSprite[keys.Length];
+        for (int i = 0; i < keys.Length; i++) sprites[i] = GetPixelSprite(keys[i]);
+
+        int spriteChars = PixelSprite.Columns * 2;
+        int spriteTotal = spriteChars * sprites.Length;
+        int gap = sprites.Length <= 1 ? 0 : Math.Max(2, (inner - spriteTotal) / (sprites.Length - 1));
+        int contentWidth = spriteTotal + gap * Math.Max(0, sprites.Length - 1);
+        if (contentWidth > inner) {
+            gap = 1;
+            contentWidth = Math.Min(inner, spriteTotal + gap * Math.Max(0, sprites.Length - 1));
+        }
+        int margin = Math.Max(0, (inner - contentWidth) / 2);
+
+        for (int r = 0; r < extraTextureRows; r++) {
+            Console.Write(new string(' ', left));
+            WriteRgb(new Rgb(72, 91, 101), "\u2502");
+            WriteTextureSegment(inner, r, 30 + r * 9);
+            WriteRgb(new Rgb(72, 91, 101), "\u2502");
+            Console.WriteLine();
+        }
+
+        for (int row = 0; row < PixelSprite.Rows; row++) {
+            Console.Write(new string(' ', left));
+            WriteRgb(new Rgb(72, 91, 101), "\u2502");
+            WriteTextureSegment(margin, row, 100 + row * 13);
+            for (int i = 0; i < sprites.Length; i++) {
+                WritePixelSpriteRow(sprites[i], row, 200 + i * 23);
+                if (i < sprites.Length - 1) WriteTextureSegment(gap, row, 300 + i * 31 + row);
+            }
+            int used = margin + contentWidth;
+            WriteTextureSegment(Math.Max(0, inner - used), row, 500 + row * 7);
+            WriteRgb(new Rgb(72, 91, 101), "\u2502");
+            Console.WriteLine();
+        }
+
+        for (int r = 0; r < extraTextureRows; r++) {
+            Console.Write(new string(' ', left));
+            WriteRgb(new Rgb(72, 91, 101), "\u2502");
+            WriteTextureSegment(inner, r, 700 + r * 19);
+            WriteRgb(new Rgb(72, 91, 101), "\u2502");
+            Console.WriteLine();
+        }
+    }
+
+    private static void WriteTextureSegment(int width, int row, int seed) {
+        if (width <= 0) return;
+        for (int i = 0; i < width; i++) {
+            int v = (i * 17 + row * 29 + seed) % 23;
+            if (v == 0) WriteRgb(Scale(SeasonSummer(), 0.36), ".");
+            else if (v == 1) WriteRgb(Scale(SeasonGold(), 0.32), ":");
+            else if (v == 2) WriteRgb(Scale(SeasonSpring(), 0.28), "-");
+            else if (v == 3 && i + 1 < width) {
+                WriteRgb(Scale(SeasonSummer(), 0.25), "[]");
+                i++;
+            } else {
+                Console.Write(' ');
+            }
+        }
+    }
+
+    private static void WritePixelSpriteRow(PixelSprite sprite, int row, int seed) {
+        string line = sprite.Data[row];
+        for (int col = 0; col < PixelSprite.Columns; col++) {
+            string token = line.Substring(col * 6, 6);
+            if (token == "......") {
+                WriteTextureSegment(2, row, seed + col * 5);
+            } else {
+                Rgb color = HexToRgb(token);
+                Console.Write(string.Format("\x1b[48;2;{0};{1};{2}m  \x1b[0m", color.R, color.G, color.B));
+            }
+        }
+    }
+
+    private static Rgb HexToRgb(string hex) {
+        return new Rgb(
+            Convert.ToInt32(hex.Substring(0, 2), 16),
+            Convert.ToInt32(hex.Substring(2, 2), 16),
+            Convert.ToInt32(hex.Substring(4, 2), 16));
+    }
+
+    private sealed class PixelSprite {
+        public const int Columns = 18;
+        public const int Rows = 16;
+        public readonly string Key;
+        public readonly string[] Data;
+
+        public PixelSprite(string key, string[] data) {
+            Key = key;
+            Data = data;
+        }
+    }
+
+    private static PixelSprite GetPixelSprite(string key) {
+        for (int i = 0; i < PixelSprites.Length; i++) {
+            if (String.Equals(PixelSprites[i].Key, key, StringComparison.OrdinalIgnoreCase)) return PixelSprites[i];
+        }
+        return PixelSprites[0];
+    }
+
+    private static readonly PixelSprite[] PixelSprites = new PixelSprite[] {
+        new PixelSprite("subaru", new string[] {
+            "............................................................................................................",
+            "....................................364848243636363648363648363648..........................................",
+            "........................5A6C6C48485A24364824243624364824364824364848485A....................................",
+            "........................5A5A6C243648243648243648243648363648243648243648363648..............................",
+            "..................5A5A6C48485A363648363648363648243648243648242436243648243648..............................",
+            "..................36485A2424362436362424365A485A242436242436122436242436243648243636........................",
+            "..................2436482424366C5A5A363648A27E7E484848363648122436242436242448242436........................",
+            "..................2436362424366C5A6CD8C6B4D8C6B46C5A7E5A4848484848C6A290243648242436........................",
+            "........................122424B49090FCD8C6FCD8C6EAC6B4B4A2905A485A6C5A5A242448242436........................",
+            "........................1224366C6C6CEAC6B4EAB4B4FCD8C6C6A2A2483648121224242436242436122424..................",
+            "........................2424360024246C5A6CEAC6B4C6A290A27E6C907E7E363648121224242448122436..................",
+            "........................24243612242400123636365AB490A2907E7E9090A2122436121236122436242448..................",
+            "..................24363624363612243624365A485A6C6C7E905A5A6C24365A24244824245A242448122436243636002424......",
+            "............12362424363612242424365A6C6C7E486C7EA290A224364824244824245A24245A24245A121236122436122436......",
+            "............24363612243612242436365A6C90A27E90A236365A24364824244824245A24245A12245A001236122436122424......",
+            "........................1224485A5A6C487E90485A7E24364836365A12244812244824245A122448002436122436............",
+        }),
+        new PixelSprite("nina", new string[] {
+            "............................................................................................................",
+            "............................................................................................................",
+            "..........................................7E36486C24485A24485A2436482436482436..............................",
+            "..............................904848A2485A7E36485A24485A24365A24365A2436482436482436........................",
+            "..............................6C36485A24365A24486C36487E36485A24365A24365A24365A2436482436..................",
+            "........................5A24365A24365A24365A24365A24485A24486C24486C36486C24485A24365A2448..................",
+            "........................4824365A24364824364824365A24484824366C485A906C6C5A2436482436482436241224............",
+            "..................4824244824365A24365A36485A48485A24485A3636A2907EA27E6C4824365A3648482436242424............",
+            "..................362424362436482436906C6CB4907E5A2436907E7E909090C6A2A27E485A6C4848361236241224............",
+            "........................3612363612363612367E5A6C6C3648D8B4A2FCD8C6FCD8C6B4A2A2362436242424..................",
+            "..............................3636362412367E5A5A905A5AEAD8C6FCD8C6FCD8C6B49090361236362424..................",
+            "..................C6C6B4EAD8C6D8C6C6C6A2A2A29090A26C6CB4907EEAD8C6A29090362448242424........................",
+            "..................D8B4B4EAC6C6EAD8C6FCEAD8FCD8D890909036365A122448122424....................................",
+            "..................36485A48486C5A486CA27E7ED8B4B4FCD8D87E6C7E24243648485A....................................",
+            "..................12244824365A36243636365A483648B49090A27E90121236A27E7E....................................",
+            "............................................................................................................",
+        }),
+        new PixelSprite("anon", new string[] {
+            "............................................................................................................",
+            "............................................................................................................",
+            "..............................D890A2EAC6C6EAB4C6EAC6C6EAC6C6................................................",
+            "..................D8B4B4EAB4B4FCB4C6EAB4C6FCC6C6FCC6C6FCD8D8EAC6C6..........................................",
+            "..................FCD8D8FCC6C6FCC6C6FCD8D8FCC6C6FCC6C6FCC6C6FCC6C6EAC6C6....................................",
+            "............D8C6B4FCC6D8EAB4C6FCC6C6FCB4C6FCB4C6FCC6C6EAB4B4FCB4C6EAC6C6....................................",
+            "............D8B4B4FCB4C6D8A2A2EAB4B4EAA2B4EAB4B4EAA2B4D8A2B4D8A2B4FCC6C6....................................",
+            "............D8A2A2EAA2B4C6A290EAC6B4D8B4B45A5A6CC69090D89090D8A2A2FCC6C6D890A2..............................",
+            "............C69090D890A2907E7ED8C6B4FCD8C6EAC6C6EAB4B4D8B4A2D890A2EAB4C6EAB4B4..............................",
+            "..................C67E90C67E90FCD8C6EAB4A2FCD8C6EAC6B4A25A6CD890A2D8A2B4EAB4B4C6B4A2........................",
+            "..................D8B4B4C66C90D8A2A2EAB4A2EAC6B4D8A290B47E90D8A2B4C690A2EAB4B4D8B4A2........................",
+            "..................C6A2A2D890A2B45A7EA26C7EB47E90EAC6C6D8B4C6A27E90A25A7ED8A2B4EAB4C6B4907E..................",
+            "............B49090EAB4C6B47E907E6C6C6C5A6C7E6C7ED8C6C6D8A2B4B4A2A2B4A2A2B49090EAA2B4EAB4B4C6A2A2............",
+            "......D8A2A2D8B4B4D890A2906C7EB4A2A26C7E6CB4A2A2D8A2B4C6A2A2B4A2A2B4A2A2B4A2A2B46C90EAB4B4C6A2A2............",
+            "............................................................................................................",
+            "............................................................................................................",
+        }),
+        new PixelSprite("soyo", new string[] {
+            "............................................................................................................",
+            "....................................B4907EB47E6CC6907EC6907EC6907EB4A27E....................................",
+            "..............................B4907EB4907EC6907EC6907EC6907EC6907ED8B490C6A290..............................",
+            "........................D8B490C6907EC6907EC6907EC6907EC6A290D8A290C6907EC6A290..............................",
+            "..................D8C6B4D8B4A2D8A290C6907ED8A290C6907EC6907EC6907EC6907EC6907EB4907E........................",
+            "..................D8B4A2C6907EC6907EC6907EC6907EB47E7EC6907EB47E6CB47E7EC6907EB47E6C........................",
+            "..................C6907EB47E7EC6A290D8B4A2C6A290B4907EB47E6CB47E6C906C6CC6907EB47E6C........................",
+            "..................B4907E906C5AA2907EEAB4A29090905A5A5AB4907EC6907ED8A290B47E7EB47E6CA27E6C..................",
+            "..................907E5A905A5AB4A290FCD8C6FCD8C6EAC6B4C69090B4907EA27E6CB47E6CB4907E906C48..................",
+            "........................7E6C48B4907EFCD8C6FCD8D8FCD8C6C6907EA26C6C905A5AA26C6CC6907EA27E6C6C5A48............",
+            "........................A27E6C905A5AB49090EAC6B4C6A290C6907EC67E7E7E5A5A7E5A5AC6907EA27E6CA27E6C............",
+            "........................A27E6C906C5A6C4848483636906C5AC6907E7E5A6C5A48485A4848A27E6CB47E6CA27E6C............",
+            "........................A27E6C5A484836485A906C6CD8B4A25A485A48485A5A5A6C48486C5A4848B47E6CA27E6C............",
+            "..................A27E6C7E5A5A2436485A5A7E5A5A6C906C6C5A485A48486C24365A24365A24365A7E5A5AB47E6CA27E6C......",
+            "............C6A290906C5A5A484848486C36486C6C6C90A26C6C48485A24365A24365A24365A24365A6C4848A27E6C............",
+            "............................................................................................................",
+        }),
+        new PixelSprite("bocchi", new string[] {
+            "............................................................................................................",
+            "............................................................................................................",
+            "..........................................FCC6C6FCB4B4FCB4B4FCB4B4EAA2A2....................................",
+            "....................................FCC6C6FCB4C6FCB4B4FCA2B4EAA2A2FCA2B4EAA2B4EAB4B4........................",
+            "..............................B4B4C6C6A2B4FCA2B4FCC6C6EAA2B4FCA2B4FCB4B4FCA2B4FCB4C6........................",
+            "..................D8A290C690907E7E905A7EB4EAA2B4EAA2A2FCA2B4EAB4B4FCB4C6FCB4B4FCB4B4D8A2A2..................",
+            "........................D8A27EC69048C67E6CFCB4B4EA90A2EA90A2EA90A2FCB4B4EA90A2FCA2B4D8A2A2..................",
+            "........................EAB4B4D8907ED89090FCB4B4C67E90A26C6CC67E7EFCA2B4D89090EAA2A2C69090..................",
+            "........................EAB4B4EA90A2D890A2FCA2B4C69090907E90D89090B47E90906C6CD87E90B47E6C..................",
+            "........................EAB4B4EA90A2C66C90FCA2B4EAB4B4FCD8C6FCD8C6EAC6B4B46C7EB46C7E........................",
+            "..................D8C6C6EAA2B4D890A2B46C7EEAA2B4D8907EEAC6B4FCD8C6C69090C66C7EB46C7E........................",
+            "..................D8B4A2EAA2B4C66C7EC66C7ED890A2C66C7E90485AA25A6CA25A6CC66C90C69090........................",
+            "..................EAA2A2EA90A2FCB4B4EA9090D87E90D87E90A25A6CB45A6CA25A6CD87E90B47E7E........................",
+            "............C6A290D87E90FCB4B4FC90A2EA90A2EA9090EA90A2C67E90D87E90B45A6CD890A2C69090............6C3624......",
+            "............................................................................................................",
+            "............................................................................................................",
+        }),
+        new PixelSprite("kita", new string[] {
+            "............................................................................................................",
+            "......................................................B45A48................................................",
+            "....................................D86C6CD84848D84836C64836C64836C64836B44836..............................",
+            "..............................D85A5AD85A48D84848D83636C63636C63636C63636C63636C65A48........................",
+            "..................D86C5AB44836C63636C64836D84848D84848D84836C63636D83636C63636D84836D86C6C..................",
+            "..................C64836A22424C63636C63636C63636C63636C64836C64836D84848D84836D84848D85A48..................",
+            "............B43636C63636902424C63636D83636B43636C65A48D86C6CC64848C63636C64836C63636C63636C65A48............",
+            "............A23624A23624A22424B43636D836369048486C5A48D8B4A2B44836B43636C66C6CB43636C63636A24836............",
+            "............B436247E3624B43636B45A48C63636C6907E90905AEAC6C6D87E6CB46C6C906C6CB44848C636367E3624............",
+            "......B43624C63636B43636B43636903636B43636D8907EFCD8B4FCD8C6FCD8C6B4A26CB4907E902424A236246C3624............",
+            "......A23624A23624B43636C636367E2424902424D89090FCD8C6D8A290EAC6B4FCD8C69048487E24246C3612..................",
+            "............7E3624B43636B436367E2424902424D8907EEAC6B4FCB4A2EAC6B4B47E7E7E24246C2424903624..................",
+            "............B43636B436369024247E2424903636EAB490D8906C906C5A7E36366C24249024246C2424A23624A23624............",
+            "......A23636A236249024247E3648482436B46C6CFCD8C6EAA290B47E7E906C7E4824366C24247E24247E36247E3624............",
+            "......7E3624B436364824363636366C6C6C904848FCD8C6FCD8C6D8B4A2C6B4B448485A362424902424........................",
+            "............................................................................................................",
+        }),
+    };
 
     private static bool IsXboxProfile(ControllerProfile profile) {
         return profile == ControllerProfile.Xbox360 || profile == ControllerProfile.Xbox360BT ||
@@ -339,12 +585,7 @@ internal static class Program {
     }
 
     private static bool IsChineseUi() {
-        try {
-            string lang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-            return String.Equals(lang, "zh", StringComparison.OrdinalIgnoreCase);
-        } catch {
-            return false;
-        }
+        return true;
     }
 
     private static void EnableAnsi() {
@@ -741,7 +982,7 @@ internal static class Program {
         StreamWriter writer = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
         Console.SetOut(writer);
         try { Console.Title = "ShikiPad"; } catch { }
-        PrintGradientBanner();
+        EnableAnsi();
 
         string root = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         Directory.SetCurrentDirectory(root);
@@ -788,11 +1029,12 @@ internal static class Program {
         bool forceControllerMenuAfterRestart = false;
         while (true) {
             if (forceControllerMenuAfterRestart) {
-                PrintGradientBanner();
                 selectionArgs = new string[] { "--controller-menu" };
             }
 
             ControllerProfile controllerProfile = SelectControllerProfile(selectionArgs, root);
+            if (_controllerSelectionExitRequested) return 0;
+            PrintStartupSpinner(controllerProfile);
             Logger.Info("startup");
             Logger.Info("controller profile: " + ControllerProfileName(controllerProfile));
             Logger.Info("mouse settings: rightStickDeadzone = " + config.RightStickDeadzone.ToString("0.###", CultureInfo.InvariantCulture) +
@@ -862,11 +1104,7 @@ internal static class Program {
         ControllerProfile savedDefault;
         bool hasSavedDefault = TryLoadDefaultControllerProfile(defaultPath, out savedDefault);
         if (hasSavedDefault && !forceMenu) {
-            bool inputRedirected = false;
-            try { inputRedirected = Console.IsInputRedirected; } catch { }
-            if (inputRedirected || !ShouldOpenControllerMenuForDefault(savedDefault)) {
-                return savedDefault;
-            }
+            return savedDefault;
         }
 
         try {
@@ -878,46 +1116,20 @@ internal static class Program {
 
     private static ControllerProfile PromptControllerProfile(string defaultPath, bool hasSavedDefault, ControllerProfile savedDefault) {
         EnableAnsi();
-        int width = GetConsoleWidth();
-        int panelWidth = Math.Min(104, Math.Max(66, width - 6));
-        bool zh = IsChineseUi();
-        if (hasSavedDefault) {
-            try { Console.Clear(); } catch { }
-            WriteHudRail(width, panelWidth, zh ? "\u624b\u67c4\u9009\u62e9" : "Controller Selection", zh ? "\u5df2\u8fdb\u5165\u9ed8\u8ba4\u542f\u52a8\u7ba1\u7406" : "default launch management");
-            WriteSignalWeave(width, panelWidth, 1, "SELECT");
-        }
-        WriteSeasonPanelBorder(width, panelWidth, true);
-        WriteSeasonPanelTitle(width, panelWidth, zh ? "[ \u9009\u62e9\u624b\u67c4\u578b\u53f7 ]" : "[ CONTROLLER PROFILE ]");
-        WriteSeasonPanelSeparator(width, panelWidth);
-        WritePanelLine(width, panelWidth, zh ? "  \u8bf4\u660e" : "  Note", zh ? "\u9009\u62e9\u540e\u53ef\u4fdd\u5b58\u4e3a\u9ed8\u8ba4\u542f\u52a8\uff1b\u547d\u4ee4\u884c --controller \u4ec5\u5f71\u54cd\u672c\u6b21" : "After choosing, you can save it as the default launch profile.", SeasonGold(), new Rgb(245, 250, 255));
-        WriteSeasonPanelSeparator(width, panelWidth);
-        WriteControllerPairLine(width, panelWidth, "[1] DualSense", "[2] DualSense (BT)", SeasonSummer());
-        WriteControllerPairLine(width, panelWidth, "[3] DualShock 4", "[4] DualShock 4 (BT)", new Rgb(100, 180, 255));
-        WriteControllerPairLine(width, panelWidth, "[5] Xbox 360", "[6] Xbox 360 (BT)", SeasonSpring());
-        WriteControllerPairLine(width, panelWidth, "[7] Xbox Series X|S", "[8] Xbox Series (BT)", SeasonGold());
-        if (hasSavedDefault) {
-            WriteSeasonPanelSeparator(width, panelWidth);
-            WritePanelLine(width, panelWidth, zh ? "  当前默认启动" : "  Saved default", ControllerProfileName(savedDefault), SeasonGold(), new Rgb(245, 250, 255));
-            WritePanelLine(width, panelWidth, zh ? "  \u5173\u95ed\u9ed8\u8ba4" : "  Clear default", zh ? "\u6309 Esc \u5173\u95ed\u9ed8\u8ba4\u542f\u52a8\uff0c\u4e4b\u540e\u6bcf\u6b21\u90fd\u91cd\u65b0\u9009\u62e9" : "Press Esc to ask every time again", SeasonAutumn(), new Rgb(245, 250, 255));
-        }
-        WriteSeasonPanelBorder(width, panelWidth, false);
-        WriteSeasonDropShadow(width, panelWidth);
-        WriteSignalWeave(width, panelWidth, hasSavedDefault ? 3 : 2, "PAD");
-        Console.WriteLine();
+        PrintInitialControllerSurface(hasSavedDefault, savedDefault);
 
         while (true) {
-            WriteRgb(SeasonSummer(), hasSavedDefault
-                ? (zh ? "选择手柄型号 [1..8，Enter = 1，Esc = 关闭默认启动] > " : "Select controller profile [1..8, Enter = 1, Esc = clear default] > ")
-                : (zh ? "选择手柄型号 [1..8，Enter = 1] > " : "Select controller profile [1..8, Enter = 1] > "));
+            WriteRgb(SeasonSummer(), "选择手柄型号 [1..8，Enter = 1，Esc = 退出] > ");
             Console.Write("\x1b[0m");
-            string line = ReadControllerMenuLine(hasSavedDefault);
-            if (line == null) return ControllerProfile.DualSense;
+            string line = ReadControllerMenuLine(true);
+            if (line == null) {
+                _controllerSelectionExitRequested = true;
+                return ControllerProfile.DualSense;
+            }
             line = line.Trim();
             if (line == "\x1b") {
-                ClearDefaultControllerProfile(defaultPath);
-                hasSavedDefault = false;
-                WriteRgb(SeasonGold(), zh ? "已关闭默认启动。现在请选择本次要使用的手柄。\n" : "Default launch cleared. Choose a controller for this run.\n");
-                continue;
+                _controllerSelectionExitRequested = true;
+                return ControllerProfile.DualSense;
             }
 
             ControllerProfile selected;
@@ -925,7 +1137,7 @@ internal static class Program {
                 MaybeSaveDefaultControllerProfile(defaultPath, selected);
                 return selected;
             }
-            WriteRgb(SeasonAutumn(), zh ? "请选择 1 到 8 之间的数字；如需关闭默认启动，请按 Esc。\n" : "Please choose 1 to 8; press Esc to clear the saved default.\n");
+            WriteRgb(SeasonAutumn(), "请选择 1 到 8 之间的数字；按 Esc 可以退出。\n");
         }
     }
 
@@ -959,27 +1171,6 @@ internal static class Program {
                 Console.Write(key.KeyChar);
             }
         }
-    }
-
-    private static bool ShouldOpenControllerMenuForDefault(ControllerProfile savedDefault) {
-        EnableAnsi();
-        int width = GetConsoleWidth();
-        int panelWidth = Math.Min(104, Math.Max(66, width - 6));
-        PrintDefaultLaunchSurface(width, panelWidth, savedDefault);
-
-        DateTime end = DateTime.UtcNow.AddMilliseconds(DefaultControllerGraceMs);
-        while (DateTime.UtcNow < end) {
-            try {
-                if (Console.KeyAvailable) {
-                    ConsoleKeyInfo key = Console.ReadKey(true);
-                    if (key.Key == ConsoleKey.Enter) return true;
-                }
-            } catch {
-                return false;
-            }
-            Thread.Sleep(50);
-        }
-        return false;
     }
 
     public static bool ClearSavedDefaultControllerForRuntime() {

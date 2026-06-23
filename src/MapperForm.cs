@@ -95,12 +95,15 @@ internal sealed class MapperForm : Form {
                                 Program.PrintDetailedManual(_controllerProfile, _config);
                                 _manualVisible = true;
                             }
-                        } else if (key.Key == ConsoleKey.Escape && !_manualVisible) {
-                            if (Program.ClearSavedDefaultControllerForRuntime()) {
-                                Logger.Info("default launch cleared from connected home");
+                        } else if (key.Key == ConsoleKey.Escape) {
+                            if (_manualVisible) {
+                                Logger.Info("manual escape requested shutdown");
+                                try { BeginInvoke((MethodInvoker)delegate { Close(); }); } catch { try { Close(); } catch { } }
+                            } else {
+                                Logger.Info("home escape requested controller selection restart");
                                 RequestControllerSelectionRestart();
-                                break;
                             }
+                            break;
                         }
                     }
                 } catch { }
