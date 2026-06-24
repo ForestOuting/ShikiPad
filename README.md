@@ -81,8 +81,8 @@ The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y
 |---|---|---|---|---|---|---|---|---|
 | Base | ↑ | → | Space | Backspace | ← | ↓ | Enter | Tab |
 | R1 / RB | i | n | e | l | o | t | h | u |
-| L1 / LB | s | z | d | f | a | c | m | r |
-| R2 / RT | y | w | j | q | x | g | p | b |
+| L1 / LB | w | d | c | r | a | s | y | z |
+| R2 / RT | m | g | j | x | q | f | p | b |
 | L2 / LT | k | v | 1 | 2 | 3 | 4 | 5 | 6 |
 | R1 + L1 | 7 | 8 | 9 | 0 | - | = | , | . |
 | L2 + R2 | ( | ) | : | " | [ | ] | ' | _ |
