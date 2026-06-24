@@ -109,8 +109,8 @@ ShikiPad uses short time windows to absorb human input errors when typing quickl
 
 | Parameter | Default | Purpose |
 |---|---:|---|
-| `comboLayerWindowMs` | 35 ms | Max interval for dual-layer combination |
+| `comboLayerWindowMs` | 45 ms | Max interval for dual-layer combination |
 | `actionLayerGraceMs` | 35 ms | Grace window between action key and layer recognition |
-| `actionLayerPostGraceMs` | 25 ms | Grace window after a layer is released before a new layer is pressed |
+| `actionLayerPostGraceMs` | 20 ms | Grace window after a layer is released before a new layer is pressed |
 | `layerTakeoverWindowMs` | 30 ms | Max time allowed for an old layer to overlap with a newly intended layer |
 | `actionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |

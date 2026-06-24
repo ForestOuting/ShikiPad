@@ -17,10 +17,10 @@ internal sealed class Config {
     public int BaseRepeatSlowIntervalMs = 120;
     public int BaseRepeatRampMs = 1000;
     public int ActionLayerGraceMs = 35;
-    public int ActionLayerPostGraceMs = 25;
+    public int ActionLayerPostGraceMs = 20;
     public int LayerTakeoverWindowMs = 30;
     public int ActionLayerSwitchGuardMs = 35;
-    public int ComboLayerWindowMs = 35;
+    public int ComboLayerWindowMs = 45;
     public bool UseScanCode = true;
     public int ScrollSlowIntervalMs = 180;
     public int ScrollFastIntervalMs = 18;
