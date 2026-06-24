@@ -73,16 +73,16 @@ internal static class Program {
         WriteManualGradientLine(width, panelWidth, pad + "按键顺序    " + (xbox ? "↑  →  X  Y  ←  ↓  A  B" : "↑  →  □  △  ←  ↓  ×  ○"), blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "基础层      ↑  →  Space  Back  ←  ↓  Enter  Tab", blockWidth);
         Console.WriteLine();
-        WriteManualGradientLine(width, panelWidth, pad + "R1/RB       i  n  e  l  o  t  h  u        L1/LB      w  d  c  r  a  s  y  z", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "R2/RT       m  g  j  x  q  f  p  b        L2/LT      k  v  1  2  3  4  5  6", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "R1+L1       7  8  9  0  -  =  ,  .", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L2+R2       (  )  :  \"  [  ]  '  _", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L1+R2       {  }  ?  !  #  *  /  ^", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L2+R1       ;  @  +  %  &  $  \\  `", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "Shift       ,→<  .→>  \\→|  `→~", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R1/RB       u  h  j  i  g  b  k  l        L1/LB      w  d  f  r  a  s  c  v", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R2/RT       =  y  o  p  -  0  n  m        L2/LT      q  e  t  1  z  x  3  2", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R1+L1       4  ,  .  9  5  6  7  8", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "L2+R2       (  )  :  \"  <  >  [  ]", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "L1+R2       #  *  ?  _  ;  !  /  '", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "L2+R1       @  %  +  $  &  ^  \\  `", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "Shift       [→{  ]→}  \\→|  `→~", blockWidth);
         Console.WriteLine();
-        WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动；L3 左键；R3 右键", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↑/↓ 滚轮；← Shift；↙ Ctrl；↘ Alt；→ Win；↖ Esc；↗ Fn", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↑/↓ 滚轮; ← Shift; ↙ Ctrl; ↘ Alt; → Win; ↖ Esc; ↗ Fn", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + (xbox ? "蓄力        View/Menu 短按 / 长按保持" : "蓄力        触控板短按 / 长按保持"), blockWidth);
         if (!xbox) WriteManualGradientLine(width, panelWidth, pad + "静音键      大写锁定", blockWidth);
         Console.WriteLine();
@@ -195,7 +195,7 @@ internal static class Program {
         WritePanelTitle(width, panelWidth, "Interception 驱动不可用", new Rgb(255, 215, 92));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
         WritePanelWrappedLine(width, panelWidth, "  原因", message, SeasonAutumn(), new Rgb(245, 250, 255));
-        WritePanelWrappedLine(width, panelWidth, "  处理", "请安装 Interception 驱动、重启 Windows，并以管理员权限运行 ShikiPad。当前版本不会回退到 SendInput。", SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelWrappedLine(width, panelWidth, "  处理", "请安装 Interception 驱动, 重启 Windows, 并以管理员权限运行 ShikiPad. 当前版本不会回退到 SendInput.", SeasonGold(), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(255, 148, 82));
         Console.WriteLine("\x1b[0m");
     }
@@ -647,7 +647,7 @@ internal static class Program {
         PrintInitialControllerSurface(hasSavedDefault, savedDefault);
 
         while (true) {
-            WriteRgb(SeasonSummer(), "选择手柄型号 [1..8，Enter = 1，Esc = 退出] > ");
+            WriteRgb(SeasonSummer(), "选择手柄型号 [1..8, Enter = 1, Esc = 退出] > ");
             Console.Write("\x1b[0m");
             string line = ReadControllerMenuLine(true);
             if (line == null) {
@@ -665,7 +665,7 @@ internal static class Program {
                 MaybeSaveDefaultControllerProfile(defaultPath, selected);
                 return selected;
             }
-            WriteRgb(SeasonAutumn(), "请选择 1 到 8 之间的数字；按 Esc 可以退出。\n");
+            WriteRgb(SeasonAutumn(), "请选择 1 到 8 之间的数字; 按 Esc 可以退出.\n");
         }
     }
 
@@ -703,7 +703,7 @@ internal static class Program {
 
     private static void MaybeSaveDefaultControllerProfile(string defaultPath, ControllerProfile profile) {
         bool zh = IsChineseUi();
-        WriteRgb(SeasonGold(), zh ? "将「" + ControllerProfileName(profile) + "」设为默认启动？[Enter/Y = 保存，N = 仅本次] > " : "Save \"" + ControllerProfileName(profile) + "\" as the default launch profile? [Enter/Y = yes, N = once] > ");
+        WriteRgb(SeasonGold(), zh ? "将 \"" + ControllerProfileName(profile) + "\" 设为默认启动?[Enter/Y = 保存, N = 仅本次] > " : "Save \"" + ControllerProfileName(profile) + "\" as the default launch profile? [Enter/Y = yes, N = once] > ");
         Console.Write("\x1b[0m");
         string line = Console.ReadLine();
         if (line == null) return;
@@ -740,9 +740,9 @@ internal static class Program {
         bool zh = IsChineseUi();
         try {
             File.WriteAllText(defaultPath, ControllerProfileKey(profile) + Environment.NewLine, Encoding.UTF8);
-            WriteRgb(SeasonSpring(), zh ? "已保存默认启动。以后直接运行 ShikiPad 即会自动使用这个手柄型号。\n" : "Default launch profile saved.\n");
+            WriteRgb(SeasonSpring(), zh ? "已保存默认启动. 以后直接运行 ShikiPad 即会自动使用这个手柄型号.\n" : "Default launch profile saved.\n");
         } catch (Exception ex) {
-            WriteRgb(SeasonAutumn(), (zh ? "默认启动保存失败：" : "Could not save default profile: ") + ex.Message + "\n");
+            WriteRgb(SeasonAutumn(), (zh ? "默认启动保存失败: " : "Could not save default profile: ") + ex.Message + "\n");
         }
     }
 
