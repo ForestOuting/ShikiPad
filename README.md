@@ -80,9 +80,9 @@ The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y
 | Layer | ↑ | → | □/X | △/Y | ← | ↓ | ×/A | ○/B |
 |---|---|---|---|---|---|---|---|---|
 | Base | ↑ | → | Space | Backspace | ← | ↓ | Enter | Tab |
-| R1 / RB | i | n | e | a | o | t | h | u |
-| L1 / LB | s | r | d | g | l | c | y | z |
-| R2 / RT | m | w | j | x | q | f | p | b |
+| R1 / RB | i | n | e | l | o | t | h | u |
+| L1 / LB | s | z | d | f | a | c | m | r |
+| R2 / RT | y | w | j | q | x | g | p | b |
 | L2 / LT | k | v | 1 | 2 | 3 | 4 | 5 | 6 |
 | R1 + L1 | 7 | 8 | 9 | 0 | - | = | , | . |
 | L2 + R2 | ( | ) | : | " | [ | ] | ' | _ |
@@ -114,4 +114,3 @@ ShikiPad uses short time windows to absorb human input errors when typing quickl
 | `actionLayerPostGraceMs` | 25 ms | Grace window after a layer is released before a new layer is pressed |
 | `layerTakeoverWindowMs` | 30 ms | Max time allowed for an old layer to overlap with a newly intended layer |
 | `actionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |
-
