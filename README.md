@@ -120,7 +120,7 @@ The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y
 | Layer | ↑ | → | □/X | △/Y | ← | ↓ | ×/A | ○/B |
 |---|---|---|---|---|---|---|---|---|
 | Base | ↑ | → | Space | Backspace | ← | ↓ | Enter | Tab |
-| R1 / RB | u | h | j | i | y | b | k | l |
+| R1 / RB | y | u | j | i | h | b | k | l |
 | L1 / LB | w | d | f | r | a | s | c | v |
 | R2 / RT | = | g | o | p | - | 0 | n | m |
 | L2 / LT | q | e | t | 1 | z | x | 3 | 2 |
