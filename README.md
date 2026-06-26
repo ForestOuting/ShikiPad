@@ -20,7 +20,7 @@ Recommended setup order:
 2. Install Interception with `install_driver.bat` as administrator.
 3. Restart Windows.
 4. Run `ShikiPad.exe` as administrator and confirm it can send keyboard and mouse output.
-5. For PlayStation controllers, configure HidHide to prevent double input in games.
+5. For PlayStation controllers, configure HidHide to prevent system or game double input.
 6. Unplug and reconnect the controller after HidHide changes.
 
 HidHide setup for PlayStation controllers:
@@ -135,9 +135,9 @@ Base-layer keys repeat while held. Character layers are virtual taps: one press 
 
 Install Interception, restart Windows, and run `ShikiPad.exe` as administrator.
 
-### Double input in games
+### System or game double input
 
-Sony controllers can be hidden with HidHide; add the exact `ShikiPad.exe` path to the whitelist. Xbox controllers use XInput, so HidHide usually cannot hide them at the HID layer.
+If Windows still sees the physical controller while ShikiPad is running, the same stick movement can be handled twice: once by ShikiPad and once by Windows or the focused app. Typical symptoms include left-stick `Alt` plus `Tab` jumping unpredictably between windows, or the left-stick `Win` modifier failing because Windows treats controller input as Start menu, taskbar, or app icon navigation. Configure HidHide as described above so only ShikiPad can see the PlayStation controller. Xbox controllers use XInput, so HidHide usually cannot hide them at the HID layer.
 
 ## Timing Model Parameters
 
