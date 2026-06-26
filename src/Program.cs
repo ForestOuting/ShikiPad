@@ -73,8 +73,8 @@ internal static class Program {
         WriteManualGradientLine(width, panelWidth, pad + "按键顺序    " + (xbox ? "↑  →  X  Y  ←  ↓  A  B" : "↑  →  □  △  ←  ↓  ×  ○"), blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "基础层      ↑  →  Space  Back  ←  ↓  Enter  Tab", blockWidth);
         Console.WriteLine();
-        WriteManualGradientLine(width, panelWidth, pad + "R1/RB       u  h  j  i  g  b  k  l        L1/LB      w  d  f  r  a  s  c  v", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "R2/RT       =  y  o  p  -  0  n  m        L2/LT      q  e  t  1  z  x  3  2", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R1/RB       u  h  j  i  y  b  k  l        L1/LB      w  d  f  r  a  s  c  v", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "R2/RT       =  g  o  p  -  0  n  m        L2/LT      q  e  t  1  z  x  3  2", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "R1+L1       4  ,  .  9  5  6  7  8", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "L2+R2       (  )  :  \"  <  >  [  ]", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "L1+R2       #  *  ?  _  ;  !  /  '", blockWidth);

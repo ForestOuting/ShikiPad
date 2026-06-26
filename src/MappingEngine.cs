@@ -7,9 +7,9 @@ internal sealed class MappingEngine {
     public MappingEngine() {
         _tables = new KeyStroke[(int)Layer.Reserved][];
         _tables[(int)Layer.Base] = Row(PhysicalKey.ArrowUp, PhysicalKey.ArrowRight, PhysicalKey.Space, PhysicalKey.Backspace, PhysicalKey.ArrowLeft, PhysicalKey.ArrowDown, PhysicalKey.Enter, PhysicalKey.Tab);
-        _tables[(int)Layer.R1] = Row(PhysicalKey.U, PhysicalKey.H, PhysicalKey.J, PhysicalKey.I, PhysicalKey.G, PhysicalKey.B, PhysicalKey.K, PhysicalKey.L);
+        _tables[(int)Layer.R1] = Row(PhysicalKey.U, PhysicalKey.H, PhysicalKey.J, PhysicalKey.I, PhysicalKey.Y, PhysicalKey.B, PhysicalKey.K, PhysicalKey.L);
         _tables[(int)Layer.L1] = Row(PhysicalKey.W, PhysicalKey.D, PhysicalKey.F, PhysicalKey.R, PhysicalKey.A, PhysicalKey.S, PhysicalKey.C, PhysicalKey.V);
-        _tables[(int)Layer.R2] = Row(PhysicalKey.Equals, PhysicalKey.Y, PhysicalKey.O, PhysicalKey.P, PhysicalKey.Minus, PhysicalKey.Num0, PhysicalKey.N, PhysicalKey.M);
+        _tables[(int)Layer.R2] = Row(PhysicalKey.Equals, PhysicalKey.G, PhysicalKey.O, PhysicalKey.P, PhysicalKey.Minus, PhysicalKey.Num0, PhysicalKey.N, PhysicalKey.M);
         _tables[(int)Layer.L2] = Row(PhysicalKey.Q, PhysicalKey.E, PhysicalKey.T, PhysicalKey.Num1, PhysicalKey.Z, PhysicalKey.X, PhysicalKey.Num3, PhysicalKey.Num2);
         _tables[(int)Layer.R1L1] = Row(PhysicalKey.Num4, PhysicalKey.Comma, PhysicalKey.Period, PhysicalKey.Num9, PhysicalKey.Num5, PhysicalKey.Num6, PhysicalKey.Num7, PhysicalKey.Num8);
         _tables[(int)Layer.R2L2] = new KeyStroke[] {
