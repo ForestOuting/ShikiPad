@@ -98,9 +98,13 @@ If controller typing still feels difficult, pair ShikiPad with voice input softw
 
 Fn turns number-row keys into `F1` to `F12`: `1..0` map to `F1..F10`, `-` maps to `F11`, and `=` maps to `F12`.
 
+When the left stick enters a modifier direction, ShikiPad locks that direction until the stick returns to the deadzone. Rotating the stick around the edge will not drift from `Shift` to `Ctrl`, `Alt`, `Win`, or `Esc`. This makes held shortcuts stable: choose the modifier direction, keep holding the stick, then press the action key. Return to the deadzone to release it.
+
 ## Clutch
 
 Normally, the left stick holds one modifier at a time. Clutch collects multiple modifiers and releases them together.
+
+While clutch is active, the currently collected modifiers remain held even if the left stick moves away from their original direction. This lets you keep a modifier, move the stick up or down for wheel input, or move to another modifier direction to add it to the stack. Releasing clutch releases the collected modifiers.
 
 | Controller | Activate / hold |
 |---|---|
