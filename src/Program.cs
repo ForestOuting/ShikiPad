@@ -108,16 +108,39 @@ internal static class Program {
     }
 
     private static string LayerDiagramLine(int row, string title, string up, string right, string square, string triangle, string left, string down, string cross, string circle) {
-        if (String.IsNullOrEmpty(title)) return new string(' ', 47);
+        const int diagramWidth = 50;
+        if (String.IsNullOrEmpty(title)) return new string(' ', diagramWidth);
+        char[] line = new string(' ', diagramWidth).ToCharArray();
         switch (row) {
             case 0:
-                return PadRight(title, 47);
+                PutCentered(line, 0, 12, title);
+                break;
             case 1:
-                return PadRight("  " + up + "                       " + triangle, 47);
+                PutCentered(line, 2, 7, up);
+                PutCentered(line, 33, 7, triangle);
+                break;
             case 2:
-                return PadRight(left + "  " + right + "                  " + square + "       " + circle, 47);
-            default:
-                return PadRight("  " + down + "                       " + cross, 47);
+                PutCentered(line, 0, 7, left);
+                PutCentered(line, 7, 7, right);
+                PutCentered(line, 27, 7, square);
+                PutCentered(line, 40, 7, circle);
+                break;
+            case 3:
+                PutCentered(line, 2, 7, down);
+                PutCentered(line, 33, 7, cross);
+                break;
+        }
+        return new string(line);
+    }
+
+    private static void PutCentered(char[] line, int start, int width, string text) {
+        if (String.IsNullOrEmpty(text) || start >= line.Length || width <= 0) return;
+        text = TrimToWidth(text, width);
+        int textWidth = DisplayWidth(text);
+        int offset = Math.Max(0, (width - textWidth) / 2);
+        int col = Math.Max(0, start + offset);
+        for (int i = 0; i < text.Length && col < line.Length; i++) {
+            line[col++] = text[i];
         }
     }
 
@@ -155,12 +178,14 @@ internal static class Program {
         Rgb[] stops = SeasonFlowStops();
         int currentDisplayCol = 0;
         int indentWidth = DisplayWidth(text) - DisplayWidth(text.TrimStart());
+        int visibleBlockWidth = Math.Max(1, DisplayWidth(text.Trim()));
+        int gradientWidth = Math.Max(1, Math.Min(blockWidth, visibleBlockWidth));
         
         for (int i = 0; i < text.Length; i++) {
             char c = text[i];
             double t = 0.0;
             if (currentDisplayCol >= indentWidth) {
-                t = (double)(currentDisplayCol - indentWidth) / Math.Max(1, blockWidth - 1);
+                t = (double)(currentDisplayCol - indentWidth) / Math.Max(1, gradientWidth - 1);
                 if (t > 1.0) t = 1.0;
             }
             WriteRgb(GradientAt(stops, t), c.ToString());
