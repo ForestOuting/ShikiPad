@@ -149,8 +149,8 @@ ShikiPad 使用短时间窗口吸收人手快速滚动输入时的先后误差.
 
 | 参数名 | 默认值 | 作用 |
 |---|---:|---|
-| `comboLayerWindowMs` | 45 ms | 基础双层组合窗口. L1+R2 和 L2+R1 额外 +10 ms, 实际按 55 ms 判定 |
+| `comboLayerWindowMs` | 55 ms | 基础双层组合窗口. L1+R2 和 R1+L2 额外 +20 ms, 实际按 75 ms 判定 |
 | `actionLayerGraceMs` | 45 ms | 动作键与键层的识别宽容窗口 |
-| `actionLayerPostGraceMs` | 20 ms | 松开键层到按下新键层间的空窗期归属 |
+| `actionLayerPostGraceMs` | 15 ms | 松开键层到按下新键层间的空窗期归属 |
 | `layerTakeoverWindowMs` | 30 ms | 限制旧键层与新意图键层重叠的最长时间 |
 | `actionLayerSwitchGuardMs` | 35 ms | 字符发出后切换键层时抑制残留误触 |
