@@ -66,20 +66,19 @@ internal static class Program {
         WriteEmbossedCenteredText(width, panelWidth, "映 射 说 明", SeasonGlowStops(), true);
         Console.WriteLine();
         
-        int blockWidth = 104;
+        int blockWidth = 76;
         int indent = Math.Max(0, (panelWidth - blockWidth) / 2);
         string pad = new string(' ', indent);
 
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Space", "Back", "←", "↓", "Enter", "Tab",
-            "R1/RB", "y", "u", "j", "i", "h", "b", "k", "l");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L1/LB", "w", "d", "f", "r", "a", "s", "c", "v",
-            "R2/RT", "=", "g", "o", "p", "-", "0", "n", "m");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L2/LT", "q", "e", "t", "1", "z", "x", "3", "2",
-            "R1+L1", "4", ",", ".", "9", "5", "6", "7", "8");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L2", "@", "%", "+", "$", "&", "^", "\\", "`",
-            "L1+R2", "#", "*", "?", "_", ";", "!", "/", "'");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L2+R2", "(", ")", ":", "\"", "<", ">", "[", "]",
-            "", "", "", "", "", "", "", "", "");
+        WriteManualSingleLayer(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Space", "Back", "←", "↓", "Enter", "Tab");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1/RB", "y", "u", "j", "i", "h", "b", "k", "l",
+            "L1/LB", "w", "d", "f", "r", "a", "s", "c", "v");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "=", "g", "o", "p", "-", "0", "n", "m",
+            "L2/LT", "q", "e", "t", "1", "z", "x", "3", "2");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L1", "4", ",", ".", "9", "5", "6", "7", "8",
+            "R1+L2", "@", "%", "+", "$", "&", "^", "\\", "`");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L1+R2", "#", "*", "?", "_", ";", "!", "/", "'",
+            "L2+R2", "(", ")", ":", "\"", "<", ">", "[", "]");
         WriteManualGradientLine(width, panelWidth, pad + "Shift       [→{  ]→}  \\→|  `→~", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
@@ -92,6 +91,15 @@ internal static class Program {
         Console.WriteLine();
         WriteEmbossedCenteredText(width, panelWidth, "Enter 主界面   |   Esc 关闭软件", SeasonGlowStops(), false);
         Console.WriteLine("\x1b[0m");
+    }
+
+    private static void WriteManualSingleLayer(int width, int panelWidth, string pad, int blockWidth,
+        string title, string up, string right, string square, string triangle, string left, string down, string cross, string circle) {
+        string spacing = new string(' ', 20);
+        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(0, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(1, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(2, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(3, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
     }
 
     private static void WriteManualLayerPair(int width, int panelWidth, string pad, int blockWidth,
@@ -108,26 +116,26 @@ internal static class Program {
     }
 
     private static string LayerDiagramLine(int row, string title, string up, string right, string square, string triangle, string left, string down, string cross, string circle) {
-        const int diagramWidth = 50;
+        const int diagramWidth = 36;
         if (String.IsNullOrEmpty(title)) return new string(' ', diagramWidth);
         char[] line = new string(' ', diagramWidth).ToCharArray();
         switch (row) {
             case 0:
-                PutCentered(line, 0, 12, title);
+                PutCentered(line, 0, 36, title);
                 break;
             case 1:
-                PutCentered(line, 2, 7, up);
-                PutCentered(line, 33, 7, triangle);
+                PutCentered(line, 5, 5, up);
+                PutCentered(line, 26, 5, triangle);
                 break;
             case 2:
-                PutCentered(line, 0, 7, left);
-                PutCentered(line, 7, 7, right);
-                PutCentered(line, 27, 7, square);
-                PutCentered(line, 40, 7, circle);
+                PutCentered(line, 0, 5, left);
+                PutCentered(line, 10, 5, right);
+                PutCentered(line, 21, 5, square);
+                PutCentered(line, 31, 5, circle);
                 break;
             case 3:
-                PutCentered(line, 2, 7, down);
-                PutCentered(line, 33, 7, cross);
+                PutCentered(line, 5, 5, down);
+                PutCentered(line, 26, 5, cross);
                 break;
         }
         return new string(line);
@@ -176,18 +184,14 @@ internal static class Program {
         Console.Write(new string(' ', left));
         
         Rgb[] stops = SeasonFlowStops();
-        int currentDisplayCol = 0;
-        int indentWidth = DisplayWidth(text) - DisplayWidth(text.TrimStart());
-        int visibleBlockWidth = Math.Max(1, DisplayWidth(text.Trim()));
-        int gradientWidth = Math.Max(1, Math.Min(blockWidth, visibleBlockWidth));
+        int currentDisplayCol = left;
+        int logoWidth = 64;
+        int logoLeft = Math.Max(0, (width - 67) / 2);
         
         for (int i = 0; i < text.Length; i++) {
             char c = text[i];
-            double t = 0.0;
-            if (currentDisplayCol >= indentWidth) {
-                t = (double)(currentDisplayCol - indentWidth) / Math.Max(1, gradientWidth - 1);
-                if (t > 1.0) t = 1.0;
-            }
+            int col = currentDisplayCol - logoLeft;
+            double t = Math.Max(0.0, Math.Min(col, logoWidth - 1)) / (double)(logoWidth - 1);
             WriteRgb(GradientAt(stops, t), c.ToString());
             currentDisplayCol += CharDisplayWidth(c);
         }
@@ -373,14 +377,9 @@ internal static class Program {
     private static Rgb[] SeasonFlowStops() {
         return new Rgb[] {
             SeasonSpring(),
-            new Rgb(91, 251, 226),
             SeasonSummer(),
-            new Rgb(198, 244, 255),
-            new Rgb(255, 238, 154),
             SeasonGold(),
-            new Rgb(255, 183, 112),
             SeasonAutumn(),
-            new Rgb(255, 213, 168),
             SeasonWinter()
         };
     }
