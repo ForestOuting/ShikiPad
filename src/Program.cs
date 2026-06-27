@@ -66,19 +66,20 @@ internal static class Program {
         WriteEmbossedCenteredText(width, panelWidth, "映 射 说 明", SeasonGlowStops(), true);
         Console.WriteLine();
         
-        int blockWidth = 86;
+        int blockWidth = 104;
         int indent = Math.Max(0, (panelWidth - blockWidth) / 2);
         string pad = new string(' ', indent);
 
-        WriteManualGradientLine(width, panelWidth, pad + "按键顺序    " + (xbox ? "↑  →  X  Y  ←  ↓  A  B" : "↑  →  □  △  ←  ↓  ×  ○"), blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "基础层      ↑  →  Space  Back  ←  ↓  Enter  Tab", blockWidth);
-        Console.WriteLine();
-        WriteManualGradientLine(width, panelWidth, pad + "R1/RB       y  u  j  i  h  b  k  l        L1/LB      w  d  f  r  a  s  c  v", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "R2/RT       =  g  o  p  -  0  n  m        L2/LT      q  e  t  1  z  x  3  2", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "R1+L1       4  ,  .  9  5  6  7  8", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L2+R2       (  )  :  \"  <  >  [  ]", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L1+R2       #  *  ?  _  ;  !  /  '", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "L2+R1       @  %  +  $  &  ^  \\  `", blockWidth);
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Space", "Back", "←", "↓", "Enter", "Tab",
+            "R1/RB", "y", "u", "j", "i", "h", "b", "k", "l");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L1/LB", "w", "d", "f", "r", "a", "s", "c", "v",
+            "R2/RT", "=", "g", "o", "p", "-", "0", "n", "m");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L2/LT", "q", "e", "t", "1", "z", "x", "3", "2",
+            "R1+L1", "4", ",", ".", "9", "5", "6", "7", "8");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L2", "@", "%", "+", "$", "&", "^", "\\", "`",
+            "L1+R2", "#", "*", "?", "_", ";", "!", "/", "'");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L2+R2", "(", ")", ":", "\"", "<", ">", "[", "]",
+            "", "", "", "", "", "", "", "", "");
         WriteManualGradientLine(width, panelWidth, pad + "Shift       [→{  ]→}  \\→|  `→~", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
@@ -91,6 +92,33 @@ internal static class Program {
         Console.WriteLine();
         WriteEmbossedCenteredText(width, panelWidth, "Enter 主界面   |   Esc 关闭软件", SeasonGlowStops(), false);
         Console.WriteLine("\x1b[0m");
+    }
+
+    private static void WriteManualLayerPair(int width, int panelWidth, string pad, int blockWidth,
+        string leftTitle, string leftUp, string leftRight, string leftSquare, string leftTriangle, string leftLeft, string leftDown, string leftCross, string leftCircle,
+        string rightTitle, string rightUp, string rightRight, string rightSquare, string rightTriangle, string rightLeft, string rightDown, string rightCross, string rightCircle) {
+        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(0, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
+            LayerDiagramLine(0, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(1, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
+            LayerDiagramLine(1, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(2, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
+            LayerDiagramLine(2, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(3, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
+            LayerDiagramLine(3, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
+    }
+
+    private static string LayerDiagramLine(int row, string title, string up, string right, string square, string triangle, string left, string down, string cross, string circle) {
+        if (String.IsNullOrEmpty(title)) return new string(' ', 47);
+        switch (row) {
+            case 0:
+                return PadRight(title, 47);
+            case 1:
+                return PadRight("  " + up + "                       " + triangle, 47);
+            case 2:
+                return PadRight(left + "  " + right + "                  " + square + "       " + circle, 47);
+            default:
+                return PadRight("  " + down + "                       " + cross, 47);
+        }
     }
 
     public static void PrintConnectedWelcome(ControllerProfile profile, Config config, string deviceName) {
