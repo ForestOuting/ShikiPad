@@ -118,7 +118,8 @@ internal static class Program {
     private static string LayerDiagramLine(int row, string title, string up, string right, string square, string triangle, string left, string down, string cross, string circle) {
         const int diagramWidth = 36;
         if (String.IsNullOrEmpty(title)) return new string(' ', diagramWidth);
-        char[] line = new string(' ', diagramWidth).ToCharArray();
+        string[] line = new string[diagramWidth];
+        for (int i = 0; i < diagramWidth; i++) line[i] = " ";
         switch (row) {
             case 0:
                 PutCentered(line, 0, 36, title);
@@ -138,17 +139,22 @@ internal static class Program {
                 PutCentered(line, 26, 5, cross);
                 break;
         }
-        return new string(line);
+        return string.Join("", line);
     }
 
-    private static void PutCentered(char[] line, int start, int width, string text) {
+    private static void PutCentered(string[] line, int start, int width, string text) {
         if (String.IsNullOrEmpty(text) || start >= line.Length || width <= 0) return;
         text = TrimToWidth(text, width);
         int textWidth = DisplayWidth(text);
         int offset = Math.Max(0, (width - textWidth) / 2);
         int col = Math.Max(0, start + offset);
         for (int i = 0; i < text.Length && col < line.Length; i++) {
-            line[col++] = text[i];
+            char c = text[i];
+            int cw = CharDisplayWidth(c);
+            line[col++] = c.ToString();
+            for (int w = 1; w < cw && col < line.Length; w++) {
+                line[col++] = "";
+            }
         }
     }
 
@@ -567,6 +573,7 @@ internal static class Program {
         if (c >= 0x1100 &&
             (c <= 0x115F ||
              c == 0x2329 || c == 0x232A ||
+             (c >= 0x2190 && c <= 0x2199) || // Arrows
              (c >= 0x2E80 && c <= 0xA4CF) ||
              (c >= 0xAC00 && c <= 0xD7A3) ||
              (c >= 0xF900 && c <= 0xFAFF) ||
