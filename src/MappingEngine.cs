@@ -9,8 +9,8 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.Base] = Row(PhysicalKey.ArrowUp, PhysicalKey.ArrowRight, PhysicalKey.Space, PhysicalKey.Backspace, PhysicalKey.ArrowLeft, PhysicalKey.ArrowDown, PhysicalKey.Enter, PhysicalKey.Tab);
         _tables[(int)Layer.R1] = Row(PhysicalKey.O, PhysicalKey.P, PhysicalKey.J, PhysicalKey.I, PhysicalKey.N, PhysicalKey.M, PhysicalKey.K, PhysicalKey.L);
         _tables[(int)Layer.L1] = Row(PhysicalKey.W, PhysicalKey.D, PhysicalKey.Q, PhysicalKey.E, PhysicalKey.A, PhysicalKey.S, PhysicalKey.Z, PhysicalKey.X);
-        _tables[(int)Layer.R2] = Row(PhysicalKey.Num1, PhysicalKey.G, PhysicalKey.Y, PhysicalKey.U, PhysicalKey.Num2, PhysicalKey.Num3, PhysicalKey.B, PhysicalKey.H);
-        _tables[(int)Layer.L2] = Row(PhysicalKey.R, PhysicalKey.F, PhysicalKey.T, PhysicalKey.Num0, PhysicalKey.C, PhysicalKey.V, PhysicalKey.Equals, PhysicalKey.Minus);
+        _tables[(int)Layer.R2] = Row(PhysicalKey.Num0, PhysicalKey.G, PhysicalKey.Y, PhysicalKey.U, PhysicalKey.Minus, PhysicalKey.Equals, PhysicalKey.B, PhysicalKey.H);
+        _tables[(int)Layer.L2] = Row(PhysicalKey.R, PhysicalKey.F, PhysicalKey.T, PhysicalKey.Num1, PhysicalKey.C, PhysicalKey.V, PhysicalKey.Num3, PhysicalKey.Num2);
         _tables[(int)Layer.R1L1] = Row(PhysicalKey.Num4, PhysicalKey.Comma, PhysicalKey.Period, PhysicalKey.Num7, PhysicalKey.Num5, PhysicalKey.Num6, PhysicalKey.Num9, PhysicalKey.Num8);
         _tables[(int)Layer.R2L2] = new KeyStroke[] {
             KeyStroke.Shifted(PhysicalKey.Num9),

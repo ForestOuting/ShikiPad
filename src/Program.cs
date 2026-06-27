@@ -73,8 +73,8 @@ internal static class Program {
         WriteManualSingleLayer(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Space", "Back", "←", "↓", "Enter", "Tab");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1/RB", "o", "p", "j", "i", "n", "m", "k", "l",
             "L1/LB", "w", "d", "q", "e", "a", "s", "z", "x");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "1", "g", "y", "u", "2", "3", "b", "h",
-            "L2/LT", "r", "f", "t", "0", "c", "v", "=", "-");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "0", "g", "y", "u", "-", "=", "b", "h",
+            "L2/LT", "r", "f", "t", "1", "c", "v", "3", "2");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L1", "4", ",", ".", "7", "5", "6", "9", "8",
             "R1+L2", "@", "%", "+", "$", "&", "^", "\\", "`");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L1+R2", "#", "*", "?", "_", ";", "!", "/", "'",
