@@ -22,7 +22,7 @@ internal sealed class Config {
     public int ActionLayerSwitchGuardMs = 35;
     public int ComboLayerWindowMs = 55;
     public bool UseScanCode = true;
-    public int ScrollSlowIntervalMs = 180;
+    public int ScrollSlowIntervalMs = 300;
     public int ScrollFastIntervalMs = 18;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
