@@ -123,7 +123,7 @@ The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y
 | R1 / RB | o | p | j | i | n | m | k | l |
 | L1 / LB | w | d | q | e | a | s | z | x |
 | R2 / RT | 1 | g | y | u | 2 | 3 | b | h |
-| L2 / LT | r | f | t | 0 | v | c | = | - |
+| L2 / LT | r | f | t | 0 | c | v | = | - |
 | R1 + L1 | 4 | , | . | 7 | 5 | 6 | 9 | 8 |
 | L2 + R2 | ( | ) | : | " | < | > | [ / { | ] / } |
 | L1 + R2 | # | * | ? | _ | ; | ! | / | ' |
