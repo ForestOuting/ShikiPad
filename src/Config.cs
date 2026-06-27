@@ -20,7 +20,7 @@ internal sealed class Config {
     public int ActionLayerPostGraceMs = 15;
     public int LayerTakeoverWindowMs = 30;
     public int ActionLayerSwitchGuardMs = 35;
-    public int ComboLayerWindowMs = 45;
+    public int ComboLayerWindowMs = 55;
     public bool UseScanCode = true;
     public int ScrollSlowIntervalMs = 180;
     public int ScrollFastIntervalMs = 18;

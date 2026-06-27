@@ -58,8 +58,8 @@ internal sealed class MappingEngine {
         ConsiderLayer(r2, Layer.R2, r2Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(IsComboWithinWindow(r1, l1, r1Ms, l1Ms, comboWindow), Layer.R1L1, Math.Max(r1Ms, l1Ms), 2, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(IsComboWithinWindow(r2, l2, r2Ms, l2Ms, comboWindow), Layer.R2L2, Math.Max(r2Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(l1, r2, l1Ms, r2Ms, comboWindow + 10.0), Layer.L1R2, Math.Max(l1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(r1, l2, r1Ms, l2Ms, comboWindow + 10.0), Layer.R1L2, Math.Max(r1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(l1, r2, l1Ms, r2Ms, comboWindow + 20.0), Layer.L1R2, Math.Max(l1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
+        ConsiderLayer(IsComboWithinWindow(r1, l2, r1Ms, l2Ms, comboWindow + 20.0), Layer.R1L2, Math.Max(r1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
 
         return layer;
     }
