@@ -372,7 +372,7 @@ internal sealed class DirectHidController {
     }
     private static double Trigger(byte value) { return Clamp((double)value / 255.0, 0.0, 1.0); }
     private static double Trigger(byte value, bool digitalPressed) {
-        return digitalPressed ? 1.0 : Trigger(value);
+        return Trigger(value);
     }
     private static double Clamp(double value, double min, double max) { return value < min ? min : (value > max ? max : value); }
 
