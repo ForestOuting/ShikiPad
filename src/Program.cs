@@ -74,7 +74,7 @@ internal static class Program {
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1/RB", "o", "p", "j", "i", "n", "m", "k", "l",
             "L1/LB", "w", "d", "q", "e", "a", "s", "z", "x");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "1", "g", "y", "u", "2", "3", "b", "h",
-            "L2/LT", "r", "v", "t", "0", "f", "c", "=", "-");
+            "L2/LT", "r", "f", "t", "0", "v", "c", "=", "-");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L1", "4", ",", ".", "7", "5", "6", "9", "8",
             "R1+L2", "@", "%", "+", "$", "&", "^", "\\", "`");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L1+R2", "#", "*", "?", "_", ";", "!", "/", "'",
