@@ -6,7 +6,7 @@ internal sealed class Config {
     public double MouseMaxSpeed = 20.0;
     public double RightStickDeadzone = 0.015;
     public string RightStickCurve = "power";
-    public double RightStickCurveExponent = 3.0;
+    public double RightStickCurveExponent = 2.5;
     public double MouseScrollCurveExponent = 3.0;
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.25;
