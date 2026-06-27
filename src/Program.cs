@@ -71,11 +71,11 @@ internal static class Program {
         string pad = new string(' ', indent);
 
         WriteManualSingleLayer(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Space", "Back", "←", "↓", "Enter", "Tab");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1/RB", "y", "u", "j", "i", "h", "b", "k", "l",
-            "L1/LB", "w", "d", "f", "r", "a", "s", "c", "v");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "=", "g", "o", "p", "-", "0", "n", "m",
-            "L2/LT", "q", "e", "t", "1", "z", "x", "3", "2");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L1", "4", ",", ".", "9", "5", "6", "7", "8",
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1/RB", "o", "p", "j", "i", "n", "m", "k", "l",
+            "L1/LB", "w", "d", "q", "e", "a", "s", "z", "x");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "1", "g", "y", "u", "2", "3", "b", "h",
+            "L2/LT", "r", "v", "t", "0", "f", "c", "=", "-");
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L1", "4", ",", ".", "7", "5", "6", "9", "8",
             "R1+L2", "@", "%", "+", "$", "&", "^", "\\", "`");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L1+R2", "#", "*", "?", "_", ";", "!", "/", "'",
             "L2+R2", "(", ")", ":", "\"", "<", ">", "[", "]");
