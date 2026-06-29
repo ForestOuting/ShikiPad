@@ -35,11 +35,11 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.R1L2] = new KeyStroke[] {
             KeyStroke.Shifted(PhysicalKey.Equals),
             KeyStroke.Of(PhysicalKey.Slash),
-            KeyStroke.Shifted(PhysicalKey.Num5),
+            KeyStroke.Shifted(PhysicalKey.Num7),
             KeyStroke.Shifted(PhysicalKey.Num8),
             KeyStroke.Shifted(PhysicalKey.Minus),
             KeyStroke.Shifted(PhysicalKey.Num6),
-            KeyStroke.Shifted(PhysicalKey.Num7),
+            KeyStroke.Shifted(PhysicalKey.Num5),
             KeyStroke.Shifted(PhysicalKey.Num4)
         };
     }
