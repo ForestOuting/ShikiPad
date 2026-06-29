@@ -127,7 +127,7 @@ The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y
 | R1 + L1 | 4 | , | . | 7 | 5 | 6 | 9 | 8 |
 | L2 + R2 | ) | > | ; | ' | ( | < | backtick | \ |
 | L1 + R2 | ] | } | ! | ? | [ | { | @ | # |
-| R1 + L2 | + | / | & | * | _ | ^ | % | $ |
+| R1 + L2 | + | / | & | * | _ | ^ | $ | % |
 
 The program sends physical keycodes. Characters requiring Shift (", :, |, ~) can be entered by holding the left stick `Shift` direction and pressing the corresponding base key (', ;, \, backtick).
 

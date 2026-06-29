@@ -39,8 +39,8 @@ internal sealed class MappingEngine {
             KeyStroke.Shifted(PhysicalKey.Num8),
             KeyStroke.Shifted(PhysicalKey.Minus),
             KeyStroke.Shifted(PhysicalKey.Num6),
-            KeyStroke.Shifted(PhysicalKey.Num5),
-            KeyStroke.Shifted(PhysicalKey.Num4)
+            KeyStroke.Shifted(PhysicalKey.Num4),
+            KeyStroke.Shifted(PhysicalKey.Num5)
         };
     }
 
