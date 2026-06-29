@@ -13,34 +13,34 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.L2] = Row(PhysicalKey.R, PhysicalKey.F, PhysicalKey.T, PhysicalKey.Num1, PhysicalKey.C, PhysicalKey.V, PhysicalKey.Num3, PhysicalKey.Num2);
         _tables[(int)Layer.R1L1] = Row(PhysicalKey.Num4, PhysicalKey.Comma, PhysicalKey.Period, PhysicalKey.Num7, PhysicalKey.Num5, PhysicalKey.Num6, PhysicalKey.Num9, PhysicalKey.Num8);
         _tables[(int)Layer.R2L2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.Num9),
             KeyStroke.Shifted(PhysicalKey.Num0),
-            KeyStroke.Shifted(PhysicalKey.Semicolon),
-            KeyStroke.Shifted(PhysicalKey.Apostrophe),
-            KeyStroke.Shifted(PhysicalKey.Comma),
             KeyStroke.Shifted(PhysicalKey.Period),
-            KeyStroke.Of(PhysicalKey.LeftBracket),
-            KeyStroke.Of(PhysicalKey.RightBracket)
+            KeyStroke.Of(PhysicalKey.Semicolon),
+            KeyStroke.Of(PhysicalKey.Apostrophe),
+            KeyStroke.Shifted(PhysicalKey.Num9),
+            KeyStroke.Shifted(PhysicalKey.Comma),
+            KeyStroke.Of(PhysicalKey.Grave),
+            KeyStroke.Of(PhysicalKey.Backslash)
         };
         _tables[(int)Layer.L1R2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.Num3),
-            KeyStroke.Shifted(PhysicalKey.Num8),
-            KeyStroke.Shifted(PhysicalKey.Slash),
-            KeyStroke.Shifted(PhysicalKey.Minus),
-            KeyStroke.Of(PhysicalKey.Semicolon),
+            KeyStroke.Of(PhysicalKey.RightBracket),
+            KeyStroke.Shifted(PhysicalKey.RightBracket),
             KeyStroke.Shifted(PhysicalKey.Num1),
-            KeyStroke.Of(PhysicalKey.Slash),
-            KeyStroke.Of(PhysicalKey.Apostrophe)
+            KeyStroke.Shifted(PhysicalKey.Slash),
+            KeyStroke.Of(PhysicalKey.LeftBracket),
+            KeyStroke.Shifted(PhysicalKey.LeftBracket),
+            KeyStroke.Shifted(PhysicalKey.Num2),
+            KeyStroke.Shifted(PhysicalKey.Num3)
         };
         _tables[(int)Layer.R1L2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.Num2),
-            KeyStroke.Shifted(PhysicalKey.Num5),
             KeyStroke.Shifted(PhysicalKey.Equals),
-            KeyStroke.Shifted(PhysicalKey.Num4),
-            KeyStroke.Shifted(PhysicalKey.Num7),
+            KeyStroke.Of(PhysicalKey.Slash),
+            KeyStroke.Shifted(PhysicalKey.Num5),
+            KeyStroke.Shifted(PhysicalKey.Num8),
+            KeyStroke.Shifted(PhysicalKey.Minus),
             KeyStroke.Shifted(PhysicalKey.Num6),
-            KeyStroke.Of(PhysicalKey.Backslash),
-            KeyStroke.Of(PhysicalKey.Grave)
+            KeyStroke.Shifted(PhysicalKey.Num7),
+            KeyStroke.Shifted(PhysicalKey.Num4)
         };
     }
 
