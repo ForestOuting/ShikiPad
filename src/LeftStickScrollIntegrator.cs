@@ -4,9 +4,11 @@ internal sealed class LeftStickScrollIntegrator {
     internal const int WheelDelta = 120;
 
     private double _accumulatedWheelDelta;
+    private double _smoothedWheelDeltaPerSecond;
 
     public void Reset() {
         _accumulatedWheelDelta = 0.0;
+        _smoothedWheelDeltaPerSecond = 0.0;
     }
 
     public bool TryUpdate(double radius, double deltaSec, Config config, int direction, out int wheelDelta) {
@@ -19,7 +21,11 @@ internal sealed class LeftStickScrollIntegrator {
             return false;
         }
 
-        _accumulatedWheelDelta += direction * WheelDeltaPerSecond(normalized, config) * deltaSec;
+        double targetWheelDeltaPerSecond = direction * WheelDeltaPerSecond(normalized, config);
+        double smoothingMs = config.ScrollVelocitySmoothingMs * (1.0 - normalized);
+        double smoothing = SmoothingAlpha(deltaSec, smoothingMs);
+        _smoothedWheelDeltaPerSecond += (targetWheelDeltaPerSecond - _smoothedWheelDeltaPerSecond) * smoothing;
+        _accumulatedWheelDelta += _smoothedWheelDeltaPerSecond * deltaSec;
 
         int amount = (int)Math.Truncate(_accumulatedWheelDelta);
         if (amount == 0) return false;
@@ -46,6 +52,12 @@ internal sealed class LeftStickScrollIntegrator {
 
     private static double Clamp(double value, double min, double max) {
         return value < min ? min : (value > max ? max : value);
+    }
+
+    private static double SmoothingAlpha(double deltaSec, double smoothingMs) {
+        if (deltaSec <= 0.0) return 0.0;
+        if (smoothingMs <= 0.001) return 1.0;
+        return Clamp(1.0 - Math.Exp(-deltaSec * 1000.0 / smoothingMs), 0.0, 1.0);
     }
 
 }
