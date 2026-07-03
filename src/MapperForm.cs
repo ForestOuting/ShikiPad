@@ -457,7 +457,7 @@ internal sealed class MapperForm : Form {
                 bool releasedPending = hold.PendingReleased || !curr;
                 Layer resolvedLayer = hold.PendingLayer != Layer.Base && hold.PendingLayer != Layer.Reserved
                     ? hold.PendingLayer
-                    : (releasedPending ? hold.PendingLayer : layer);
+                    : ((releasedPending || hold.PendingLayerSettled) ? hold.PendingLayer : layer);
                 KeyStroke resolvedLayerKey = ApplyFnLayer(_mapping.Lookup(resolvedLayer, (ActionButton)i));
                 if (!resolvedLayerKey.IsNone) {
                     _fnArmed = false;
@@ -784,6 +784,7 @@ internal sealed class MapperForm : Form {
             _config.LayerTakeoverWindowMs);
 
         if (next == hold.PendingLayer) return;
+        hold.PendingLayerSettled = next == Layer.Base && hold.PendingLayer != Layer.Base;
         hold.PendingLayer = next;
         hold.PendingLayerMs = layerMs;
     }
@@ -1105,6 +1106,7 @@ internal sealed class MapperForm : Form {
         public double OriginalPendingLayerUpMs;
         public Layer PendingLayer;
         public double PendingLayerMs;
+        public bool PendingLayerSettled;
         public double KeyDownMs;
         public bool RepeatEnabled;
         public double RepeatStartedMs;
