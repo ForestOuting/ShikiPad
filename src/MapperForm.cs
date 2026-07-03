@@ -810,12 +810,6 @@ internal sealed class MapperForm : Form {
             effectivePendingLayerUpMs = originalLayerUpMs;
         }
 
-        // 组合层的特殊之处：如果回退后的 effectivePendingLayer（或者原始层）与组合层毫无关联，则组合层无法接管它！
-        // （这防止了毫无关联的组合层强行劫持旧动作键）
-        if (layerCombo && !IsComboComponent(layer, effectivePendingLayer) && effectivePendingLayer != layer) {
-            return effectivePendingLayer;
-        }
-
         double overlap = LayerOverlapAfterActionMs(pendingSinceMs, layerMs, effectivePendingLayerUpMs, effectivePendingLayer);
 
         if (overlap > takeoverWindowMs) {
