@@ -446,7 +446,8 @@ internal sealed class MapperForm : Form {
                 }
                 UpdatePendingLayer(ref hold, layer, layerMs);
 
-                bool shouldFlushPending = now - hold.PendingSinceMs >= _config.ActionLayerGraceMs;
+                bool shouldFlushPending = now - hold.PendingSinceMs >= _config.ActionLayerGraceMs &&
+                    !ShouldWaitForPendingSingleLayerToSettle(hold, now);
                 if (!shouldFlushPending) {
                     _holds[i] = hold;
                     _prevDown[i] = curr;
@@ -612,6 +613,12 @@ internal sealed class MapperForm : Form {
 
     private bool ShouldDeferInitialAction(Layer initialLayer) {
         return _config.ActionLayerGraceMs > 0;
+    }
+
+    private bool ShouldWaitForPendingSingleLayerToSettle(ButtonHold hold, double now) {
+        if (hold.PendingLayer == Layer.Base || hold.PendingLayer == Layer.Reserved || IsComboLayer(hold.PendingLayer)) return false;
+        if (hold.PendingLayerMs <= hold.PendingSinceMs) return false;
+        return now - hold.PendingLayerMs <= _config.ComboLayerWindowMs;
     }
 
     private void ConsumeComboComponents(Layer layer) {
@@ -794,8 +801,6 @@ internal sealed class MapperForm : Form {
         if (layer == pendingLayer) return pendingLayer;
         if (layerMs < pendingSinceMs) return pendingLayer;
 
-        if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
-
         bool layerCombo = IsComboLayer(layer);
 
         // 如果当前层是组合层，并且之前的 pendingLayer 是这个组合层的一个组件（即它的单层意图被组合层覆盖了）
@@ -803,12 +808,17 @@ internal sealed class MapperForm : Form {
         Layer effectivePendingLayer = pendingLayer;
         double effectivePendingLayerUpMs = pendingLayerUpMs;
         if (layerCombo && IsComboComponent(layer, pendingLayer)) {
+            if (layerMs - pendingSinceMs > actionLayerGraceMs) {
+                return originalLayer;
+            }
             if (!IsComboLayer(originalLayer)) {
                 return layer;
             }
             effectivePendingLayer = originalLayer;
             effectivePendingLayerUpMs = originalLayerUpMs;
         }
+
+        if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
 
         double overlap = LayerOverlapAfterActionMs(pendingSinceMs, layerMs, effectivePendingLayerUpMs, effectivePendingLayer);
 

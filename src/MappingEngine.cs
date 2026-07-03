@@ -47,52 +47,49 @@ internal sealed class MappingEngine {
     public Layer Resolve(bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, double comboLayerWindowMs) {
         if (!l1 && !r1 && !l2 && !r2) return Layer.Base;
 
-        Layer layer = Layer.Reserved;
-        double bestMs = double.NegativeInfinity;
-        int bestRank = 0;
         double comboWindow = Math.Max(0.0, comboLayerWindowMs);
 
-        Layer comboLayer = Layer.Reserved;
-        double bestComboMs = double.NegativeInfinity;
-        double bestComboStartMs = double.NegativeInfinity;
-        int bestComboOrder = 0;
+        Layer latestLayer = Layer.Reserved;
+        Layer previousLayer = Layer.Reserved;
+        double latestMs = double.NegativeInfinity;
+        double previousMs = double.NegativeInfinity;
+        int latestOrder = 0;
+        int previousOrder = 0;
 
-        ConsiderCombo(IsComboWithinWindow(r1, l1, r1Ms, l1Ms, comboWindow), Layer.R1L1, Math.Max(r1Ms, l1Ms), Math.Min(r1Ms, l1Ms), 1, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
-        ConsiderCombo(IsComboWithinWindow(r1, l2, r1Ms, l2Ms, comboWindow), Layer.R1L2, Math.Max(r1Ms, l2Ms), Math.Min(r1Ms, l2Ms), 2, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
-        ConsiderCombo(IsComboWithinWindow(l1, r2, l1Ms, r2Ms, comboWindow), Layer.L1R2, Math.Max(l1Ms, r2Ms), Math.Min(l1Ms, r2Ms), 3, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
-        ConsiderCombo(IsComboWithinWindow(r2, l2, r2Ms, l2Ms, comboWindow), Layer.R2L2, Math.Max(r2Ms, l2Ms), Math.Min(r2Ms, l2Ms), 4, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
-        if (comboLayer != Layer.Reserved) return comboLayer;
+        ConsiderRecentLayer(l1, Layer.L1, l1Ms, 1, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
+        ConsiderRecentLayer(r1, Layer.R1, r1Ms, 2, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
+        ConsiderRecentLayer(l2, Layer.L2, l2Ms, 3, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
+        ConsiderRecentLayer(r2, Layer.R2, r2Ms, 4, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
 
-        ConsiderLayer(l1, Layer.L1, l1Ms, 1, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(r1, Layer.R1, r1Ms, 1, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(l2, Layer.L2, l2Ms, 1, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(r2, Layer.R2, r2Ms, 1, ref layer, ref bestMs, ref bestRank);
-
-        return layer;
-    }
-
-    private static bool IsComboWithinWindow(bool a, bool b, double aMs, double bMs, double windowMs) {
-        return a && b && Math.Abs(aMs - bMs) <= windowMs;
-    }
-
-    private static void ConsiderLayer(bool active, Layer candidate, double timestampMs, int rank, ref Layer layer, ref double bestMs, ref int bestRank) {
-        if (!active) return;
-        if (timestampMs > bestMs || (timestampMs == bestMs && rank >= bestRank)) {
-            layer = candidate;
-            bestMs = timestampMs;
-            bestRank = rank;
+        if (latestLayer != Layer.Reserved && previousLayer != Layer.Reserved && latestMs - previousMs <= comboWindow) {
+            Layer comboLayer = ComboFor(previousLayer, latestLayer);
+            if (comboLayer != Layer.Reserved) return comboLayer;
         }
+
+        return latestLayer;
     }
 
-    private static void ConsiderCombo(bool active, Layer candidate, double completedMs, double startedMs, int order, ref Layer layer, ref double bestCompletedMs, ref double bestStartedMs, ref int bestOrder) {
+    private static Layer ComboFor(Layer a, Layer b) {
+        if ((a == Layer.R1 && b == Layer.L1) || (a == Layer.L1 && b == Layer.R1)) return Layer.R1L1;
+        if ((a == Layer.R2 && b == Layer.L2) || (a == Layer.L2 && b == Layer.R2)) return Layer.R2L2;
+        if ((a == Layer.L1 && b == Layer.R2) || (a == Layer.R2 && b == Layer.L1)) return Layer.L1R2;
+        if ((a == Layer.R1 && b == Layer.L2) || (a == Layer.L2 && b == Layer.R1)) return Layer.R1L2;
+        return Layer.Reserved;
+    }
+
+    private static void ConsiderRecentLayer(bool active, Layer candidate, double timestampMs, int order, ref Layer latestLayer, ref double latestMs, ref int latestOrder, ref Layer previousLayer, ref double previousMs, ref int previousOrder) {
         if (!active) return;
-        if (completedMs > bestCompletedMs ||
-            (completedMs == bestCompletedMs && startedMs > bestStartedMs) ||
-            (completedMs == bestCompletedMs && startedMs == bestStartedMs && order >= bestOrder)) {
-            layer = candidate;
-            bestCompletedMs = completedMs;
-            bestStartedMs = startedMs;
-            bestOrder = order;
+        if (timestampMs > latestMs || (timestampMs == latestMs && order >= latestOrder)) {
+            previousLayer = latestLayer;
+            previousMs = latestMs;
+            previousOrder = latestOrder;
+            latestLayer = candidate;
+            latestMs = timestampMs;
+            latestOrder = order;
+        } else if (timestampMs > previousMs || (timestampMs == previousMs && order >= previousOrder)) {
+            previousLayer = candidate;
+            previousMs = timestampMs;
+            previousOrder = order;
         }
     }
 
