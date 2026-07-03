@@ -6,7 +6,7 @@ using System.Threading;
 using System.Windows.Forms;
 
 internal sealed class MapperForm : Form {
-    private const double PollIntervalMs = 0.5;
+    private const double PollIntervalMs = 1.0;
     private const double MaxMouseFrameSeconds = 0.05;
     private readonly DirectHidController _hid;
     private readonly Config _config;
