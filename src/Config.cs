@@ -17,7 +17,7 @@ internal sealed class Config {
     public int BaseRepeatSlowIntervalMs = 120;
     public int BaseRepeatRampMs = 1000;
     public int ActionLayerGraceMs = 45;
-    public int ActionLayerPostGraceMs = 25;
+    public int ActionLayerPostGraceMs = 15;
     public int LayerTakeoverWindowMs = 30;
     public int ActionLayerSwitchGuardMs = 35;
     public int ComboLayerWindowMs = 35;
