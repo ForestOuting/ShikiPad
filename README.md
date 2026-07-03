@@ -153,5 +153,5 @@ ShikiPad uses short time windows to absorb human input errors when typing quickl
 | `actionLayerGraceMs` | 45 ms | Grace window between action key and layer recognition |
 | `actionLayerPostGraceMs` | 15 ms | Grace window after a layer is released before a new layer is pressed |
 | `layerTakeoverWindowMs` | 30 ms | Max time allowed for an old layer to overlap with a newly intended layer |
-| `layerOccupancyCarryCutoffMs` | 20 ms | If a previous layer has already occupied an action for this long, a successful next-layer takeover starts with a clean occupancy budget instead of inheriting older pre-window time |
+| `layerOccupancyCarryCutoffMs` | 20 ms | Body-only cutoff for backward layer tracing; once this point falls inside a layer body, tracing can continue only inside that body up to `layerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
 | `actionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |
