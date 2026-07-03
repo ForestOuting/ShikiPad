@@ -510,6 +510,7 @@ internal sealed class MapperForm : Form {
                     hold.PendingLayer = initialLayer;
                     hold.PendingLayerMs = initialLayer == layer ? layerMs : LayerTimestamp(initialLayer);
                     hold.PendingSinceMs = now;
+                    hold.PendingLayerOccupancyActive = TryPendingLayerOccupancyStart(initialLayer, now, hold.PendingLayerMs, out hold.PendingLayerOccupancyStartMs);
                     _holds[i] = hold;
                     _prevDown[i] = curr;
                     continue;
@@ -767,26 +768,58 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdatePendingLayer(ref ButtonHold hold, Layer layer, double layerMs) {
-        if (hold.OriginalPendingLayerUpMs == 0 && hold.OriginalPendingLayer != hold.PendingLayer) {
-            hold.OriginalPendingLayerUpMs = LayerUpTimestamp(hold.OriginalPendingLayer);
-        }
-        double originalLayerUpMs = hold.OriginalPendingLayerUpMs == 0 ? LayerUpTimestamp(hold.OriginalPendingLayer) : hold.OriginalPendingLayerUpMs;
         double pendingLayerUpMs = LayerUpTimestamp(hold.PendingLayer);
+        CloseReleasedPendingLayerOccupancy(ref hold, pendingLayerUpMs);
+        double occupiedMs = PendingLayerOccupancyThrough(hold, layerMs, pendingLayerUpMs);
         Layer next = ResolvePendingLayer(
             hold.PendingLayer,
             hold.OriginalPendingLayer,
             hold.PendingSinceMs,
             layer,
             layerMs,
-            pendingLayerUpMs,
-            originalLayerUpMs,
+            occupiedMs,
             _config.ActionLayerGraceMs,
             _config.LayerTakeoverWindowMs);
 
         if (next == hold.PendingLayer) return;
+        hold.PendingLayerOccupancyMs = occupiedMs;
         hold.PendingLayerSettled = next == Layer.Base && hold.PendingLayer != Layer.Base;
         hold.PendingLayer = next;
-        hold.PendingLayerMs = layerMs;
+        hold.PendingLayerMs = next == layer ? layerMs : LayerTimestamp(next);
+        hold.PendingLayerOccupancyActive = TryPendingLayerOccupancyStart(next, hold.PendingSinceMs, hold.PendingLayerMs, out hold.PendingLayerOccupancyStartMs);
+    }
+
+    private void CloseReleasedPendingLayerOccupancy(ref ButtonHold hold, double pendingLayerUpMs) {
+        if (!hold.PendingLayerOccupancyActive || pendingLayerUpMs == 0.0) return;
+        if (pendingLayerUpMs > hold.PendingLayerOccupancyStartMs) {
+            hold.PendingLayerOccupancyMs += pendingLayerUpMs - hold.PendingLayerOccupancyStartMs;
+        }
+        hold.PendingLayerOccupancyActive = false;
+        hold.PendingLayerOccupancyStartMs = 0.0;
+    }
+
+    private bool TryPendingLayerOccupancyStart(Layer layer, double pendingSinceMs, double layerMs, out double startMs) {
+        startMs = 0.0;
+        if (layer == Layer.Base || layer == Layer.Reserved || layerMs <= 0.0) return false;
+        double layerUpMs = LayerUpTimestamp(layer);
+        if (layerUpMs > 0.0 && layerUpMs <= pendingSinceMs) return false;
+        startMs = Math.Max(pendingSinceMs, layerMs);
+        return true;
+    }
+
+    private static double PendingLayerOccupancyThrough(ButtonHold hold, double transitionMs, double pendingLayerUpMs) {
+        double occupiedMs = hold.PendingLayerOccupancyMs;
+        if (!hold.PendingLayerOccupancyActive) return occupiedMs;
+
+        double startMs = hold.PendingLayerOccupancyStartMs;
+        double endMs = transitionMs;
+        if (pendingLayerUpMs > 0.0 && pendingLayerUpMs < endMs) {
+            endMs = pendingLayerUpMs;
+        }
+        if (endMs > startMs) {
+            occupiedMs += endMs - startMs;
+        }
+        return occupiedMs;
     }
 
     private static bool IsComboComponent(Layer combo, Layer single) {
@@ -797,7 +830,7 @@ internal sealed class MapperForm : Form {
         return false;
     }
 
-    internal static Layer ResolvePendingLayer(Layer pendingLayer, Layer originalLayer, double pendingSinceMs, Layer layer, double layerMs, double pendingLayerUpMs, double originalLayerUpMs, double actionLayerGraceMs, double takeoverWindowMs) {
+    internal static Layer ResolvePendingLayer(Layer pendingLayer, Layer originalLayer, double pendingSinceMs, Layer layer, double layerMs, double occupiedMs, double actionLayerGraceMs, double takeoverWindowMs) {
         if (layer == Layer.Base || layer == Layer.Reserved) return pendingLayer;
         if (layer == pendingLayer) return pendingLayer;
         if (layerMs < pendingSinceMs) return pendingLayer;
@@ -807,7 +840,6 @@ internal sealed class MapperForm : Form {
         // 如果当前层是组合层，并且之前的 pendingLayer 是这个组合层的一个组件（即它的单层意图被组合层覆盖了）
         // 那么必须剥夺 pendingLayer 的资格，将其回退到 originalLayer 进行判定。
         Layer effectivePendingLayer = pendingLayer;
-        double effectivePendingLayerUpMs = pendingLayerUpMs;
         if (layerCombo && IsComboComponent(layer, pendingLayer)) {
             if (layerMs - pendingSinceMs > actionLayerGraceMs) {
                 return originalLayer;
@@ -816,25 +848,15 @@ internal sealed class MapperForm : Form {
                 return layer;
             }
             effectivePendingLayer = originalLayer;
-            effectivePendingLayerUpMs = originalLayerUpMs;
         }
 
         if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
 
-        double overlap = LayerOverlapAfterActionMs(pendingSinceMs, layerMs, effectivePendingLayerUpMs, effectivePendingLayer);
-
-        if (overlap > takeoverWindowMs) {
+        if (occupiedMs > takeoverWindowMs) {
             return effectivePendingLayer;
         }
 
         return layer;
-    }
-
-    private static double LayerOverlapAfterActionMs(double pendingSinceMs, double layerMs, double layerUpMs, Layer heldLayer) {
-        if (heldLayer == Layer.Base || heldLayer == Layer.Reserved) return 0.0;
-        if (layerUpMs > pendingSinceMs) return Math.Max(0.0, layerUpMs - pendingSinceMs);
-        if (layerUpMs == 0.0) return Math.Max(0.0, layerMs - pendingSinceMs);
-        return 0.0;
     }
 
     private bool ShouldSuppressLayerChangeDuringCharacterTap(ButtonHold hold, Layer newLayer, double now) {
@@ -1103,10 +1125,12 @@ internal sealed class MapperForm : Form {
         public bool PendingReleased;
         public double PendingSinceMs;
         public Layer OriginalPendingLayer;
-        public double OriginalPendingLayerUpMs;
         public Layer PendingLayer;
         public double PendingLayerMs;
         public bool PendingLayerSettled;
+        public double PendingLayerOccupancyMs;
+        public double PendingLayerOccupancyStartMs;
+        public bool PendingLayerOccupancyActive;
         public double KeyDownMs;
         public bool RepeatEnabled;
         public double RepeatStartedMs;
