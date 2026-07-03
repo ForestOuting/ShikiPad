@@ -176,6 +176,7 @@ internal sealed class MapperForm : Form {
     private Layer _lastReleasedActionLayer = Layer.Base;
     private double _lastReleasedActionLayerUpMs;
     private double _lastReleasedActionLayerDownMs;
+    private bool _l1ConsumedByCombo, _r1ConsumedByCombo, _l2ConsumedByCombo, _r2ConsumedByCombo;
 
     private void OnStateUpdated(ControllerState s) {
         if (!_pollRunning) return;
@@ -194,10 +195,10 @@ internal sealed class MapperForm : Form {
         bool preR1 = _prevR1;
         bool l1JustDown = s.L1 && !preL1;
         bool r1JustDown = s.R1 && !preR1;
-        if (l1JustDown) { _l1DownMs = now; _l1UpMs = 0; }
-        if (r1JustDown) { _r1DownMs = now; _r1UpMs = 0; }
-        if (!s.L1 && preL1) _l1UpMs = now;
-        if (!s.R1 && preR1) _r1UpMs = now;
+        if (l1JustDown) { _l1DownMs = now; _l1UpMs = 0; _l1ConsumedByCombo = false; }
+        if (r1JustDown) { _r1DownMs = now; _r1UpMs = 0; _r1ConsumedByCombo = false; }
+        if (!s.L1 && preL1) { _l1UpMs = now; _l1ConsumedByCombo = false; }
+        if (!s.R1 && preR1) { _r1UpMs = now; _r1ConsumedByCombo = false; }
         _prevL1 = s.L1;
         _prevR1 = s.R1;
 
@@ -231,18 +232,22 @@ internal sealed class MapperForm : Form {
             _l2Pressed = true;
             _l2DownMs = now;
             _l2UpMs = 0;
+            _l2ConsumedByCombo = false;
         } else if (_l2Pressed && IsTriggerReleased(s.L2, _config.TriggerReleaseThreshold)) {
             _l2Pressed = false;
             _l2UpMs = now;
+            _l2ConsumedByCombo = false;
         }
 
         if (!_r2Pressed && IsTriggerPressed(s.R2, _config.TriggerPressThreshold)) {
             _r2Pressed = true;
             _r2DownMs = now;
             _r2UpMs = 0;
+            _r2ConsumedByCombo = false;
         } else if (_r2Pressed && IsTriggerReleased(s.R2, _config.TriggerReleaseThreshold)) {
             _r2Pressed = false;
             _r2UpMs = now;
+            _r2ConsumedByCombo = false;
         }
     }
 
@@ -423,7 +428,9 @@ internal sealed class MapperForm : Form {
 
     private void UpdateActionButtons(ControllerState s, double now) {
         bool[] currentDown = new bool[] { s.Up, s.Right, s.Square, s.Triangle, s.Left, s.Down, s.Cross, s.Circle };
-        Layer layer = _mapping.Resolve(s.L1, s.R1, _l2Pressed, _r2Pressed, _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs, _config.ComboLayerWindowMs);
+        Layer rawLayer = _mapping.Resolve(s.L1, s.R1, _l2Pressed, _r2Pressed, _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs, _config.ComboLayerWindowMs);
+        ConsumeComboComponents(rawLayer);
+        Layer layer = FilterConsumedSingleLayer(rawLayer, s.L1, s.R1, _l2Pressed, _r2Pressed);
         double layerMs = LayerTimestamp(layer);
         RememberReleasedActionLayer(layer, now);
 
@@ -607,6 +614,61 @@ internal sealed class MapperForm : Form {
         return _config.ActionLayerGraceMs > 0;
     }
 
+    private void ConsumeComboComponents(Layer layer) {
+        switch (layer) {
+            case Layer.R1L1:
+                _r1ConsumedByCombo = true;
+                _l1ConsumedByCombo = true;
+                break;
+            case Layer.R2L2:
+                _r2ConsumedByCombo = true;
+                _l2ConsumedByCombo = true;
+                break;
+            case Layer.L1R2:
+                _l1ConsumedByCombo = true;
+                _r2ConsumedByCombo = true;
+                break;
+            case Layer.R1L2:
+                _r1ConsumedByCombo = true;
+                _l2ConsumedByCombo = true;
+                break;
+        }
+    }
+
+    private Layer FilterConsumedSingleLayer(Layer layer, bool l1, bool r1, bool l2, bool r2) {
+        if (IsComboLayer(layer) || layer == Layer.Base || layer == Layer.Reserved) return layer;
+        if (!IsConsumedSingleLayer(layer)) return layer;
+        return LatestUnconsumedSingleLayer(l1, r1, l2, r2);
+    }
+
+    private bool IsConsumedSingleLayer(Layer layer) {
+        switch (layer) {
+            case Layer.L1: return _l1ConsumedByCombo;
+            case Layer.R1: return _r1ConsumedByCombo;
+            case Layer.L2: return _l2ConsumedByCombo;
+            case Layer.R2: return _r2ConsumedByCombo;
+            default: return false;
+        }
+    }
+
+    private Layer LatestUnconsumedSingleLayer(bool l1, bool r1, bool l2, bool r2) {
+        Layer layer = Layer.Base;
+        double bestMs = double.NegativeInfinity;
+        ConsiderUnconsumedSingle(l1 && !_l1ConsumedByCombo, Layer.L1, _l1DownMs, ref layer, ref bestMs);
+        ConsiderUnconsumedSingle(r1 && !_r1ConsumedByCombo, Layer.R1, _r1DownMs, ref layer, ref bestMs);
+        ConsiderUnconsumedSingle(l2 && !_l2ConsumedByCombo, Layer.L2, _l2DownMs, ref layer, ref bestMs);
+        ConsiderUnconsumedSingle(r2 && !_r2ConsumedByCombo, Layer.R2, _r2DownMs, ref layer, ref bestMs);
+        return layer;
+    }
+
+    private static void ConsiderUnconsumedSingle(bool active, Layer candidate, double timestampMs, ref Layer layer, ref double bestMs) {
+        if (!active) return;
+        if (timestampMs >= bestMs) {
+            layer = candidate;
+            bestMs = timestampMs;
+        }
+    }
+
     internal static bool IsSubsetOf(Layer sub, Layer super) {
         if (sub == super) return true;
         if (sub == Layer.Base || sub == Layer.Reserved) return true;
@@ -623,6 +685,10 @@ internal sealed class MapperForm : Form {
     private void RememberReleasedActionLayer(Layer layer, double now) {
         if (_previousActionLayer != layer && _previousActionLayer != Layer.Base && _previousActionLayer != Layer.Reserved) {
             double upMs = LayerUpTimestamp(_previousActionLayer);
+            if (upMs <= 0.0) {
+                _previousActionLayer = layer;
+                return;
+            }
             
             bool shouldOverwrite = true;
             if (IsComboLayer(_lastReleasedActionLayer)) {
@@ -635,7 +701,7 @@ internal sealed class MapperForm : Form {
 
             if (shouldOverwrite && now - upMs < 100.0) {
                 _lastReleasedActionLayer = _previousActionLayer;
-                _lastReleasedActionLayerUpMs = upMs > 0.0 ? upMs : now;
+                _lastReleasedActionLayerUpMs = upMs;
                 _lastReleasedActionLayerDownMs = LayerTimestamp(_previousActionLayer);
             }
         }
@@ -737,6 +803,9 @@ internal sealed class MapperForm : Form {
         Layer effectivePendingLayer = pendingLayer;
         double effectivePendingLayerUpMs = pendingLayerUpMs;
         if (layerCombo && IsComboComponent(layer, pendingLayer)) {
+            if (!IsComboLayer(originalLayer)) {
+                return layer;
+            }
             effectivePendingLayer = originalLayer;
             effectivePendingLayerUpMs = originalLayerUpMs;
         }
@@ -964,6 +1033,11 @@ internal sealed class MapperForm : Form {
         _previousActionLayer = Layer.Base;
         _lastReleasedActionLayer = Layer.Base;
         _lastReleasedActionLayerUpMs = 0;
+        _lastReleasedActionLayerDownMs = 0;
+        _l1ConsumedByCombo = false;
+        _r1ConsumedByCombo = false;
+        _l2ConsumedByCombo = false;
+        _r2ConsumedByCombo = false;
         _l2Pressed = false;
         _r2Pressed = false;
         _clutchButton.Reset();

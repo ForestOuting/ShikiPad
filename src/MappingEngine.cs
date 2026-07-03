@@ -52,14 +52,21 @@ internal sealed class MappingEngine {
         int bestRank = 0;
         double comboWindow = Math.Max(0.0, comboLayerWindowMs);
 
+        Layer comboLayer = Layer.Reserved;
+        double bestComboMs = double.NegativeInfinity;
+        double bestComboStartMs = double.NegativeInfinity;
+        int bestComboOrder = 0;
+
+        ConsiderCombo(IsComboWithinWindow(r1, l1, r1Ms, l1Ms, comboWindow), Layer.R1L1, Math.Max(r1Ms, l1Ms), Math.Min(r1Ms, l1Ms), 1, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
+        ConsiderCombo(IsComboWithinWindow(r1, l2, r1Ms, l2Ms, comboWindow), Layer.R1L2, Math.Max(r1Ms, l2Ms), Math.Min(r1Ms, l2Ms), 2, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
+        ConsiderCombo(IsComboWithinWindow(l1, r2, l1Ms, r2Ms, comboWindow), Layer.L1R2, Math.Max(l1Ms, r2Ms), Math.Min(l1Ms, r2Ms), 3, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
+        ConsiderCombo(IsComboWithinWindow(r2, l2, r2Ms, l2Ms, comboWindow), Layer.R2L2, Math.Max(r2Ms, l2Ms), Math.Min(r2Ms, l2Ms), 4, ref comboLayer, ref bestComboMs, ref bestComboStartMs, ref bestComboOrder);
+        if (comboLayer != Layer.Reserved) return comboLayer;
+
         ConsiderLayer(l1, Layer.L1, l1Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(r1, Layer.R1, r1Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(l2, Layer.L2, l2Ms, 1, ref layer, ref bestMs, ref bestRank);
         ConsiderLayer(r2, Layer.R2, r2Ms, 1, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(r1, l1, r1Ms, l1Ms, comboWindow), Layer.R1L1, Math.Max(r1Ms, l1Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(r2, l2, r2Ms, l2Ms, comboWindow), Layer.R2L2, Math.Max(r2Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(l1, r2, l1Ms, r2Ms, comboWindow), Layer.L1R2, Math.Max(l1Ms, r2Ms), 2, ref layer, ref bestMs, ref bestRank);
-        ConsiderLayer(IsComboWithinWindow(r1, l2, r1Ms, l2Ms, comboWindow), Layer.R1L2, Math.Max(r1Ms, l2Ms), 2, ref layer, ref bestMs, ref bestRank);
 
         return layer;
     }
@@ -74,6 +81,18 @@ internal sealed class MappingEngine {
             layer = candidate;
             bestMs = timestampMs;
             bestRank = rank;
+        }
+    }
+
+    private static void ConsiderCombo(bool active, Layer candidate, double completedMs, double startedMs, int order, ref Layer layer, ref double bestCompletedMs, ref double bestStartedMs, ref int bestOrder) {
+        if (!active) return;
+        if (completedMs > bestCompletedMs ||
+            (completedMs == bestCompletedMs && startedMs > bestStartedMs) ||
+            (completedMs == bestCompletedMs && startedMs == bestStartedMs && order >= bestOrder)) {
+            layer = candidate;
+            bestCompletedMs = completedMs;
+            bestStartedMs = startedMs;
+            bestOrder = order;
         }
     }
 
