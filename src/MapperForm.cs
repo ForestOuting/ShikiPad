@@ -6,7 +6,7 @@ using System.Threading;
 using System.Windows.Forms;
 
 internal sealed class MapperForm : Form {
-    private const int PollSleepMs = 1;
+    private const double PollIntervalMs = 0.5;
     private const double MaxMouseFrameSeconds = 0.05;
     private readonly DirectHidController _hid;
     private readonly Config _config;
@@ -136,7 +136,7 @@ internal sealed class MapperForm : Form {
             if (nextTick < now) {
                 nextTick = now;
             }
-            nextTick += 1.0;
+            nextTick += PollIntervalMs;
             
             while (_pollRunning) {
                 now = _clock.Elapsed.TotalMilliseconds;

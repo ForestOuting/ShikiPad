@@ -11,7 +11,7 @@ internal sealed class Config {
     public double LeftStickEnterDeadzone = 0.35;
     public double LeftStickExitDeadzone = 0.35;
     public double TriggerPressThreshold = 0.25;
-    public double TriggerReleaseThreshold = 0.25;
+    public double TriggerReleaseThreshold = 0.15;
     public int RepeatDelayMs = 300;
     public int RepeatIntervalMs = 18;
     public int BaseRepeatSlowIntervalMs = 120;
