@@ -783,11 +783,18 @@ internal sealed class MapperForm : Form {
             _config.LayerTakeoverWindowMs);
 
         if (next == hold.PendingLayer) return;
-        hold.PendingLayerOccupancyMs = ShouldResetOccupancyForComboTakeover(hold.PendingLayer, layer, next) ? 0.0 : occupiedMs;
+        hold.PendingLayerOccupancyMs = NextPendingLayerOccupancyMs(hold.PendingLayer, layer, next, occupiedMs);
         hold.PendingLayerSettled = next == Layer.Base && hold.PendingLayer != Layer.Base;
         hold.PendingLayer = next;
         hold.PendingLayerMs = next == layer ? layerMs : LayerTimestamp(next);
         hold.PendingLayerOccupancyActive = TryPendingLayerOccupancyStart(next, hold.PendingSinceMs, hold.PendingLayerMs, out hold.PendingLayerOccupancyStartMs);
+    }
+
+    private double NextPendingLayerOccupancyMs(Layer pendingLayer, Layer layer, Layer next, double occupiedMs) {
+        if (ShouldResetOccupancyForComboTakeover(pendingLayer, layer, next)) return 0.0;
+        double carryCutoffMs = Math.Max(0.0, (double)_config.LayerOccupancyCarryCutoffMs);
+        if (carryCutoffMs > 0.0 && occupiedMs >= carryCutoffMs) return 0.0;
+        return occupiedMs;
     }
 
     private static bool ShouldResetOccupancyForComboTakeover(Layer pendingLayer, Layer layer, Layer next) {

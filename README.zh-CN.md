@@ -153,4 +153,5 @@ ShikiPad 使用短时间窗口吸收人手快速按键输入时的先后误差.
 | `actionLayerGraceMs` | 45 ms | 动作键与键层的识别宽容窗口 |
 | `actionLayerPostGraceMs` | 15 ms | 松开键层到按下新键层间的空窗期归属 |
 | `layerTakeoverWindowMs` | 30 ms | 限制旧键层与新意图键层重叠的最长时间 |
+| `layerOccupancyCarryCutoffMs` | 20 ms | 旧键层占用达到这个值后, 新键层成功接管时会从干净的占用账本开始, 不再继承更旧键层的前置窗口时间 |
 | `actionLayerSwitchGuardMs` | 35 ms | 字符发出后切换键层时抑制残留误触 |

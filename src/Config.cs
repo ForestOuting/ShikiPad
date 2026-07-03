@@ -19,6 +19,7 @@ internal sealed class Config {
     public int ActionLayerGraceMs = 45;
     public int ActionLayerPostGraceMs = 15;
     public int LayerTakeoverWindowMs = 30;
+    public int LayerOccupancyCarryCutoffMs = 20;
     public int ActionLayerSwitchGuardMs = 35;
     public int ComboLayerWindowMs = 35;
     public bool UseScanCode = true;
