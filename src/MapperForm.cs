@@ -429,7 +429,7 @@ internal sealed class MapperForm : Form {
     private void UpdateActionButtons(ControllerState s, double now) {
         bool[] currentDown = new bool[] { s.Up, s.Right, s.Square, s.Triangle, s.Left, s.Down, s.Cross, s.Circle };
         Layer rawLayer = _mapping.Resolve(s.L1, s.R1, _l2Pressed, _r2Pressed, _l1DownMs, _r1DownMs, _l2DownMs, _r2DownMs, _config.ComboLayerWindowMs);
-        Layer layer = FilterConsumedComboLayer(rawLayer, s.L1, s.R1, _l2Pressed, _r2Pressed);
+        Layer layer = rawLayer;
         ConsumeComboComponents(layer);
         layer = FilterConsumedSingleLayer(layer, s.L1, s.R1, _l2Pressed, _r2Pressed);
         double layerMs = LayerTimestamp(layer);
@@ -641,40 +641,6 @@ internal sealed class MapperForm : Form {
                 _r1ConsumedByCombo = true;
                 _l2ConsumedByCombo = true;
                 break;
-        }
-    }
-
-    private Layer FilterConsumedComboLayer(Layer layer, bool l1, bool r1, bool l2, bool r2) {
-        if (!IsComboLayer(layer)) return layer;
-        bool firstConsumed;
-        bool secondConsumed;
-        if (!ComboConsumedStates(layer, out firstConsumed, out secondConsumed)) return layer;
-        if (firstConsumed == secondConsumed) return layer;
-        return LatestUnconsumedSingleLayer(l1, r1, l2, r2);
-    }
-
-    private bool ComboConsumedStates(Layer layer, out bool firstConsumed, out bool secondConsumed) {
-        switch (layer) {
-            case Layer.R1L1:
-                firstConsumed = _r1ConsumedByCombo;
-                secondConsumed = _l1ConsumedByCombo;
-                return true;
-            case Layer.R2L2:
-                firstConsumed = _r2ConsumedByCombo;
-                secondConsumed = _l2ConsumedByCombo;
-                return true;
-            case Layer.L1R2:
-                firstConsumed = _l1ConsumedByCombo;
-                secondConsumed = _r2ConsumedByCombo;
-                return true;
-            case Layer.R1L2:
-                firstConsumed = _r1ConsumedByCombo;
-                secondConsumed = _l2ConsumedByCombo;
-                return true;
-            default:
-                firstConsumed = false;
-                secondConsumed = false;
-                return false;
         }
     }
 
