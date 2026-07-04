@@ -21,12 +21,8 @@ internal sealed class LeftStickScrollIntegrator {
 
         _accumulatedWheelDelta += direction * WheelDeltaPerSecond(normalized, config) * deltaSec;
 
-        int amount = (int)Math.Truncate(_accumulatedWheelDelta);
-        if (amount == 0) return false;
-
-        wheelDelta = amount;
-        _accumulatedWheelDelta -= wheelDelta;
-        return true;
+        wheelDelta = TakeRoundedWheelDelta(ref _accumulatedWheelDelta);
+        return wheelDelta != 0;
     }
 
     internal static double NormalizeRadius(double radius, Config config) {
@@ -38,10 +34,20 @@ internal sealed class LeftStickScrollIntegrator {
         double normalized = Clamp(normalizedRadius, 0.0, 1.0);
         double slowInterval = Math.Max(1.0, (double)config.ScrollSlowIntervalMs);
         double fastInterval = Math.Max(1.0, Math.Min((double)config.ScrollFastIntervalMs, slowInterval));
-        double slowSpeed = WheelDelta * 1000.0 / slowInterval;
-        double fastSpeed = WheelDelta * 1000.0 / fastInterval;
         double power = Math.Pow(normalized, Math.Max(0.001, config.MouseScrollCurveExponent));
-        return slowSpeed + (fastSpeed - slowSpeed) * power;
+        double interval = slowInterval + (fastInterval - slowInterval) * power;
+        return WheelDelta * 1000.0 / Math.Max(1.0, interval);
+    }
+
+    private static int TakeRoundedWheelDelta(ref double accumulator) {
+        int delta = 0;
+        if (accumulator >= 0.5) {
+            delta = (int)Math.Floor(accumulator + 0.5);
+        } else if (accumulator <= -0.5) {
+            delta = (int)Math.Ceiling(accumulator - 0.5);
+        }
+        accumulator -= delta;
+        return delta;
     }
 
     private static double Clamp(double value, double min, double max) {

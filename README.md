@@ -98,6 +98,8 @@ If controller typing still feels difficult, pair ShikiPad with voice input softw
 
 Fn turns number-row keys into `F1` to `F12`: `1..0` map to `F1..F10`, `-` maps to `F11`, and `=` maps to `F12`.
 
+Left-stick wheel speed is continuous by radius: the stick sector chooses wheel direction, while distance from center interpolates the wheel interval from slow to fast and accumulates fractional wheel delta before output.
+
 When the left stick enters a modifier direction, ShikiPad locks that direction until the stick returns to the deadzone. Rotating the stick around the edge will not drift from `Shift` to `Ctrl`, `Alt`, `Win`, or `Esc`. This makes held shortcuts stable: choose the modifier direction, keep holding the stick, then press the action key. Return to the deadzone to release it.
 
 ## Clutch
@@ -152,10 +154,10 @@ ShikiPad uses short time windows to absorb human input errors when typing quickl
 | Parameter | Default | Purpose |
 |---|---:|---|
 | `comboLayerWindowMs` | 35 ms | Maximum interval for two layer buttons to form a combo layer |
-| `actionLayerGraceMs` | 45 ms | Grace window between action key and layer recognition |
+| `actionLayerGraceMs` | 35 ms | Grace window between action key and layer recognition |
 | `actionLayerPostGraceMs` | 15 ms | Grace window after a layer is released before a new layer is pressed |
-| `layerTakeoverWindowMs` | 30 ms | Cumulative body cap; after the 20 ms cutoff lands inside a boundary old layer body, backward tracing can continue only until cumulative body occupancy reaches 30 ms |
-| `layerOccupancyCarryCutoffMs` | 20 ms | Cumulative body cutoff for backward layer tracing; total lookback is still `actionLayerGraceMs`, but once cumulative body occupancy reaches this cutoff, tracing can continue only inside the current boundary body up to `layerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
+| `layerTakeoverWindowMs` | 25 ms | Cumulative body cap; after the 15 ms cutoff lands inside a boundary old layer body, backward tracing can continue only until cumulative body occupancy reaches 25 ms |
+| `layerOccupancyCarryCutoffMs` | 15 ms | Cumulative body cutoff for backward layer tracing; total lookback is still `actionLayerGraceMs`, but once cumulative body occupancy reaches this cutoff, tracing can continue only inside the current boundary body up to `layerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
 | `actionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |
 
-Combo layers are treated as their own layers: the same physical single-key press that helps form a combo still occupies the 45 ms timeline, but it does not count as that combo layer's own body accumulation and cannot trigger that combo layer's 20 ms / 30 ms body limits.
+Combo layers are treated as their own layers: the same physical single-key press that helps form a combo still occupies the 35 ms timeline, but it does not count as that combo layer's own body accumulation and cannot trigger that combo layer's 15 ms / 25 ms body limits.
