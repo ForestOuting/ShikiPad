@@ -154,6 +154,8 @@ ShikiPad uses short time windows to absorb human input errors when typing quickl
 | `comboLayerWindowMs` | 35 ms | Maximum interval for two layer buttons to form a combo layer |
 | `actionLayerGraceMs` | 45 ms | Grace window between action key and layer recognition |
 | `actionLayerPostGraceMs` | 15 ms | Grace window after a layer is released before a new layer is pressed |
-| `layerTakeoverWindowMs` | 30 ms | Max time allowed for an old layer to overlap with a newly intended layer |
-| `layerOccupancyCarryCutoffMs` | 20 ms | Body-only cutoff for backward layer tracing; once this point falls inside a layer body, tracing can continue only inside that body up to `layerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
+| `layerTakeoverWindowMs` | 30 ms | Maximum body time that can be consumed inside the boundary old layer after the body-only cutoff lands there |
+| `layerOccupancyCarryCutoffMs` | 20 ms | Body-only cutoff for backward layer tracing; total lookback is still `actionLayerGraceMs`, but once the body-only cutoff lands inside a layer body, tracing can continue only inside that body up to `layerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
 | `actionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |
+
+Combo layers are treated as their own layers: the same physical single-key press that helps form a combo still occupies the 45 ms timeline, but it does not count as that combo layer's own body accumulation and cannot trigger that combo layer's 20 ms body cutoff.

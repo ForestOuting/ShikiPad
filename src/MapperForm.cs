@@ -774,20 +774,18 @@ internal sealed class MapperForm : Form {
         double preWindowOccupiedMs = PendingLayerPreWindowOccupancyThrough(hold, layer, layerMs);
         double activeOccupiedMs = PendingLayerActiveOccupancyThrough(hold, layerMs, pendingLayerUpMs);
         List<PendingLayerOccupancySegment> occupiedSegments = PendingLayerOccupancySegmentsThrough(hold, preWindowOccupiedMs, activeOccupiedMs);
-        PendingLayerOccupancyTrace trace = TracePendingLayerOccupancy(occupiedSegments);
+        PendingLayerOccupancyTrace trace = TracePendingLayerOccupancy(occupiedSegments, layer, _config.ActionLayerGraceMs);
         Layer next = ResolvePendingLayer(
             hold.PendingLayer,
             hold.OriginalPendingLayer,
             hold.PendingSinceMs,
             layer,
             layerMs,
-            trace.DurationMs,
             trace.ReachesPendingStart,
-            _config.ActionLayerGraceMs,
-            _config.LayerTakeoverWindowMs);
+            _config.ActionLayerGraceMs);
 
         if (next == hold.PendingLayer) return;
-        UpdatePendingLayerOccupancyAfterTakeover(ref hold, hold.PendingLayer, layer, next, occupiedSegments);
+        UpdatePendingLayerOccupancyAfterTakeover(ref hold, occupiedSegments);
         hold.PendingLayerSettled = next == Layer.Base && hold.PendingLayer != Layer.Base;
         hold.PendingLayer = next;
         hold.PendingLayerMs = next == layer ? layerMs : LayerTimestamp(next);
@@ -795,12 +793,7 @@ internal sealed class MapperForm : Form {
         hold.PendingLayerOccupancyActive = TryPendingLayerOccupancyStart(next, hold.PendingSinceMs, hold.PendingLayerMs, out hold.PendingLayerOccupancyStartMs);
     }
 
-    private void UpdatePendingLayerOccupancyAfterTakeover(ref ButtonHold hold, Layer pendingLayer, Layer layer, Layer next, List<PendingLayerOccupancySegment> occupiedSegments) {
-        if (ShouldResetOccupancyForComboTakeover(pendingLayer, layer, next)) {
-            ClearPendingLayerOccupancy(ref hold);
-            return;
-        }
-
+    private void UpdatePendingLayerOccupancyAfterTakeover(ref ButtonHold hold, List<PendingLayerOccupancySegment> occupiedSegments) {
         SetPendingLayerOccupancySegments(ref hold, occupiedSegments, SumPendingLayerOccupancy(occupiedSegments));
     }
 
@@ -812,12 +805,12 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private static void AddPendingLayerOccupancySegment(ref ButtonHold hold, double durationMs, bool isLayerBody) {
+    private static void AddPendingLayerOccupancySegment(ref ButtonHold hold, double durationMs, bool isLayerBody, Layer layer, double layerDownMs) {
         if (durationMs <= 0.0) return;
         if (hold.PendingLayerOccupancySegments == null) {
             hold.PendingLayerOccupancySegments = new List<PendingLayerOccupancySegment>();
         }
-        hold.PendingLayerOccupancySegments.Add(new PendingLayerOccupancySegment(durationMs, isLayerBody));
+        hold.PendingLayerOccupancySegments.Add(new PendingLayerOccupancySegment(durationMs, isLayerBody, layer, layerDownMs));
         hold.PendingLayerOccupancyMs += durationMs;
     }
 
@@ -842,10 +835,10 @@ internal sealed class MapperForm : Form {
             segments.AddRange(hold.PendingLayerOccupancySegments);
         }
         if (preWindowOccupiedMs > 0.0) {
-            segments.Add(new PendingLayerOccupancySegment(preWindowOccupiedMs, false));
+            segments.Add(new PendingLayerOccupancySegment(preWindowOccupiedMs, false, hold.PendingLayer, hold.PendingLayerMs));
         }
         if (activeOccupiedMs > 0.0) {
-            segments.Add(new PendingLayerOccupancySegment(activeOccupiedMs, true));
+            segments.Add(new PendingLayerOccupancySegment(activeOccupiedMs, true, hold.PendingLayer, hold.PendingLayerMs));
         }
         return segments;
     }
@@ -858,20 +851,22 @@ internal sealed class MapperForm : Form {
         return total;
     }
 
-    private PendingLayerOccupancyTrace TracePendingLayerOccupancy(List<PendingLayerOccupancySegment> segments) {
+    private PendingLayerOccupancyTrace TracePendingLayerOccupancy(List<PendingLayerOccupancySegment> segments, Layer targetLayer, double actionLayerGraceMs) {
         double cutoffMs = Math.Max(0.0, (double)_config.LayerOccupancyCarryCutoffMs);
-        double takeoverMs = Math.Max(0.0, (double)_config.LayerTakeoverWindowMs);
-        if (takeoverMs <= 0.0) return new PendingLayerOccupancyTrace(0.0, segments.Count == 0);
+        double bodyTakeoverMs = Math.Max(0.0, (double)_config.LayerTakeoverWindowMs);
+        double totalWindowMs = Math.Max(0.0, actionLayerGraceMs);
+        if (totalWindowMs <= 0.0) return new PendingLayerOccupancyTrace(0.0, segments.Count == 0);
 
         double actualMs = 0.0;
-        double bodyMs = 0.0;
         for (int i = segments.Count - 1; i >= 0; i--) {
             PendingLayerOccupancySegment segment = segments[i];
-            double remainingMs = takeoverMs - actualMs;
+            double remainingMs = totalWindowMs - actualMs;
             if (remainingMs <= 0.0) return new PendingLayerOccupancyTrace(actualMs, false);
 
-            if (segment.IsLayerBody && cutoffMs > 0.0 && bodyMs + segment.DurationMs >= cutoffMs) {
-                double takenMs = Math.Min(segment.DurationMs, remainingMs);
+            bool countsAsLayerBody = segment.IsLayerBody && !IsComboComponentBodyForTarget(targetLayer, segment);
+            if (countsAsLayerBody && cutoffMs > 0.0 && segment.DurationMs >= cutoffMs) {
+                double boundaryBodyMs = bodyTakeoverMs > 0.0 ? Math.Min(segment.DurationMs, bodyTakeoverMs) : 0.0;
+                double takenMs = Math.Min(boundaryBodyMs, remainingMs);
                 actualMs += takenMs;
                 bool reachesPendingStart = i == 0 && takenMs >= segment.DurationMs;
                 return new PendingLayerOccupancyTrace(actualMs, reachesPendingStart);
@@ -883,20 +878,21 @@ internal sealed class MapperForm : Form {
             }
 
             actualMs += segment.DurationMs;
-            if (segment.IsLayerBody) bodyMs += segment.DurationMs;
         }
 
         return new PendingLayerOccupancyTrace(actualMs, true);
     }
 
-    private static bool ShouldResetOccupancyForComboTakeover(Layer pendingLayer, Layer layer, Layer next) {
-        return next == layer && IsComboLayer(next) && !IsComboLayer(pendingLayer) && IsComboComponent(next, pendingLayer);
+    private bool IsComboComponentBodyForTarget(Layer targetLayer, PendingLayerOccupancySegment segment) {
+        if (!IsComboLayer(targetLayer) || IsComboLayer(segment.Layer) || !IsComboComponent(targetLayer, segment.Layer)) return false;
+        double currentComponentDownMs = LayerTimestamp(segment.Layer);
+        return currentComponentDownMs > 0.0 && currentComponentDownMs == segment.LayerDownMs;
     }
 
     private void CloseReleasedPendingLayerOccupancy(ref ButtonHold hold, double pendingLayerUpMs) {
         if (!hold.PendingLayerOccupancyActive || pendingLayerUpMs == 0.0) return;
         if (pendingLayerUpMs > hold.PendingLayerOccupancyStartMs) {
-            AddPendingLayerOccupancySegment(ref hold, pendingLayerUpMs - hold.PendingLayerOccupancyStartMs, true);
+            AddPendingLayerOccupancySegment(ref hold, pendingLayerUpMs - hold.PendingLayerOccupancyStartMs, true, hold.PendingLayer, hold.PendingLayerMs);
             NormalizePendingLayerOccupancy(ref hold);
         }
         hold.PendingLayerOccupancyActive = false;
@@ -943,7 +939,7 @@ internal sealed class MapperForm : Form {
         return false;
     }
 
-    internal static Layer ResolvePendingLayer(Layer pendingLayer, Layer originalLayer, double pendingSinceMs, Layer layer, double layerMs, double occupiedMs, bool reachesPendingStart, double actionLayerGraceMs, double takeoverWindowMs) {
+    internal static Layer ResolvePendingLayer(Layer pendingLayer, Layer originalLayer, double pendingSinceMs, Layer layer, double layerMs, bool reachesPendingStart, double actionLayerGraceMs) {
         if (layer == Layer.Base || layer == Layer.Reserved) return pendingLayer;
         if (layer == pendingLayer) return pendingLayer;
         if (layerMs < pendingSinceMs) return pendingLayer;
@@ -966,10 +962,6 @@ internal sealed class MapperForm : Form {
         if (layerMs - pendingSinceMs > actionLayerGraceMs) return pendingLayer;
 
         if (!reachesPendingStart) {
-            return effectivePendingLayer;
-        }
-
-        if (occupiedMs > takeoverWindowMs) {
             return effectivePendingLayer;
         }
 
@@ -1259,10 +1251,14 @@ internal sealed class MapperForm : Form {
     private struct PendingLayerOccupancySegment {
         public readonly double DurationMs;
         public readonly bool IsLayerBody;
+        public readonly Layer Layer;
+        public readonly double LayerDownMs;
 
-        public PendingLayerOccupancySegment(double durationMs, bool isLayerBody) {
+        public PendingLayerOccupancySegment(double durationMs, bool isLayerBody, Layer layer, double layerDownMs) {
             DurationMs = durationMs;
             IsLayerBody = isLayerBody;
+            Layer = layer;
+            LayerDownMs = layerDownMs;
         }
     }
 
