@@ -858,17 +858,17 @@ internal sealed class MapperForm : Form {
         if (totalWindowMs <= 0.0) return new PendingLayerOccupancyTrace(0.0, segments.Count == 0);
 
         double actualMs = 0.0;
-        double bodyMs = 0.0;
+        double cumulativeBodyMs = 0.0;
         for (int i = segments.Count - 1; i >= 0; i--) {
             PendingLayerOccupancySegment segment = segments[i];
             double remainingMs = totalWindowMs - actualMs;
             if (remainingMs <= 0.0) return new PendingLayerOccupancyTrace(actualMs, false);
 
             bool countsAsLayerBody = segment.IsLayerBody && !IsComboComponentBodyForTarget(targetLayer, segment);
-            if (countsAsLayerBody && cutoffMs > 0.0 && bodyMs + segment.DurationMs >= cutoffMs) {
-                double bodyBudgetMs = bodyTakeoverMs > bodyMs ? bodyTakeoverMs - bodyMs : 0.0;
-                double boundaryBodyMs = Math.Min(segment.DurationMs, bodyBudgetMs);
-                double takenMs = Math.Min(boundaryBodyMs, remainingMs);
+            if (countsAsLayerBody && cutoffMs > 0.0 && cumulativeBodyMs + segment.DurationMs >= cutoffMs) {
+                double cumulativeBodyBudgetMs = bodyTakeoverMs > cumulativeBodyMs ? bodyTakeoverMs - cumulativeBodyMs : 0.0;
+                double readableBoundaryBodyMs = Math.Min(segment.DurationMs, cumulativeBodyBudgetMs);
+                double takenMs = Math.Min(readableBoundaryBodyMs, remainingMs);
                 actualMs += takenMs;
                 bool reachesPendingStart = i == 0 && takenMs >= segment.DurationMs;
                 return new PendingLayerOccupancyTrace(actualMs, reachesPendingStart);
@@ -880,7 +880,7 @@ internal sealed class MapperForm : Form {
             }
 
             actualMs += segment.DurationMs;
-            if (countsAsLayerBody) bodyMs += segment.DurationMs;
+            if (countsAsLayerBody) cumulativeBodyMs += segment.DurationMs;
         }
 
         return new PendingLayerOccupancyTrace(actualMs, true);
