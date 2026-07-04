@@ -305,14 +305,10 @@ internal sealed class MapperForm : Form {
         StickDirection previous = _leftDirection;
         StickDirection next = previous;
 
-        if (previous == StickDirection.None) {
-            if (radius >= _config.LeftStickEnterDeadzone) {
-                next = Sector(s.LX, s.LY);
-            }
-        } else if (radius < _config.LeftStickExitDeadzone) {
+        if (radius < _config.LeftStickExitDeadzone) {
             next = StickDirection.None;
-        } else {
-            next = previous;
+        } else if (radius >= _config.LeftStickEnterDeadzone) {
+            next = Sector(s.LX, s.LY);
         }
 
         if (next != previous) {
