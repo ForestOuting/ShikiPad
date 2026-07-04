@@ -100,7 +100,7 @@ Fn turns number-row keys into `F1` to `F12`: `1..0` map to `F1..F10`, `-` maps t
 
 Left-stick wheel speed is continuous by radius: the stick sector chooses wheel direction, while distance from center interpolates the wheel interval from slow to fast and accumulates fractional wheel delta before output.
 
-Left-stick direction follows the current sector while the stick is clearly outside the enter deadzone. The enter/exit thresholds still provide radial hysteresis: push past the enter threshold to activate, return below the exit threshold to release, and the previous direction is kept only inside the small threshold band.
+When the left stick first enters a functional sector, ShikiPad keeps that direction until the stick returns below the exit deadzone. This keeps modifier and wheel intent stable: wheel direction only needs Up/Down, while wheel speed still follows the current radius continuously and accumulates fractional wheel delta.
 
 ## Clutch
 
