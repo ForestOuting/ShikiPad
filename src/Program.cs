@@ -77,9 +77,9 @@ internal static class Program {
             "L2/LT", "r", "f", "t", "1", "c", "v", "3", "2");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L1", "4", ",", ".", "7", "5", "6", "9", "8",
             "L2+R2", "+", "/", "&", "*", "_", "^", "$", "%");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "L1+R2", "[", "]", "!", "?", "{", "}", "@", "#",
-            "R1+L2", "(", ")", ";", "'", "<", ">", "`", "\\");
-        WriteManualGradientLine(width, panelWidth, pad + "Shift       [→{  ]→}  \\→|  `→~", blockWidth);
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L2", "(", ")", ";", "'", "<", ">", "`", "\\",
+            "L1+R2", "[", "]", "!", "?", "{", "}", "@", "#");
+        WriteManualGradientLine(width, panelWidth, pad + "Shift       ;→:  '→\"  `→~  \\→|", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↑/↓ 滚轮; ← Shift; ↙ Ctrl; ↘ Alt; → Win; ↖ Esc; ↗ Fn", blockWidth);
