@@ -154,8 +154,8 @@ ShikiPad 使用短时间窗口吸收人手快速按键输入时的先后误差.
 | `comboLayerWindowMs` | 35 ms | 两个键层按键结成组合层的最大间隔 |
 | `actionLayerGraceMs` | 45 ms | 动作键与键层的识别宽容窗口 |
 | `actionLayerPostGraceMs` | 15 ms | 松开键层到按下新键层间的空窗期归属 |
-| `layerTakeoverWindowMs` | 30 ms | 本体专用限制; 20ms 截止点落入某个旧键层本体后, 该旧键层本体最多可被占用到 30ms |
-| `layerOccupancyCarryCutoffMs` | 20 ms | 键层本体专用的向前追溯截止点; 总视野仍是 `actionLayerGraceMs`, 但追溯到这个点落入某个键层本体后, 只能在该本体内继续追到 `layerTakeoverWindowMs`, 不能跨到它的前置窗口或更旧键层 |
+| `layerTakeoverWindowMs` | 30 ms | 本体累计上限; 20ms 截止点落入某个旧键层本体后, 向前追溯最多继续到累计本体占用 30ms |
+| `layerOccupancyCarryCutoffMs` | 20 ms | 键层本体累计的向前追溯截止点; 总视野仍是 `actionLayerGraceMs`, 但累计本体占用到达这个点后, 只能在当前边界键层本体内继续追到 `layerTakeoverWindowMs`, 不能跨到它的前置窗口或更旧键层 |
 | `actionLayerSwitchGuardMs` | 35 ms | 字符发出后切换键层时抑制残留误触 |
 
-组合层按单独键层处理: 组成组合层的同一次单键按下仍然占用 45ms 时间线, 但不算作该组合层自己的本体累计, 也不会触发该组合层的 20ms 本体截止.
+组合层按单独键层处理: 组成组合层的同一次单键按下仍然占用 45ms 时间线, 但不算作该组合层自己的本体累计, 也不会触发该组合层的 20ms/30ms 本体累计限制.

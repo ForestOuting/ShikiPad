@@ -858,14 +858,16 @@ internal sealed class MapperForm : Form {
         if (totalWindowMs <= 0.0) return new PendingLayerOccupancyTrace(0.0, segments.Count == 0);
 
         double actualMs = 0.0;
+        double bodyMs = 0.0;
         for (int i = segments.Count - 1; i >= 0; i--) {
             PendingLayerOccupancySegment segment = segments[i];
             double remainingMs = totalWindowMs - actualMs;
             if (remainingMs <= 0.0) return new PendingLayerOccupancyTrace(actualMs, false);
 
             bool countsAsLayerBody = segment.IsLayerBody && !IsComboComponentBodyForTarget(targetLayer, segment);
-            if (countsAsLayerBody && cutoffMs > 0.0 && segment.DurationMs >= cutoffMs) {
-                double boundaryBodyMs = bodyTakeoverMs > 0.0 ? Math.Min(segment.DurationMs, bodyTakeoverMs) : 0.0;
+            if (countsAsLayerBody && cutoffMs > 0.0 && bodyMs + segment.DurationMs >= cutoffMs) {
+                double bodyBudgetMs = bodyTakeoverMs > bodyMs ? bodyTakeoverMs - bodyMs : 0.0;
+                double boundaryBodyMs = Math.Min(segment.DurationMs, bodyBudgetMs);
                 double takenMs = Math.Min(boundaryBodyMs, remainingMs);
                 actualMs += takenMs;
                 bool reachesPendingStart = i == 0 && takenMs >= segment.DurationMs;
@@ -878,6 +880,7 @@ internal sealed class MapperForm : Form {
             }
 
             actualMs += segment.DurationMs;
+            if (countsAsLayerBody) bodyMs += segment.DurationMs;
         }
 
         return new PendingLayerOccupancyTrace(actualMs, true);
