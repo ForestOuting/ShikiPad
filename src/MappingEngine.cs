@@ -13,14 +13,14 @@ internal sealed class MappingEngine {
         _tables[(int)Layer.L2] = Row(PhysicalKey.R, PhysicalKey.F, PhysicalKey.T, PhysicalKey.Num1, PhysicalKey.C, PhysicalKey.V, PhysicalKey.Num3, PhysicalKey.Num2);
         _tables[(int)Layer.R1L1] = Row(PhysicalKey.Num4, PhysicalKey.Comma, PhysicalKey.Period, PhysicalKey.Num7, PhysicalKey.Num5, PhysicalKey.Num6, PhysicalKey.Num9, PhysicalKey.Num8);
         _tables[(int)Layer.R2L2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.Num9),
-            KeyStroke.Shifted(PhysicalKey.Num0),
-            KeyStroke.Of(PhysicalKey.Semicolon),
-            KeyStroke.Of(PhysicalKey.Apostrophe),
-            KeyStroke.Shifted(PhysicalKey.Comma),
-            KeyStroke.Shifted(PhysicalKey.Period),
-            KeyStroke.Of(PhysicalKey.Grave),
-            KeyStroke.Of(PhysicalKey.Backslash)
+            KeyStroke.Shifted(PhysicalKey.Equals),
+            KeyStroke.Of(PhysicalKey.Slash),
+            KeyStroke.Shifted(PhysicalKey.Num7),
+            KeyStroke.Shifted(PhysicalKey.Num8),
+            KeyStroke.Shifted(PhysicalKey.Minus),
+            KeyStroke.Shifted(PhysicalKey.Num6),
+            KeyStroke.Shifted(PhysicalKey.Num4),
+            KeyStroke.Shifted(PhysicalKey.Num5)
         };
         _tables[(int)Layer.L1R2] = new KeyStroke[] {
             KeyStroke.Of(PhysicalKey.LeftBracket),
@@ -33,14 +33,14 @@ internal sealed class MappingEngine {
             KeyStroke.Shifted(PhysicalKey.Num3)
         };
         _tables[(int)Layer.R1L2] = new KeyStroke[] {
-            KeyStroke.Shifted(PhysicalKey.Equals),
-            KeyStroke.Of(PhysicalKey.Slash),
-            KeyStroke.Shifted(PhysicalKey.Num7),
-            KeyStroke.Shifted(PhysicalKey.Num8),
-            KeyStroke.Shifted(PhysicalKey.Minus),
-            KeyStroke.Shifted(PhysicalKey.Num6),
-            KeyStroke.Shifted(PhysicalKey.Num4),
-            KeyStroke.Shifted(PhysicalKey.Num5)
+            KeyStroke.Shifted(PhysicalKey.Num9),
+            KeyStroke.Shifted(PhysicalKey.Num0),
+            KeyStroke.Of(PhysicalKey.Semicolon),
+            KeyStroke.Of(PhysicalKey.Apostrophe),
+            KeyStroke.Shifted(PhysicalKey.Comma),
+            KeyStroke.Shifted(PhysicalKey.Period),
+            KeyStroke.Of(PhysicalKey.Grave),
+            KeyStroke.Of(PhysicalKey.Backslash)
         };
     }
 
@@ -56,10 +56,10 @@ internal sealed class MappingEngine {
         int latestOrder = 0;
         int previousOrder = 0;
 
-        ConsiderRecentLayer(l1, Layer.L1, l1Ms, 1, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
-        ConsiderRecentLayer(r1, Layer.R1, r1Ms, 2, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
-        ConsiderRecentLayer(l2, Layer.L2, l2Ms, 3, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
-        ConsiderRecentLayer(r2, Layer.R2, r2Ms, 4, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
+        ConsiderRecentLayer(l1, Layer.L1, l1Ms, 3, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
+        ConsiderRecentLayer(r1, Layer.R1, r1Ms, 4, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
+        ConsiderRecentLayer(l2, Layer.L2, l2Ms, 1, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
+        ConsiderRecentLayer(r2, Layer.R2, r2Ms, 2, ref latestLayer, ref latestMs, ref latestOrder, ref previousLayer, ref previousMs, ref previousOrder);
 
         if (latestLayer != Layer.Reserved && previousLayer != Layer.Reserved && latestMs - previousMs <= comboWindow) {
             Layer comboLayer = ComboFor(previousLayer, latestLayer);

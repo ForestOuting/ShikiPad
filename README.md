@@ -125,13 +125,15 @@ The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y
 | R2 / RT | 0 | g | y | u | - | = | b | h |
 | L2 / LT | r | f | t | 1 | c | v | 3 | 2 |
 | R1 + L1 | 4 | , | . | 7 | 5 | 6 | 9 | 8 |
-| L2 + R2 | ( | ) | ; | ' | < | > | backtick | \ |
+| L2 + R2 | + | / | & | * | _ | ^ | $ | % |
 | L1 + R2 | [ | ] | ! | ? | { | } | @ | # |
-| R1 + L2 | + | / | & | * | _ | ^ | $ | % |
+| R1 + L2 | ( | ) | ; | ' | < | > | backtick | \ |
 
 The program sends physical keycodes. Characters requiring Shift (", :, |, ~) can be entered by holding the left stick `Shift` direction and pressing the corresponding base key (', ;, \, backtick).
 
 Base-layer keys repeat while held. Character layers are virtual taps: one press sends one key stroke, and holding does not repeat.
+
+If multiple layer buttons are pressed on the same polling timestamp, tie priority is `R1 > L1 > R2 > L2`. Combo formation still only considers the latest two active layer buttons after that priority sort.
 
 ## Troubleshooting
 
