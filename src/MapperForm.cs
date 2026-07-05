@@ -647,7 +647,12 @@ internal sealed class MapperForm : Form {
                     return false;
             }
         } else if (fingers == 2 && mode == TouchGestureMode.Hold) {
-            return false;
+            switch (direction) {
+                case TouchGestureDirection.Up:
+                    key = PhysicalKey.Escape; shift = true; ctrl = true; repeatable = false; break;
+                default:
+                    return false;
+            }
         } else {
             return false;
         }
