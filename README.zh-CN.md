@@ -234,3 +234,5 @@ ShikiPad 使用短时间窗口吸收人手快速按键输入时的先后误差.
 ### 系统或游戏里双重输入
 
 如果 ShikiPad 运行时 Windows 仍然能看到物理手柄, 同一个摇杆输入就可能被处理两次: 一次由 ShikiPad 处理, 一次由 Windows 或当前软件处理. 典型表现包括左摇杆保持 `Alt` 再按 `Tab` 时在各个窗口之间乱跳, 或左摇杆 `Win` 修饰键触发不灵, 因为 Windows 把手柄输入识别成开始菜单, 任务栏或应用图标导航. 按上文的 HidHide 设置隐藏 PlayStation 手柄后, 只让 ShikiPad 读取手柄, 就能解决这类问题. Xbox 手柄走 XInput, HidHide 通常不能在 HID 层隐藏它.
+
+如果已经按上文配置 HidHide, 但仍然出现双重输入或系统抢输入, 可以试试把 ShikiPad 整个文件夹放到 C 盘根目录运行, 例如 `C:\ShikiPad`. 这是当前作者实际使用的位置.

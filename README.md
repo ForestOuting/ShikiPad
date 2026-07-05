@@ -234,3 +234,5 @@ Install Interception, restart Windows, and run `ShikiPad.exe` as administrator.
 ### System or game double input
 
 If Windows still sees the physical controller while ShikiPad is running, the same stick movement can be handled twice: once by ShikiPad and once by Windows or the focused app. Typical symptoms include left-stick `Alt` plus `Tab` jumping unpredictably between windows, or the left-stick `Win` modifier failing because Windows treats controller input as Start menu, taskbar, or app icon navigation. Configure HidHide as described above so only ShikiPad can see the PlayStation controller. Xbox controllers use XInput, so HidHide usually cannot hide them at the HID layer.
+
+If HidHide is already configured as described above but double input or Windows input stealing still happens, try placing the whole ShikiPad folder at the root of the C drive, for example `C:\ShikiPad`. This is the location currently used by the author.
