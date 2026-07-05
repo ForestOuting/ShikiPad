@@ -181,6 +181,9 @@ internal sealed class InputInjector {
         Add(PhysicalKey.Enter, 0x0D, false);
         Add(PhysicalKey.Tab, 0x09, false);
         Add(PhysicalKey.Escape, 0x1B, false);
+        Add(PhysicalKey.Delete, 0x2E, true);
+        Add(PhysicalKey.Home, 0x24, true);
+        Add(PhysicalKey.End, 0x23, true);
         Add(PhysicalKey.ArrowUp, 0x26, true);
         Add(PhysicalKey.ArrowDown, 0x28, true);
         Add(PhysicalKey.ArrowLeft, 0x25, true);

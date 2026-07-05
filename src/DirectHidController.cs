@@ -297,6 +297,7 @@ internal sealed class DirectHidController {
             byte b3 = r[7];
             s.Home = (b3 & 0x01) != 0;
             s.TouchClick = (b3 & 0x02) != 0;
+            TryParseTouchPoints(s, r, 10);
         } else {
             int offset = isUsbProfile ? 1 : (r[0] == 0x11 ? 3 : 2);
             bool isDs4 = (profile == ControllerProfile.DualShock4 || profile == ControllerProfile.DualShock4BT);
@@ -324,6 +325,7 @@ internal sealed class DirectHidController {
                     s.Home = (r[offset + 6] & 0x01) != 0;
                     s.TouchClick = (r[offset + 6] & 0x02) != 0;
                 }
+                TryParseTouchPoints(s, r, offset + 36);
 
                 s.L2 = Trigger(r[offset + 7], (b2 & 0x04) != 0);
                 s.R2 = Trigger(r[offset + 8], (b2 & 0x08) != 0);
@@ -346,10 +348,57 @@ internal sealed class DirectHidController {
                     s.TouchClick = (r[offset + 9] & 0x02) != 0;
                     s.Mute = (r[offset + 9] & 0x04) != 0;
                 }
+                TryParseTouchPoints(s, r, offset + 32);
             }
         }
 
         return true;
+    }
+
+    private static void TryParseTouchPoints(ControllerState s, byte[] r, int offset) {
+        TouchPoint p1;
+        TouchPoint p2;
+        if (TryReadTouchPair(r, offset, out p1, out p2)) {
+            AssignTouchPoints(s, p1, p2);
+        }
+    }
+
+    private static bool TryReadTouchPair(byte[] r, int offset, out TouchPoint p1, out TouchPoint p2) {
+        p1 = new TouchPoint();
+        p2 = new TouchPoint();
+        if (!TryReadTouchPoint(r, offset, out p1)) return false;
+        TryReadTouchPoint(r, offset + 4, out p2);
+        return true;
+    }
+
+    private static int ActiveTouchCount(TouchPoint p1, TouchPoint p2) {
+        return (p1.Active ? 1 : 0) + (p2.Active ? 1 : 0);
+    }
+
+    private static void AssignTouchPoints(ControllerState s, TouchPoint p1, TouchPoint p2) {
+        s.Touch1Active = p1.Active;
+        s.Touch1X = p1.X;
+        s.Touch1Y = p1.Y;
+        s.Touch2Active = p2.Active;
+        s.Touch2X = p2.X;
+        s.Touch2Y = p2.Y;
+        s.TouchCount = ActiveTouchCount(p1, p2);
+    }
+
+    private static bool TryReadTouchPoint(byte[] r, int offset, out TouchPoint point) {
+        point = new TouchPoint();
+        if (r == null || offset < 0 || r.Length <= offset + 3) return false;
+        point.Active = (r[offset] & 0x80) == 0;
+        point.X = r[offset + 1] | ((r[offset + 2] & 0x0F) << 8);
+        point.Y = ((r[offset + 2] >> 4) & 0x0F) | (r[offset + 3] << 4);
+        if (point.Active && (point.X > 1919 || point.Y > 943)) return false;
+        return true;
+    }
+
+    private struct TouchPoint {
+        public bool Active;
+        public int X;
+        public int Y;
     }
 
     private static void FillDpadAndFace(ControllerState s, byte b) {

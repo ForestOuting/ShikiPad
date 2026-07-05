@@ -36,6 +36,9 @@ internal sealed class MapperForm : Form {
     private List<PhysicalKey> _accumulatedModifiers = new List<PhysicalKey>();
     private List<PhysicalKey> _heldLeftStickKeys = new List<PhysicalKey>();
     private readonly ClutchButtonStateMachine _clutchButton = new ClutchButtonStateMachine();
+    private TouchGestureState _touchGesture = new TouchGestureState();
+    private bool _clutchCarryActive;
+    private bool _prevPhysicalClutchActive;
     private bool _prevClutchActive;
     private bool _prevCreate;
     private bool _prevOptions;
@@ -219,6 +222,7 @@ internal sealed class MapperForm : Form {
         }
         UpdateTriggers(s, now);
         UpdateClutchButton(s, now);
+        UpdateTouchGestures(s, now);
 
         UpdateLeftStick(s, deltaSec);
         UpdateActionButtons(s, now);
@@ -269,7 +273,7 @@ internal sealed class MapperForm : Form {
     }
 
     private bool IsClutchActive() {
-        return _clutchButton.Active;
+        return _clutchButton.Active || _clutchCarryActive;
     }
 
     private bool IsSonyController() {
@@ -321,9 +325,18 @@ internal sealed class MapperForm : Form {
             }
         }
 
+        bool physicalClutch = _clutchButton.Active;
+        bool modifierDirection = IsLeftStickModifierDirection(_leftDirection);
+        if (!modifierDirection) {
+            _clutchCarryActive = false;
+        } else if (!physicalClutch && _prevPhysicalClutchActive) {
+            _clutchCarryActive = true;
+        }
+
         bool clutch = IsClutchActive();
         bool clutchJustPressed = clutch && !_prevClutchActive;
         bool clutchJustReleased = !clutch && _prevClutchActive;
+        _prevPhysicalClutchActive = physicalClutch;
         _prevClutchActive = clutch;
 
         List<PhysicalKey> desiredKeys = new List<PhysicalKey>();
@@ -377,11 +390,17 @@ internal sealed class MapperForm : Form {
             return;
         }
 
+        StickDirection scrollDirection = Sector(s.LX, s.LY);
+        if (scrollDirection != StickDirection.Up && scrollDirection != StickDirection.Down) {
+            _leftStickScroll.Reset();
+            return;
+        }
+
         int wheelDelta;
-        int direction = _leftDirection == StickDirection.Up ? 1 : -1;
-        if (_leftStickScroll.TryUpdate(radius, deltaSec, _config, direction, out wheelDelta)) {
+        int scrollSign = scrollDirection == StickDirection.Up ? 1 : -1;
+        if (_leftStickScroll.TryUpdate(radius, deltaSec, _config, scrollSign, out wheelDelta)) {
             _injector.CurrentSource = "LeftStick";
-            _injector.CurrentReason = "AnalogScroll " + _leftDirection;
+            _injector.CurrentReason = "AnalogScroll " + scrollDirection;
             _injector.MouseWheelDelta(wheelDelta);
         }
     }
@@ -422,6 +441,223 @@ internal sealed class MapperForm : Form {
 
     private void AccumulateLeftStickKey(PhysicalKey key) {
         AddUnique(_accumulatedModifiers, key);
+    }
+
+    private static bool IsLeftStickModifierDirection(StickDirection dir) {
+        return dir != StickDirection.None && dir != StickDirection.Up && dir != StickDirection.Down;
+    }
+
+    private void UpdateTouchGestures(ControllerState s, double now) {
+        if (!IsSonyController() || s.TouchClick) {
+            _touchGesture.Reset();
+            return;
+        }
+
+        int count = s.TouchCount;
+        if (count <= 0) {
+            _touchGesture.Reset();
+            return;
+        }
+
+        double x;
+        double y;
+        if (!TryTouchCentroid(s, out x, out y)) {
+            _touchGesture.Reset();
+            return;
+        }
+
+        if (!_touchGesture.Active) {
+            StartTouchGesture(count, x, y, now);
+            return;
+        }
+
+        if (_touchGesture.Completed && count != _touchGesture.FingerCount) {
+            _touchGesture.Reset();
+            return;
+        }
+
+        if (!_touchGesture.Completed && count != _touchGesture.FingerCount) {
+            StartTouchGesture(count, x, y, now);
+            return;
+        }
+
+        if (!_touchGesture.Completed) {
+            double dx = x - _touchGesture.StartX;
+            double dy = y - _touchGesture.StartY;
+            double absX = Math.Abs(dx);
+            double absY = Math.Abs(dy);
+            double primary = Math.Max(absX, absY);
+            if (!_touchGesture.Moving) {
+                if (primary < Math.Max(1.0, _config.TouchGestureMoveStartThreshold)) return;
+                _touchGesture.Moving = true;
+            }
+
+            TouchGestureDirection dir;
+            if (!TryRecognizeTouchGestureDirection(dx, dy, _config, out dir)) return;
+
+            bool repeatable;
+            TouchGestureMode mode = now - _touchGesture.StartMs >= Math.Max(1, _config.TouchGestureHoldMs)
+                ? TouchGestureMode.Hold
+                : TouchGestureMode.Direct;
+            if (TapTouchGestureShortcut(_touchGesture.FingerCount, mode, dir, out repeatable)) {
+                _touchGesture.Completed = true;
+                _touchGesture.Direction = dir;
+                _touchGesture.Mode = mode;
+                _touchGesture.HoldMode = mode == TouchGestureMode.Hold;
+                _touchGesture.Repeatable = repeatable;
+                _touchGesture.LastX = x;
+                _touchGesture.LastY = y;
+                _touchGesture.NextRepeatMs = now + Math.Max(60, _config.TouchGestureRepeatMs);
+            } else {
+                _touchGesture.Reset();
+            }
+            return;
+        }
+
+        _touchGesture.LastX = x;
+        _touchGesture.LastY = y;
+        if (_touchGesture.Repeatable && !IsTouchGestureStillHeld(_touchGesture, x, y, _config)) {
+            _touchGesture.Reset();
+            return;
+        }
+
+        if (_touchGesture.Repeatable && now >= _touchGesture.NextRepeatMs) {
+            bool repeatable;
+            if (TapTouchGestureShortcut(_touchGesture.FingerCount, _touchGesture.Mode, _touchGesture.Direction, out repeatable)) {
+                double interval = Math.Max(60, _config.TouchGestureRepeatMs);
+                do {
+                    _touchGesture.NextRepeatMs += interval;
+                } while (now >= _touchGesture.NextRepeatMs);
+                _touchGesture.Repeatable = repeatable;
+            }
+        }
+    }
+
+    private void StartTouchGesture(int count, double x, double y, double now) {
+        _touchGesture.Reset();
+        _touchGesture.Active = true;
+        _touchGesture.FingerCount = count;
+        _touchGesture.StartX = x;
+        _touchGesture.StartY = y;
+        _touchGesture.StartMs = now;
+        _touchGesture.Direction = TouchGestureDirection.None;
+        _touchGesture.Mode = TouchGestureMode.Direct;
+        _touchGesture.LastX = x;
+        _touchGesture.LastY = y;
+    }
+
+    private static bool TryRecognizeTouchGestureDirection(double dx, double dy, Config config, out TouchGestureDirection direction) {
+        direction = TouchGestureDirection.None;
+
+        double absX = Math.Abs(dx);
+        double absY = Math.Abs(dy);
+        double primary = Math.Max(absX, absY);
+        if (primary < Math.Max(1.0, config.TouchGestureThreshold)) return false;
+
+        direction = absX > absY
+            ? (dx < 0.0 ? TouchGestureDirection.Left : TouchGestureDirection.Right)
+            : (dy < 0.0 ? TouchGestureDirection.Up : TouchGestureDirection.Down);
+        return true;
+    }
+
+    private static bool IsTouchGestureStillHeld(TouchGestureState gesture, double x, double y, Config config) {
+        TouchGestureDirection direction;
+        if (!TryRecognizeTouchGestureDirection(x - gesture.StartX, y - gesture.StartY, config, out direction)) return false;
+        return direction == gesture.Direction;
+    }
+
+    private static bool TryTouchCentroid(ControllerState s, out double x, out double y) {
+        int count = 0;
+        double sumX = 0.0;
+        double sumY = 0.0;
+        if (s.Touch1Active) {
+            sumX += s.Touch1X;
+            sumY += s.Touch1Y;
+            count++;
+        }
+        if (s.Touch2Active) {
+            sumX += s.Touch2X;
+            sumY += s.Touch2Y;
+            count++;
+        }
+        if (count == 0) {
+            x = 0.0;
+            y = 0.0;
+            return false;
+        }
+        x = sumX / count;
+        y = sumY / count;
+        return true;
+    }
+
+    private bool TapTouchGestureShortcut(int fingers, TouchGestureMode mode, TouchGestureDirection direction, out bool repeatable) {
+        repeatable = true;
+        PhysicalKey key = PhysicalKey.None;
+        bool shift = false;
+        bool ctrl = false;
+        bool alt = false;
+        bool win = false;
+
+        if (fingers == 1 && mode == TouchGestureMode.Direct) {
+            switch (direction) {
+                case TouchGestureDirection.Up:
+                    key = PhysicalKey.Escape; shift = true; alt = true; break;
+                case TouchGestureDirection.Down:
+                    key = PhysicalKey.Escape; alt = true; break;
+                case TouchGestureDirection.Left:
+                    key = PhysicalKey.S; shift = true; win = true; repeatable = false; break;
+                case TouchGestureDirection.Right:
+                    key = PhysicalKey.F4; alt = true; repeatable = false; break;
+                default:
+                    return false;
+            }
+        } else if (fingers == 1 && mode == TouchGestureMode.Hold) {
+            switch (direction) {
+                case TouchGestureDirection.Up:
+                    key = PhysicalKey.Tab; shift = true; ctrl = true; break;
+                case TouchGestureDirection.Down:
+                    key = PhysicalKey.Tab; ctrl = true; break;
+                case TouchGestureDirection.Left:
+                    key = PhysicalKey.ArrowLeft; alt = true; break;
+                case TouchGestureDirection.Right:
+                    key = PhysicalKey.ArrowRight; alt = true; break;
+                default:
+                    return false;
+            }
+        } else if (fingers == 2 && mode == TouchGestureMode.Direct) {
+            switch (direction) {
+                case TouchGestureDirection.Up:
+                    key = PhysicalKey.ArrowLeft; ctrl = true; win = true; break;
+                case TouchGestureDirection.Down:
+                    key = PhysicalKey.ArrowRight; ctrl = true; win = true; break;
+                case TouchGestureDirection.Left:
+                    key = PhysicalKey.Delete; break;
+                case TouchGestureDirection.Right:
+                    key = PhysicalKey.Escape; shift = true; ctrl = true; repeatable = false; break;
+                default:
+                    return false;
+            }
+        } else if (fingers == 2 && mode == TouchGestureMode.Hold) {
+            switch (direction) {
+                case TouchGestureDirection.Up:
+                    key = PhysicalKey.Home; break;
+                case TouchGestureDirection.Down:
+                    key = PhysicalKey.End; break;
+                case TouchGestureDirection.Left:
+                    key = PhysicalKey.ArrowLeft; shift = true; win = true; break;
+                case TouchGestureDirection.Right:
+                    key = PhysicalKey.ArrowRight; shift = true; win = true; break;
+                default:
+                    return false;
+            }
+        } else {
+            return false;
+        }
+
+        _injector.CurrentSource = "TouchGesture";
+        _injector.CurrentReason = "Touch " + fingers + " " + mode + " " + direction;
+        _injector.KeyTap(key, shift, ctrl, alt, win);
+        return true;
     }
 
     private void UpdateActionButtons(ControllerState s, double now) {
@@ -1157,7 +1393,10 @@ internal sealed class MapperForm : Form {
         _l2Pressed = false;
         _r2Pressed = false;
         _clutchButton.Reset();
+        _clutchCarryActive = false;
+        _prevPhysicalClutchActive = false;
         _prevClutchActive = false;
+        _touchGesture.Reset();
         _prevCreate = false;
         _prevOptions = false;
         _mouseFreezeUntilMs = 0;
@@ -1204,6 +1443,40 @@ internal sealed class MapperForm : Form {
 
 
     private static double Clamp(double value, double min, double max) { return value < min ? min : (value > max ? max : value); }
+
+    private enum TouchGestureMode {
+        Direct,
+        Hold
+    }
+
+    private enum TouchGestureDirection {
+        None,
+        Up,
+        Down,
+        Left,
+        Right
+    }
+
+    private struct TouchGestureState {
+        public bool Active;
+        public int FingerCount;
+        public double StartX;
+        public double StartY;
+        public double StartMs;
+        public bool Moving;
+        public bool HoldMode;
+        public bool Completed;
+        public TouchGestureMode Mode;
+        public TouchGestureDirection Direction;
+        public bool Repeatable;
+        public double NextRepeatMs;
+        public double LastX;
+        public double LastY;
+
+        public void Reset() {
+            this = new TouchGestureState();
+        }
+    }
 
     private struct ButtonHold {
         public KeyStroke Key;

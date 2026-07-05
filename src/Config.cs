@@ -7,15 +7,15 @@ internal sealed class Config {
     public double RightStickDeadzone = 0.015;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 3.0;
-    public double MouseScrollCurveExponent = 3.0;
+    public double MouseScrollCurveExponent = 1.5;
     public double LeftStickEnterDeadzone = 0.25;
     public double LeftStickExitDeadzone = 0.15;
     public double TriggerPressThreshold = 0.25;
     public double TriggerReleaseThreshold = 0.15;
     public int RepeatDelayMs = 300;
-    public int RepeatIntervalMs = 18;
+    public int RepeatIntervalMs = 12;
     public int BaseRepeatSlowIntervalMs = 120;
-    public int BaseRepeatRampMs = 1000;
+    public int BaseRepeatRampMs = 1500;
     public int ActionLayerGraceMs = 35;
     public int ActionLayerPostGraceMs = 15;
     public int LayerTakeoverWindowMs = 25;
@@ -25,6 +25,10 @@ internal sealed class Config {
     public bool UseScanCode = true;
     public int ScrollSlowIntervalMs = 1500;
     public int ScrollFastIntervalMs = 15;
+    public double TouchGestureMoveStartThreshold = 50.0;
+    public double TouchGestureThreshold = 250.0;
+    public int TouchGestureHoldMs = 150;
+    public int TouchGestureRepeatMs = 350;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
 }

@@ -80,6 +80,46 @@ Closing the console window also exits and releases held keyboard and mouse input
 | DualSense Mute | `Caps Lock` |
 | Share/Create/View + Options/Menu for about 1 second | Enable / disable ShikiPad |
 
+### Mouse Parameters
+
+| Parameter | Current | Purpose |
+|---|---:|---|
+| `MouseSensitivity` | 1.0 | Overall right-stick mouse sensitivity |
+| `MouseMaxSpeed` | 20.0 | Base maximum speed factor at full right-stick tilt |
+| `RightStickDeadzone` | 0.015 | Right-stick mouse deadzone |
+| `RightStickCurve` | power | Right-stick curve type; the current implementation uses a power curve |
+| `RightStickCurveExponent` | 3.0 | Right-stick radius curve exponent |
+| Mouse frame multiplier | 120.0 | Internal multiplier in the right-stick velocity formula |
+| Mouse rounding threshold | 0.5 px | Fractional mouse movement is emitted once it reaches half a pixel |
+| `MaxMouseFrameSeconds` | 0.05 s | Per-frame mouse integration cap to prevent large jumps after a stalled frame |
+| `R3FreezeMs` | 60 ms | Cursor freeze duration when R3 starts a right click |
+
+The right stick uses continuous velocity integration: `radius = sqrt(x*x + y*y)`, `normalized = (radius - RightStickDeadzone) / (1 - RightStickDeadzone)`, `power = normalized ^ RightStickCurveExponent`, and per-frame movement is `direction * power * MouseMaxSpeed * deltaSec * 120 * MouseSensitivity`. X/Y fractional pixels are accumulated separately, rounded to integer pixels once they reach 0.5px, and the remainder is kept.
+
+## Touchpad Gestures
+
+Touchpad gestures are available on PlayStation controllers. The current rule is simple: once movement from the touch start reaches `TouchGestureThreshold`, ShikiPad compares the left / right / up / down components and recognizes whichever direction is largest. No shortcut fires before that threshold is reached.
+
+### Touchpad Mappings
+
+| Gesture | Up | Down | Left | Right |
+|---|---|---|---|---|
+| One-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | `Shift + Win + S` screenshot | `Alt + F4` close app |
+| One-finger hold-then-swipe | `Ctrl + Shift + Tab` previous tab | `Ctrl + Tab` next tab | `Alt + ←` back | `Alt + →` forward |
+| Two-finger direct swipe | `Win + Ctrl + ←` previous window | `Win + Ctrl + →` next window | `Delete` | `Ctrl + Shift + Esc` Task Manager |
+| Two-finger hold-then-swipe | `Home` | `End` | `Win + Shift + ←` move to left monitor | `Win + Shift + →` move to right monitor |
+
+All touchpad gestures repeat while the finger remains on the touchpad and the direction still satisfies the threshold, except one-finger direct left screenshot, one-finger direct right close app, and two-finger direct right Task Manager. The repeat interval is controlled by `TouchGestureRepeatMs`.
+
+### Touchpad Parameters
+
+| Parameter | Current | Purpose |
+|---|---:|---|
+| `TouchGestureMoveStartThreshold` | 50 | Distance that marks the finger as moving; this only changes state and does not fire a shortcut |
+| `TouchGestureThreshold` | 250 | Direction distance required to recognize a swipe |
+| `TouchGestureHoldMs` | 150 ms | If recognition happens after this much time from touch start, the gesture uses the hold-then-swipe map |
+| `TouchGestureRepeatMs` | 350 ms | Repeat interval while the recognized gesture remains held |
+
 ## Voice Input
 
 If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. PlayStation controllers are especially convenient here: Share maps to `Right Alt`, Options/Menu maps to `Right Ctrl`, and Home maps to `Right Shift`, so voice input shortcuts can be triggered without leaving the controller. The built-in microphone on supported PlayStation controllers also sits close to your mouth and can produce good recognition results in a quiet room.
@@ -98,9 +138,24 @@ If controller typing still feels difficult, pair ShikiPad with voice input softw
 
 Fn turns number-row keys into `F1` to `F12`: `1..0` map to `F1..F10`, `-` maps to `F11`, and `=` maps to `F12`.
 
-Left-stick wheel speed is continuous by radius: the stick sector chooses wheel direction, while distance from center interpolates the wheel interval from slow to fast and accumulates fractional wheel delta before output.
+Left-stick wheel speed is continuous by radius: the current Up/Down sector chooses wheel direction, while distance from center drives an exponent-1.5 geometric interval curve from 1500 ms slow scrolling to 15 ms fast scrolling.
 
-When the left stick first enters a functional sector, ShikiPad keeps that direction until the stick returns below the exit deadzone. This keeps modifier and wheel intent stable: wheel direction only needs Up/Down, while wheel speed still follows the current radius continuously and accumulates fractional wheel delta.
+When the left stick first enters a non-wheel functional sector, ShikiPad keeps that modifier intent until the stick returns below the exit deadzone. Wheel output uses the current Up/Down sector for direction, while wheel speed still follows the current radius continuously.
+
+### Left-Stick Wheel Parameters
+
+| Parameter | Current | Purpose |
+|---|---:|---|
+| `LeftStickEnterDeadzone` | 0.25 | Radius needed to enter a left-stick functional sector |
+| `LeftStickExitDeadzone` | 0.15 | Radius below which left-stick wheel/modifier intent resets |
+| `MouseScrollCurveExponent` | 1.5 | Left-stick wheel radius curve exponent |
+| `ScrollSlowIntervalMs` | 1500 ms | Slowest wheel interval |
+| `ScrollFastIntervalMs` | 15 ms | Fastest wheel interval |
+| `WheelDelta` | 120 | One standard wheel detent |
+| `WheelQuantum` | 4 | Minimum wheel output quantum; 30 quanta equal one standard 120 wheel detent |
+| `MaxWheelDeltaPerFrame` | 120 | Maximum wheel output per frame |
+
+The left-stick wheel now follows the same integration idea as the right stick, with wheel-specific quantization. Radius is normalized as `(radius - LeftStickEnterDeadzone) / (1 - LeftStickEnterDeadzone)`, then `power = normalized ^ MouseScrollCurveExponent`. The wheel interval uses geometric interpolation: `interval = ScrollSlowIntervalMs * (ScrollFastIntervalMs / ScrollSlowIntervalMs) ^ power`, and speed is `WheelDelta * 1000 / interval`. Fractional wheel amount is accumulated, quantized to multiples of 4 after it reaches half a quantum, and capped at 120 per frame.
 
 ## Clutch
 
@@ -112,6 +167,12 @@ While clutch is active, the currently collected modifiers remain held even if th
 |---|---|
 | DualSense / DualShock 4 | Short-tap Touchpad to toggle, or long-press to hold |
 | Xbox | Short-tap View/Back or Menu/Start to toggle, or long-press to hold |
+
+### Clutch Parameters
+
+| Parameter | Current | Purpose |
+|---|---:|---|
+| `ClutchLongPressMs` | 250 ms | Long-press time for holding clutch on Touchpad / View / Menu |
 
 ## Typing Layers
 
@@ -135,7 +196,32 @@ The program sends physical keycodes. Characters requiring Shift (", :, |, ~) can
 
 Base-layer keys repeat while held. Character layers are virtual taps: one press sends one key stroke, and holding does not repeat.
 
+### Base Repeat Parameters
+
+| Parameter | Current | Purpose |
+|---|---:|---|
+| `RepeatDelayMs` | 300 ms | Delay after the initial base-layer press before repeat starts |
+| `BaseRepeatSlowIntervalMs` | 120 ms | Starting repeat interval |
+| `BaseRepeatRampMs` | 1500 ms | Time to ramp from slow repeat to fastest repeat |
+| `RepeatIntervalMs` | 12 ms | Fastest repeat interval |
+| Repeat curve exponent | 3.0 | Cubic acceleration over frequency; the ramp segment is continuous |
+
 If multiple layer buttons are pressed on the same polling timestamp, tie priority is `R1 > L1 > R2 > L2`. Combo formation still only considers the latest two active layer buttons after that priority sort.
+
+### Layer Timing Parameters
+
+ShikiPad uses short time windows to absorb human input errors when typing quickly.
+
+| Parameter | Current | Purpose |
+|---|---:|---|
+| `ComboLayerWindowMs` | 35 ms | Maximum interval for two layer buttons to form a combo layer |
+| `ActionLayerGraceMs` | 35 ms | Grace window between action key and layer recognition |
+| `ActionLayerPostGraceMs` | 15 ms | Grace window after a layer is released before a new layer is pressed |
+| `LayerTakeoverWindowMs` | 25 ms | Cumulative body cap; after the 15 ms cutoff lands inside a boundary old layer body, backward tracing can continue only until cumulative body occupancy reaches 25 ms |
+| `LayerOccupancyCarryCutoffMs` | 15 ms | Cumulative body cutoff for backward layer tracing; total lookback is still `ActionLayerGraceMs`, but once cumulative body occupancy reaches this cutoff, tracing can continue only inside the current boundary body up to `LayerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
+| `ActionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |
+
+Combo layers are treated as their own layers: the same physical single-key press that helps form a combo still occupies the 35 ms timeline, but it does not count as that combo layer's own body accumulation and cannot trigger that combo layer's 15 ms / 25 ms body limits.
 
 ## Troubleshooting
 
@@ -146,18 +232,3 @@ Install Interception, restart Windows, and run `ShikiPad.exe` as administrator.
 ### System or game double input
 
 If Windows still sees the physical controller while ShikiPad is running, the same stick movement can be handled twice: once by ShikiPad and once by Windows or the focused app. Typical symptoms include left-stick `Alt` plus `Tab` jumping unpredictably between windows, or the left-stick `Win` modifier failing because Windows treats controller input as Start menu, taskbar, or app icon navigation. Configure HidHide as described above so only ShikiPad can see the PlayStation controller. Xbox controllers use XInput, so HidHide usually cannot hide them at the HID layer.
-
-## Timing Model Parameters
-
-ShikiPad uses short time windows to absorb human input errors when typing quickly.
-
-| Parameter | Default | Purpose |
-|---|---:|---|
-| `comboLayerWindowMs` | 35 ms | Maximum interval for two layer buttons to form a combo layer |
-| `actionLayerGraceMs` | 35 ms | Grace window between action key and layer recognition |
-| `actionLayerPostGraceMs` | 15 ms | Grace window after a layer is released before a new layer is pressed |
-| `layerTakeoverWindowMs` | 25 ms | Cumulative body cap; after the 15 ms cutoff lands inside a boundary old layer body, backward tracing can continue only until cumulative body occupancy reaches 25 ms |
-| `layerOccupancyCarryCutoffMs` | 15 ms | Cumulative body cutoff for backward layer tracing; total lookback is still `actionLayerGraceMs`, but once cumulative body occupancy reaches this cutoff, tracing can continue only inside the current boundary body up to `layerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
-| `actionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |
-
-Combo layers are treated as their own layers: the same physical single-key press that helps form a combo still occupies the 35 ms timeline, but it does not count as that combo layer's own body accumulation and cannot trigger that combo layer's 15 ms / 25 ms body limits.
