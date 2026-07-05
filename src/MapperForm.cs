@@ -623,9 +623,9 @@ internal sealed class MapperForm : Form {
         } else if (fingers == 1 && mode == TouchGestureMode.Hold) {
             switch (direction) {
                 case TouchGestureDirection.Up:
-                    key = PhysicalKey.Tab; shift = true; ctrl = true; break;
+                    key = PhysicalKey.Home; break;
                 case TouchGestureDirection.Down:
-                    key = PhysicalKey.Tab; ctrl = true; break;
+                    key = PhysicalKey.End; break;
                 case TouchGestureDirection.Left:
                     key = PhysicalKey.F4; alt = true; repeatable = false; break;
                 case TouchGestureDirection.Right:
@@ -636,9 +636,9 @@ internal sealed class MapperForm : Form {
         } else if (fingers == 2 && mode == TouchGestureMode.Direct) {
             switch (direction) {
                 case TouchGestureDirection.Up:
-                    key = PhysicalKey.Home; break;
+                    key = PhysicalKey.Tab; shift = true; ctrl = true; break;
                 case TouchGestureDirection.Down:
-                    key = PhysicalKey.End; break;
+                    key = PhysicalKey.Tab; ctrl = true; break;
                 case TouchGestureDirection.Left:
                     key = PhysicalKey.ArrowLeft; shift = true; win = true; repeatable = false; break;
                 case TouchGestureDirection.Right:
