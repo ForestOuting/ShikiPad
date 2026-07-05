@@ -83,7 +83,7 @@ internal static class Program {
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↑/↓ 滚轮; ← Shift; ↙ Ctrl; ↘ Alt; → Win; ↖ Esc; ↗ Fn", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + (xbox ? "蓄力        View/Menu 短按 / 长按保持" : "蓄力        触控板短按 / 长按保持"), blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + (xbox ? "蓄力        View/Menu 短按锁定 / 长按保持" : "蓄力        触控板短按锁定 / 长按保持"), blockWidth);
         if (!xbox) WriteManualGradientLine(width, panelWidth, pad + "静音键      大写锁定", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "Fn          1..0 / - / =  →  F1..F12", blockWidth);

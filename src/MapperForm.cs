@@ -40,6 +40,7 @@ internal sealed class MapperForm : Form {
     private bool _clutchCarryActive;
     private bool _prevPhysicalClutchActive;
     private bool _prevClutchActive;
+    private bool _suppressClutchCarryOnce;
     private bool _prevCreate;
     private bool _prevOptions;
     private bool _prevHome;
@@ -329,8 +330,14 @@ internal sealed class MapperForm : Form {
         bool modifierDirection = IsLeftStickModifierDirection(_leftDirection);
         if (!modifierDirection) {
             _clutchCarryActive = false;
+            _suppressClutchCarryOnce = false;
         } else if (!physicalClutch && _prevPhysicalClutchActive) {
-            _clutchCarryActive = true;
+            if (_suppressClutchCarryOnce) {
+                _clutchCarryActive = false;
+                _suppressClutchCarryOnce = false;
+            } else {
+                _clutchCarryActive = true;
+            }
         }
 
         bool clutch = IsClutchActive();
@@ -1214,6 +1221,7 @@ internal sealed class MapperForm : Form {
         hold.KeyDownMs = now;
         hold.RepeatStartedMs = now;
         hold.NextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
+        ReleaseClutchAfterAction();
     }
 
     private void TapActionKey(int index, KeyStroke key, string reason) {
@@ -1223,6 +1231,13 @@ internal sealed class MapperForm : Form {
         _injector.CurrentReason = reason;
         DebugSources("Source=" + source + " Button=" + btn + " Mode=Tap -> " + MappingEngine.KeyName(key));
         _injector.KeyTap(key.Key, key.Shift, false, false, false);
+        ReleaseClutchAfterAction();
+    }
+
+    private void ReleaseClutchAfterAction() {
+        if (_clutchButton.DeactivateToggle()) {
+            _suppressClutchCarryOnce = true;
+        }
     }
 
     private void ReleaseActionKey(int index, KeyStroke key, string reason) {
@@ -1399,6 +1414,7 @@ internal sealed class MapperForm : Form {
         _clutchCarryActive = false;
         _prevPhysicalClutchActive = false;
         _prevClutchActive = false;
+        _suppressClutchCarryOnce = false;
         _touchGesture.Reset();
         _prevCreate = false;
         _prevOptions = false;
