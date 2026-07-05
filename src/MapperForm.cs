@@ -614,9 +614,9 @@ internal sealed class MapperForm : Form {
                 case TouchGestureDirection.Down:
                     key = PhysicalKey.Escape; alt = true; break;
                 case TouchGestureDirection.Left:
-                    key = PhysicalKey.F4; alt = true; repeatable = false; break;
+                    key = PhysicalKey.ArrowLeft; ctrl = true; win = true; break;
                 case TouchGestureDirection.Right:
-                    key = PhysicalKey.S; shift = true; win = true; repeatable = false; break;
+                    key = PhysicalKey.ArrowRight; ctrl = true; win = true; break;
                 default:
                     return false;
             }
@@ -627,38 +627,27 @@ internal sealed class MapperForm : Form {
                 case TouchGestureDirection.Down:
                     key = PhysicalKey.Tab; ctrl = true; break;
                 case TouchGestureDirection.Left:
-                    key = PhysicalKey.ArrowLeft; alt = true; break;
+                    key = PhysicalKey.S; shift = true; win = true; repeatable = false; break;
                 case TouchGestureDirection.Right:
-                    key = PhysicalKey.ArrowRight; alt = true; break;
+                    key = PhysicalKey.F4; alt = true; repeatable = false; break;
                 default:
                     return false;
             }
         } else if (fingers == 2 && mode == TouchGestureMode.Direct) {
             switch (direction) {
                 case TouchGestureDirection.Up:
-                    key = PhysicalKey.ArrowLeft; ctrl = true; win = true; break;
-                case TouchGestureDirection.Down:
-                    key = PhysicalKey.ArrowRight; ctrl = true; win = true; break;
-                case TouchGestureDirection.Left:
-                    key = PhysicalKey.Delete; break;
-                case TouchGestureDirection.Right:
-                    key = PhysicalKey.Escape; shift = true; ctrl = true; repeatable = false; break;
-                default:
-                    return false;
-            }
-        } else if (fingers == 2 && mode == TouchGestureMode.Hold) {
-            switch (direction) {
-                case TouchGestureDirection.Up:
                     key = PhysicalKey.Home; break;
                 case TouchGestureDirection.Down:
                     key = PhysicalKey.End; break;
                 case TouchGestureDirection.Left:
-                    key = PhysicalKey.ArrowLeft; shift = true; win = true; break;
+                    key = PhysicalKey.ArrowLeft; shift = true; win = true; repeatable = false; break;
                 case TouchGestureDirection.Right:
-                    key = PhysicalKey.ArrowRight; shift = true; win = true; break;
+                    key = PhysicalKey.ArrowRight; shift = true; win = true; repeatable = false; break;
                 default:
                     return false;
             }
+        } else if (fingers == 2 && mode == TouchGestureMode.Hold) {
+            return false;
         } else {
             return false;
         }
