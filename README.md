@@ -36,17 +36,18 @@ To let Windows and games see the controller normally again, re-check `Inverse ap
 
 ## Release Package
 
-A release archive contains only:
+A release archive follows the actual desktop `ShikiPad.zip` package. The current package contains:
 
 | File | Purpose |
 |---|---|
-| `ShikiPad.exe` | Main program |
-| `install_driver.bat` | Interception driver installer helper |
-| `interception.dll` | Interception runtime |
 | `driver/install-interception.exe` | Interception driver installer |
+| `ShikiPad.exe` | Main program |
+| `interception.dll` | Interception runtime |
+| `install_driver.bat` | Interception driver installer helper |
 | `README.md` / `README.zh-CN.md` | Documentation |
-
-ShikiPad may create `shikipad.default` after launch. It only stores the default controller profile and is not part of the release package.
+| `shikipad.default` | Default controller profile |
+| `shiki.ico` | Program icon |
+| `ShikiPad.manifest` | Windows application manifest |
 
 ## Install
 
@@ -98,18 +99,18 @@ The right stick uses continuous velocity integration: `radius = sqrt(x*x + y*y)`
 
 ## Touchpad Gestures
 
-Touchpad gestures are available on PlayStation controllers. The current rule is simple: once movement from the touch start reaches `TouchGestureThreshold`, ShikiPad compares the left / right / up / down components and recognizes whichever direction is largest. No shortcut fires before that threshold is reached.
+Touchpad gestures are available on PlayStation controllers. The current rule is lenient: if two fingers appear at any point during the gesture, the gesture uses the two-finger map; only gestures that never have two fingers use the one-finger map. Direction no longer uses the center point. Instead, once any active finger moves from its own start point by `TouchGestureThreshold`, ShikiPad recognizes that finger's largest left / right / up / down component. No shortcut fires before that threshold is reached.
 
 ### Touchpad Mappings
 
 | Gesture | Up | Down | Left | Right |
 |---|---|---|---|---|
-| One-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | `Shift + Win + S` screenshot | `Alt + F4` close app |
+| One-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | `Alt + F4` close app | `Shift + Win + S` screenshot |
 | One-finger hold-then-swipe | `Ctrl + Shift + Tab` previous tab | `Ctrl + Tab` next tab | `Alt + ←` back | `Alt + →` forward |
 | Two-finger direct swipe | `Win + Ctrl + ←` previous window | `Win + Ctrl + →` next window | `Delete` | `Ctrl + Shift + Esc` Task Manager |
 | Two-finger hold-then-swipe | `Home` | `End` | `Win + Shift + ←` move to left monitor | `Win + Shift + →` move to right monitor |
 
-All touchpad gestures repeat while the finger remains on the touchpad and the direction still satisfies the threshold, except one-finger direct left screenshot, one-finger direct right close app, and two-finger direct right Task Manager. The repeat interval is controlled by `TouchGestureRepeatMs`.
+All touchpad gestures repeat after recognition except one-finger direct left close app, one-finger direct right screenshot, and two-finger direct right Task Manager. After the first shortcut fires, ShikiPad waits `TouchGestureRepeatDelayMs`, then repeats at `TouchGestureRepeatMs`; repeat hold only requires at least one finger to remain on the touchpad.
 
 ### Touchpad Parameters
 
@@ -118,6 +119,7 @@ All touchpad gestures repeat while the finger remains on the touchpad and the di
 | `TouchGestureMoveStartThreshold` | 50 | Distance that marks the finger as moving; this only changes state and does not fire a shortcut |
 | `TouchGestureThreshold` | 250 | Direction distance required to recognize a swipe |
 | `TouchGestureHoldMs` | 150 ms | If recognition happens after this much time from touch start, the gesture uses the hold-then-swipe map |
+| `TouchGestureRepeatDelayMs` | 550 ms | Delay between the initial gesture shortcut and the first repeat |
 | `TouchGestureRepeatMs` | 350 ms | Repeat interval while the recognized gesture remains held |
 
 ## Voice Input
@@ -138,7 +140,7 @@ If controller typing still feels difficult, pair ShikiPad with voice input softw
 
 Fn turns number-row keys into `F1` to `F12`: `1..0` map to `F1..F10`, `-` maps to `F11`, and `=` maps to `F12`.
 
-Left-stick wheel speed is continuous by radius: the current Up/Down sector chooses wheel direction, while distance from center drives an exponent-1.5 geometric interval curve from 1500 ms slow scrolling to 15 ms fast scrolling.
+Left-stick wheel speed is continuous by radius: once the stick first enters the Up/Down sector, wheel mode uses the current vertical axis for wheel direction, so small drifts into diagonal up/down sectors do not interrupt scrolling. Distance from center drives an exponent-3.0 speed curve from the 1500 ms slow floor to the 15 ms fast ceiling.
 
 When the left stick first enters a non-wheel functional sector, ShikiPad keeps that modifier intent until the stick returns below the exit deadzone. Wheel output uses the current Up/Down sector for direction, while wheel speed still follows the current radius continuously.
 
@@ -148,14 +150,14 @@ When the left stick first enters a non-wheel functional sector, ShikiPad keeps t
 |---|---:|---|
 | `LeftStickEnterDeadzone` | 0.25 | Radius needed to enter a left-stick functional sector |
 | `LeftStickExitDeadzone` | 0.15 | Radius below which left-stick wheel/modifier intent resets |
-| `MouseScrollCurveExponent` | 1.5 | Left-stick wheel radius curve exponent |
+| `MouseScrollCurveExponent` | 3.0 | Left-stick wheel radius curve exponent |
 | `ScrollSlowIntervalMs` | 1500 ms | Slowest wheel interval |
 | `ScrollFastIntervalMs` | 15 ms | Fastest wheel interval |
 | `WheelDelta` | 120 | One standard wheel detent |
-| `WheelQuantum` | 4 | Minimum wheel output quantum; 30 quanta equal one standard 120 wheel detent |
+| `WheelRoundingThreshold` | 0.5 | Same idea as right-stick mouse rounding: fractional wheel amount rounds to an integer once it reaches half a unit |
 | `MaxWheelDeltaPerFrame` | 120 | Maximum wheel output per frame |
 
-The left-stick wheel now follows the same integration idea as the right stick, with wheel-specific quantization. Radius is normalized as `(radius - LeftStickEnterDeadzone) / (1 - LeftStickEnterDeadzone)`, then `power = normalized ^ MouseScrollCurveExponent`. The wheel interval uses geometric interpolation: `interval = ScrollSlowIntervalMs * (ScrollFastIntervalMs / ScrollSlowIntervalMs) ^ power`, and speed is `WheelDelta * 1000 / interval`. Fractional wheel amount is accumulated, quantized to multiples of 4 after it reaches half a quantum, and capped at 120 per frame.
+The left-stick wheel now follows the right-stick mouse integration idea more closely. Radius is normalized as `(radius - LeftStickEnterDeadzone) / (1 - LeftStickEnterDeadzone)`, then `power = normalized ^ MouseScrollCurveExponent`. Maximum speed is `WheelDelta * 1000 / ScrollFastIntervalMs`; current speed is `maximum speed * power`, with a slow floor of `WheelDelta * 1000 / ScrollSlowIntervalMs`. Fractional wheel amount accumulates each frame and rounds to an integer after it reaches 0.5, just like right-stick pixel movement, capped at 120 per frame.
 
 ## Clutch
 

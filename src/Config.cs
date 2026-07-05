@@ -7,7 +7,7 @@ internal sealed class Config {
     public double RightStickDeadzone = 0.015;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 3.0;
-    public double MouseScrollCurveExponent = 1.5;
+    public double MouseScrollCurveExponent = 3.0;
     public double LeftStickEnterDeadzone = 0.25;
     public double LeftStickExitDeadzone = 0.15;
     public double TriggerPressThreshold = 0.25;
@@ -28,6 +28,7 @@ internal sealed class Config {
     public double TouchGestureMoveStartThreshold = 50.0;
     public double TouchGestureThreshold = 250.0;
     public int TouchGestureHoldMs = 150;
+    public int TouchGestureRepeatDelayMs = 550;
     public int TouchGestureRepeatMs = 350;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;

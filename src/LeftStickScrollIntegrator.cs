@@ -2,7 +2,6 @@ using System;
 
 internal sealed class LeftStickScrollIntegrator {
     internal const int WheelDelta = 120;
-    private const int WheelQuantum = 4;
     private const int MaxWheelDeltaPerFrame = 120;
 
     private double _accumulatedWheelDelta;
@@ -38,7 +37,7 @@ internal sealed class LeftStickScrollIntegrator {
         }
 
         _accumulatedWheelDelta += direction * WheelDeltaPerSecond(normalized, config) * deltaSec;
-        wheelDelta = TakeQuantizedWheelDelta(ref _accumulatedWheelDelta);
+        wheelDelta = TakeRoundedWheelDelta(ref _accumulatedWheelDelta);
         return wheelDelta != 0;
     }
 
@@ -49,25 +48,33 @@ internal sealed class LeftStickScrollIntegrator {
     }
 
     internal static double ScrollIntervalMs(double normalizedRadius, Config config) {
-        double normalized = Clamp(normalizedRadius, 0.0, 1.0);
-        double slowInterval = Math.Max(1.0, (double)config.ScrollSlowIntervalMs);
-        double fastInterval = Math.Max(1.0, Math.Min((double)config.ScrollFastIntervalMs, slowInterval));
-        double power = Math.Pow(normalized, Math.Max(0.001, config.MouseScrollCurveExponent));
-        return slowInterval * Math.Pow(fastInterval / slowInterval, power);
+        double rate = WheelDeltaPerSecond(normalizedRadius, config);
+        if (rate <= 0.0) return double.PositiveInfinity;
+        return WheelDelta * 1000.0 / rate;
     }
 
     internal static double WheelDeltaPerSecond(double normalizedRadius, Config config) {
-        return WheelDelta * 1000.0 / Math.Max(1.0, ScrollIntervalMs(normalizedRadius, config));
+        double normalized = Clamp(normalizedRadius, 0.0, 1.0);
+        if (normalized <= 0.0) return 0.0;
+
+        double slowInterval = Math.Max(1.0, (double)config.ScrollSlowIntervalMs);
+        double fastInterval = Math.Max(1.0, Math.Min((double)config.ScrollFastIntervalMs, slowInterval));
+        double slowRate = WheelDelta * 1000.0 / slowInterval;
+        double fastRate = WheelDelta * 1000.0 / fastInterval;
+        double powerRatio = Math.Pow(normalized, Math.Max(0.001, config.MouseScrollCurveExponent));
+        double rate = fastRate * powerRatio;
+        if (rate < slowRate) rate = slowRate;
+        if (rate > fastRate) rate = fastRate;
+        return rate;
     }
 
-    private static int TakeQuantizedWheelDelta(ref double accumulator) {
+    private static int TakeRoundedWheelDelta(ref double accumulator) {
         int delta = 0;
-        double halfQuantum = WheelQuantum * 0.5;
-        if (accumulator >= halfQuantum) {
-            delta = (int)Math.Floor((accumulator + halfQuantum) / WheelQuantum) * WheelQuantum;
+        if (accumulator >= 0.5) {
+            delta = (int)Math.Floor(accumulator + 0.5);
             if (delta > MaxWheelDeltaPerFrame) delta = MaxWheelDeltaPerFrame;
-        } else if (accumulator <= -halfQuantum) {
-            delta = (int)Math.Ceiling((accumulator - halfQuantum) / WheelQuantum) * WheelQuantum;
+        } else if (accumulator <= -0.5) {
+            delta = (int)Math.Ceiling(accumulator - 0.5);
             if (delta < -MaxWheelDeltaPerFrame) delta = -MaxWheelDeltaPerFrame;
         }
         accumulator -= delta;
