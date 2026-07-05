@@ -163,12 +163,12 @@ The left-stick wheel now follows the right-stick mouse integration idea more clo
 
 Normally, the left stick holds one modifier at a time. Clutch collects multiple modifiers and releases them together.
 
-While clutch is active, the currently collected modifiers remain held even if the left stick moves away from their original direction. This lets you keep a modifier, move the stick up or down for wheel input, or move to another modifier direction to add it to the stack. A short-tap clutch lock releases automatically after any action button actually sends a key; long-press clutch still holds while pressed and releases on button up.
+While clutch is active, the currently collected modifiers remain held even if the left stick moves away from their original direction. This lets you keep a modifier, move the stick up or down for wheel input, or move to another modifier direction to add it to the stack. A short-tap clutch lock releases automatically after any action button actually sends a key; if no action key has fired yet, short-tap again to cancel the lock. Long-press clutch still holds while pressed and releases on button up.
 
 | Controller | Activate / hold |
 |---|---|
-| DualSense / DualShock 4 | Short-tap Touchpad to lock until the next action key, or long-press to hold |
-| Xbox | Short-tap View/Back or Menu/Start to lock until the next action key, or long-press to hold |
+| DualSense / DualShock 4 | Short-tap Touchpad to lock until the next action key, short-tap again to cancel, or long-press to hold |
+| Xbox | Short-tap View/Back or Menu/Start to lock until the next action key, short-tap again to cancel, or long-press to hold |
 
 ### Clutch Parameters
 

@@ -6,6 +6,7 @@ internal sealed class ClutchButtonStateMachine {
 
     private bool _prevDown;
     private bool _longPress;
+    private bool _startedToggled;
     private bool _suppressShortTap;
     private double _downMs;
 
@@ -19,6 +20,7 @@ internal sealed class ClutchButtonStateMachine {
         if (down && !_prevDown) {
             Held = true;
             _longPress = false;
+            _startedToggled = Toggled;
             _suppressShortTap = false;
             _downMs = nowMs;
         } else if (down && _prevDown) {
@@ -26,12 +28,13 @@ internal sealed class ClutchButtonStateMachine {
         } else if (!down && _prevDown) {
             double heldMs = nowMs - _downMs;
             if (!_longPress && heldMs < thresholdMs && !_suppressShortTap) {
-                Toggled = true;
+                Toggled = !_startedToggled;
             } else {
                 Toggled = false;
             }
             Held = false;
             _longPress = false;
+            _startedToggled = false;
             _suppressShortTap = false;
             _downMs = 0;
         }
@@ -51,6 +54,7 @@ internal sealed class ClutchButtonStateMachine {
         Held = false;
         _prevDown = false;
         _longPress = false;
+        _startedToggled = false;
         _suppressShortTap = false;
         _downMs = 0;
     }
