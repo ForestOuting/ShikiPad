@@ -627,9 +627,9 @@ internal sealed class MapperForm : Form {
                 case TouchGestureDirection.Down:
                     key = PhysicalKey.Tab; ctrl = true; break;
                 case TouchGestureDirection.Left:
-                    key = PhysicalKey.S; shift = true; win = true; repeatable = false; break;
-                case TouchGestureDirection.Right:
                     key = PhysicalKey.F4; alt = true; repeatable = false; break;
+                case TouchGestureDirection.Right:
+                    key = PhysicalKey.S; shift = true; win = true; repeatable = false; break;
                 default:
                     return false;
             }

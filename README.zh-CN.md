@@ -106,11 +106,11 @@ PlayStation 手柄的 HidHide 设置:
 | 手势 | 上 | 下 | 左 | 右 |
 |---|---|---|---|---|
 | 一指直接滑 | `Alt + Shift + Esc` 上一个窗口 | `Alt + Esc` 下一个窗口 | `Win + Ctrl + ←` 前一个窗口 | `Win + Ctrl + →` 后一个窗口 |
-| 一指长按后滑 | `Ctrl + Shift + Tab` 上一个标签页 | `Ctrl + Tab` 下一个标签页 | `Shift + Win + S` 截图 | `Alt + F4` 关闭软件 |
+| 一指长按后滑 | `Ctrl + Shift + Tab` 上一个标签页 | `Ctrl + Tab` 下一个标签页 | `Alt + F4` 关闭软件 | `Shift + Win + S` 截图 |
 | 二指直接滑 | `Home` | `End` | `Win + Shift + ←` 移到左显示器 | `Win + Shift + →` 移到右显示器 |
 | 二指长按后滑 | 空位 | 空位 | 空位 | 空位 |
 
-除了一指长按后左滑截图、一指长按后右滑关闭软件、二指直接左/右滑移动窗口到显示器、二指长按后滑空位之外, 其余触控板手势都会在识别后持续连发. 第一次快捷键触发后, 先等待 `TouchGestureRepeatDelayMs`, 再按 `TouchGestureRepeatMs` 的间隔连续触发; 连发保持时只要求触控板上仍有至少一根手指.
+除了一指长按后左滑关闭软件、一指长按后右滑截图、二指直接左/右滑移动窗口到显示器、二指长按后滑空位之外, 其余触控板手势都会在识别后持续连发. 第一次快捷键触发后, 先等待 `TouchGestureRepeatDelayMs`, 再按 `TouchGestureRepeatMs` 的间隔连续触发; 连发保持时只要求触控板上仍有至少一根手指.
 
 ### 触控板参数
 
