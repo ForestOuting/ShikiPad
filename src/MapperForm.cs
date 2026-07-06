@@ -225,10 +225,10 @@ internal sealed class MapperForm : Form {
         UpdateClutchButton(s, now);
         UpdateTouchGestures(s, now);
 
-        UpdateLeftStick(s, deltaSec);
-        UpdateActionButtons(s, now);
         UpdateMouseButtons(s, now);
         UpdateRightStick(s, now, deltaSec);
+        UpdateLeftStick(s, deltaSec);
+        UpdateActionButtons(s, now);
         UpdateSystemButtons(s, now);
     }
 
@@ -630,13 +630,13 @@ internal sealed class MapperForm : Form {
         } else if (fingers == 1 && mode == TouchGestureMode.Hold) {
             switch (direction) {
                 case TouchGestureDirection.Up:
-                    key = PhysicalKey.Home; break;
-                case TouchGestureDirection.Down:
-                    key = PhysicalKey.End; break;
-                case TouchGestureDirection.Left:
-                    key = PhysicalKey.F4; alt = true; repeatable = false; break;
-                case TouchGestureDirection.Right:
                     key = PhysicalKey.S; shift = true; win = true; repeatable = false; break;
+                case TouchGestureDirection.Down:
+                    key = PhysicalKey.F4; alt = true; repeatable = false; break;
+                case TouchGestureDirection.Left:
+                    key = PhysicalKey.ArrowLeft; shift = true; win = true; repeatable = false; break;
+                case TouchGestureDirection.Right:
+                    key = PhysicalKey.ArrowRight; shift = true; win = true; repeatable = false; break;
                 default:
                     return false;
             }
@@ -647,9 +647,9 @@ internal sealed class MapperForm : Form {
                 case TouchGestureDirection.Down:
                     key = PhysicalKey.Tab; ctrl = true; break;
                 case TouchGestureDirection.Left:
-                    key = PhysicalKey.ArrowLeft; shift = true; win = true; repeatable = false; break;
+                    key = PhysicalKey.ArrowLeft; alt = true; break;
                 case TouchGestureDirection.Right:
-                    key = PhysicalKey.ArrowRight; shift = true; win = true; repeatable = false; break;
+                    key = PhysicalKey.ArrowRight; alt = true; break;
                 default:
                     return false;
             }
@@ -657,6 +657,12 @@ internal sealed class MapperForm : Form {
             switch (direction) {
                 case TouchGestureDirection.Up:
                     key = PhysicalKey.Escape; shift = true; ctrl = true; repeatable = false; break;
+                case TouchGestureDirection.Down:
+                    key = PhysicalKey.Delete; break;
+                case TouchGestureDirection.Left:
+                    key = PhysicalKey.Home; break;
+                case TouchGestureDirection.Right:
+                    key = PhysicalKey.End; break;
                 default:
                     return false;
             }
