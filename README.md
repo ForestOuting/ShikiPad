@@ -107,11 +107,11 @@ Touchpad gestures are available on PlayStation controllers. The current rule is 
 | Gesture | Up | Down | Left | Right |
 |---|---|---|---|---|
 | One-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | `Win + Ctrl + ←` previous window | `Win + Ctrl + →` next window |
-| One-finger hold-then-swipe | `Shift + Win + S` screenshot | `Alt + F4` close app | `Win + Shift + ←` move to left monitor | `Win + Shift + →` move to right monitor |
+| One-finger hold-then-swipe | `Home` | `End` | `Alt + F4` close app | `Shift + Win + S` screenshot |
 | Two-finger direct swipe | `Ctrl + Shift + Tab` previous tab | `Ctrl + Tab` next tab | `Alt + ←` back | `Alt + →` forward |
-| Two-finger hold-then-swipe | `Ctrl + Shift + Esc` control panel | `Delete` | `Home` | `End` |
+| Two-finger hold-then-swipe | `Ctrl + Shift + Esc` control panel | Empty | `Win + Shift + ←` move to left monitor | `Win + Shift + →` move to right monitor |
 
-All touchpad gestures repeat after recognition except one-finger hold-up screenshot, one-finger hold-down close app, one-finger hold-left/right monitor moves, and two-finger hold-up control panel. After the first shortcut fires, ShikiPad waits `TouchGestureRepeatDelayMs`, then repeats at `TouchGestureRepeatMs`; repeat hold only requires at least one finger to remain on the touchpad.
+All touchpad gestures repeat after recognition except one-finger hold-left close app, one-finger hold-right screenshot, two-finger hold-up control panel, two-finger hold-left/right monitor moves, and the empty two-finger hold-down gesture. After the first shortcut fires, ShikiPad waits `TouchGestureRepeatDelayMs`, then repeats at `TouchGestureRepeatMs`; repeat hold only requires at least one finger to remain on the touchpad.
 
 ### Touchpad Parameters
 
