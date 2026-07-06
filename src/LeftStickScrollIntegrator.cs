@@ -5,13 +5,17 @@ internal sealed class LeftStickScrollIntegrator {
     private const int MaxWheelDeltaPerFrame = 120;
 
     private double _accumulatedWheelDelta;
+    private double _smoothedNormalizedRadius;
     private int _lastDirection;
     private bool _hasActiveDirection;
+    private bool _hasSmoothedRadius;
 
     public void Reset() {
         _accumulatedWheelDelta = 0.0;
+        _smoothedNormalizedRadius = 0.0;
         _lastDirection = 0;
         _hasActiveDirection = false;
+        _hasSmoothedRadius = false;
     }
 
     public bool TryUpdate(double radius, double deltaSec, Config config, int direction, out int wheelDelta) {
@@ -34,9 +38,11 @@ internal sealed class LeftStickScrollIntegrator {
             _hasActiveDirection = true;
             _lastDirection = direction;
             _accumulatedWheelDelta = 0.0;
+            _hasSmoothedRadius = false;
         }
 
-        _accumulatedWheelDelta += direction * WheelDeltaPerSecond(normalized, config) * deltaSec;
+        double smoothedNormalized = SmoothNormalizedRadius(normalized, deltaSec, config.MouseScrollSmoothingMs);
+        _accumulatedWheelDelta += direction * WheelDeltaPerSecond(smoothedNormalized, config) * deltaSec;
         wheelDelta = TakeRoundedWheelDelta(ref _accumulatedWheelDelta);
         return wheelDelta != 0;
     }
@@ -66,6 +72,29 @@ internal sealed class LeftStickScrollIntegrator {
         if (rate < slowRate) rate = slowRate;
         if (rate > fastRate) rate = fastRate;
         return rate;
+    }
+
+    private double SmoothNormalizedRadius(double normalized, double deltaSec, double smoothingMs) {
+        if (smoothingMs <= 0.0 || deltaSec <= 0.0) {
+            _smoothedNormalizedRadius = normalized;
+            _hasSmoothedRadius = true;
+            return normalized;
+        }
+
+        if (!_hasSmoothedRadius) {
+            _smoothedNormalizedRadius = normalized;
+            _hasSmoothedRadius = true;
+        } else {
+            double alpha = SmoothingAlpha(deltaSec, smoothingMs);
+            _smoothedNormalizedRadius += (normalized - _smoothedNormalizedRadius) * alpha;
+        }
+
+        return _smoothedNormalizedRadius;
+    }
+
+    private static double SmoothingAlpha(double deltaSec, double smoothingMs) {
+        double smoothingSec = Math.Max(0.001, smoothingMs / 1000.0);
+        return 1.0 - Math.Exp(-deltaSec / smoothingSec);
     }
 
     private static int TakeRoundedWheelDelta(ref double accumulator) {

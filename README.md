@@ -90,12 +90,13 @@ Closing the console window also exits and releases held keyboard and mouse input
 | `RightStickDeadzone` | 0.015 | Right-stick mouse deadzone |
 | `RightStickCurve` | power | Right-stick curve type; the current implementation uses a power curve |
 | `RightStickCurveExponent` | 3.0 | Right-stick radius curve exponent |
+| `RightStickSmoothingMs` | 8 ms | Short exponential smoothing on the right-stick X/Y input before the mouse curve |
 | Mouse frame multiplier | 120.0 | Internal multiplier in the right-stick velocity formula |
 | Mouse rounding threshold | 0.5 px | Fractional mouse movement is emitted once it reaches half a pixel |
 | `MaxMouseFrameSeconds` | 0.05 s | Per-frame mouse integration cap to prevent large jumps after a stalled frame |
 | `R3FreezeMs` | 60 ms | Cursor freeze duration when R3 starts a right click |
 
-The right stick uses continuous velocity integration: `radius = sqrt(x*x + y*y)`, `normalized = (radius - RightStickDeadzone) / (1 - RightStickDeadzone)`, `power = normalized ^ RightStickCurveExponent`, and per-frame movement is `direction * power * MouseMaxSpeed * deltaSec * 120 * MouseSensitivity`. X/Y fractional pixels are accumulated separately, rounded to integer pixels once they reach 0.5px, and the remainder is kept.
+The right stick uses continuous velocity integration. It first applies the 8 ms input smoother to X/Y, then calculates `radius = sqrt(x*x + y*y)`, `normalized = (radius - RightStickDeadzone) / (1 - RightStickDeadzone)`, `power = normalized ^ RightStickCurveExponent`, and per-frame movement as `direction * power * MouseMaxSpeed * deltaSec * 120 * MouseSensitivity`. X/Y fractional pixels are accumulated separately, rounded to integer pixels once they reach 0.5px, and the remainder is kept.
 
 ## Touchpad Gestures
 
@@ -151,13 +152,14 @@ When the left stick first enters a non-wheel functional sector, ShikiPad keeps t
 | `LeftStickEnterDeadzone` | 0.25 | Radius needed to enter a left-stick functional sector |
 | `LeftStickExitDeadzone` | 0.15 | Radius below which left-stick wheel/modifier intent resets |
 | `MouseScrollCurveExponent` | 3.0 | Left-stick wheel radius curve exponent |
+| `MouseScrollSmoothingMs` | 8 ms | Short exponential smoothing on the normalized wheel radius before the scroll curve |
 | `ScrollSlowIntervalMs` | 1500 ms | Slowest wheel interval |
 | `ScrollFastIntervalMs` | 15 ms | Fastest wheel interval |
 | `WheelDelta` | 120 | One standard wheel detent |
 | `WheelRoundingThreshold` | 0.5 | Same idea as right-stick mouse rounding: fractional wheel amount rounds to an integer once it reaches half a unit |
 | `MaxWheelDeltaPerFrame` | 120 | Maximum wheel output per frame |
 
-The left-stick wheel now follows the right-stick mouse integration idea more closely. Radius is normalized as `(radius - LeftStickEnterDeadzone) / (1 - LeftStickEnterDeadzone)`, then `power = normalized ^ MouseScrollCurveExponent`. Maximum speed is `WheelDelta * 1000 / ScrollFastIntervalMs`; current speed is `maximum speed * power`, with a slow floor of `WheelDelta * 1000 / ScrollSlowIntervalMs`. Fractional wheel amount accumulates each frame and rounds to an integer after it reaches 0.5, just like right-stick pixel movement, capped at 120 per frame.
+The left-stick wheel now follows the right-stick mouse integration idea more closely. Radius is normalized as `(radius - LeftStickEnterDeadzone) / (1 - LeftStickEnterDeadzone)`, the normalized radius receives the same short 8 ms style of smoothing, then `power = normalized ^ MouseScrollCurveExponent`. Maximum speed is `WheelDelta * 1000 / ScrollFastIntervalMs`; current speed is `maximum speed * power`, with a slow floor of `WheelDelta * 1000 / ScrollSlowIntervalMs`. Fractional wheel amount accumulates each frame and rounds to an integer after it reaches 0.5, just like right-stick pixel movement, capped at 120 per frame.
 
 ## Clutch
 
