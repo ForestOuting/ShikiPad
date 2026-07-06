@@ -7,9 +7,9 @@ internal sealed class Config {
     public double RightStickDeadzone = 0.015;
     public string RightStickCurve = "power";
     public double RightStickCurveExponent = 3.0;
-    public double RightStickSmoothingMs = 8.0;
+    public double RightStickSmoothingMs = 5.0;
     public double MouseScrollCurveExponent = 3.0;
-    public double MouseScrollSmoothingMs = 8.0;
+    public double MouseScrollSmoothingMs = 5.0;
     public double LeftStickEnterDeadzone = 0.25;
     public double LeftStickExitDeadzone = 0.15;
     public double TriggerPressThreshold = 0.25;
