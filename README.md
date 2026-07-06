@@ -198,7 +198,7 @@ The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y
 
 The program sends physical keycodes. Characters requiring Shift (", :, |, ~) can be entered by holding the left stick `Shift` direction and pressing the corresponding base key (', ;, \, backtick).
 
-Base-layer keys repeat while held. Character layers are virtual taps: one press sends one key stroke, and holding does not repeat.
+Base-layer keys repeat while held. Character layers are virtual taps: one press sends one key stroke, and holding does not repeat. Once an action key has resolved to a layer and is held, later shoulder/trigger changes do not reassign that held physical key until it is released.
 
 ### Base Repeat Parameters
 
@@ -223,7 +223,6 @@ ShikiPad uses short time windows to absorb human input errors when typing quickl
 | `ActionLayerPostGraceMs` | 15 ms | Grace window after a layer is released before a new layer is pressed |
 | `LayerTakeoverWindowMs` | 25 ms | Cumulative body cap; after the 15 ms cutoff lands inside a boundary old layer body, backward tracing can continue only until cumulative body occupancy reaches 25 ms |
 | `LayerOccupancyCarryCutoffMs` | 15 ms | Cumulative body cutoff for backward layer tracing; total lookback is still `ActionLayerGraceMs`, but once cumulative body occupancy reaches this cutoff, tracing can continue only inside the current boundary body up to `LayerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
-| `ActionLayerSwitchGuardMs` | 35 ms | Suppress residual mis-touches when switching layers after a character is typed |
 
 Combo layers are treated as their own layers: the same physical single-key press that helps form a combo still occupies the 35 ms timeline, but it does not count as that combo layer's own body accumulation and cannot trigger that combo layer's 15 ms / 25 ms body limits.
 

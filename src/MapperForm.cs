@@ -794,43 +794,16 @@ internal sealed class MapperForm : Form {
                     continue;
                 }
 
+                if (hold.KeyIsDown) {
+                    UpdateBaseRepeat(i, ref hold, now);
+                    _holds[i] = hold;
+                    _prevDown[i] = curr;
+                    continue;
+                }
+
                 KeyStroke currentLayerKey = layerKey;
 
                 if (hold.Key != currentLayerKey) {
-                    if (hold.KeyLayer == Layer.Base && layer != Layer.Base) {
-                        if (hold.KeyIsDown) {
-                            ReleaseActionKey(i, hold.Key, "Button " + ActionButtonName(i) + " base release before layer change");
-                        }
-                        if (!currentLayerKey.IsNone) {
-                            _fnArmed = false;
-                            TapActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " base-to-layer virtual tap");
-                        }
-                        hold.Key = currentLayerKey;
-                        hold.KeyLayer = layer;
-                        hold.KeyIsDown = false;
-                        hold.RepeatEnabled = false;
-                        hold.SuppressUntilRelease = true;
-                        _holds[i] = hold;
-                        _prevDown[i] = curr;
-                        continue;
-                    }
-
-                    if (hold.KeyIsDown && ShouldSuppressLayerChangeDuringCharacterTap(hold, layer, now)) {
-                        ReleaseActionKey(i, hold.Key, "Button " + ActionButtonName(i) + " layer change suppress tap residue");
-                        hold.Key = KeyStroke.None;
-                        hold.KeyIsDown = false;
-                        hold.RepeatEnabled = false;
-                        hold.SuppressUntilRelease = true;
-                        _holds[i] = hold;
-                        _prevDown[i] = curr;
-                        continue;
-                    }
-
-                    if (hold.KeyIsDown) {
-                        ReleaseActionKey(i, hold.Key, "Button " + ActionButtonName(i) + " layer change release");
-                        hold.KeyIsDown = false;
-                    }
-
                     if (layer != Layer.Base || IsFunctionKey(currentLayerKey)) {
                         if (!currentLayerKey.IsNone) {
                             _fnArmed = false;
@@ -1198,14 +1171,6 @@ internal sealed class MapperForm : Form {
         }
 
         return layer;
-    }
-
-    private bool ShouldSuppressLayerChangeDuringCharacterTap(ButtonHold hold, Layer newLayer, double now) {
-        if (hold.KeyLayer == Layer.Base) return false;
-        if (IsComboLayer(hold.KeyLayer) && hold.KeyLayer != newLayer) return true;
-        if (newLayer == Layer.Base) return true;
-        if (hold.KeyLayer == newLayer) return false;
-        return now - hold.KeyDownMs <= _config.ActionLayerSwitchGuardMs;
     }
 
     private static bool IsComboLayer(Layer layer) {
