@@ -100,28 +100,26 @@ PlayStation 手柄的 HidHide 设置:
 
 ## 触控板手势
 
-触控板手势只在 PlayStation 手柄上可用. 当前规则是: 手势过程中只要出现过二指, 这次手势就按二指处理; 全程没有二指才按一指处理. 方向不再看中心点, 而是看任意一个当前触点从自己的起点移动到 `TouchGestureThreshold` 后, 取这个触点左 / 右 / 上 / 下四个方向分量里最大的方向. 没达到阈值不会触发快捷键.
+触控板手势只在 PlayStation 手柄上可用. 现在只启用左半区一指直接滑这一组映射; 过去的触控板映射已清空. 方向不再看中心点, 而是看任意一个当前触点从自己的起点移动到 `TouchGestureThreshold` 后, 取这个触点左 / 右 / 上 / 下四个方向分量里最大的方向. 如果这个触点起点在中间区, 程序会用识别瞬间的当前 X 位置判断左半区或右半区.
 
 ### 触控板映射
 
 | 手势 | 上 | 下 | 左 | 右 |
 |---|---|---|---|---|
-| 一指直接滑 | `Alt + Shift + Esc` 上一个窗口 | `Alt + Esc` 下一个窗口 | `Win + Ctrl + ←` 前一个窗口 | `Win + Ctrl + →` 后一个窗口 |
-| 一指长按后滑 | `Home` | `End` | `Alt + F4` 关闭软件 | `Shift + Win + S` 截图 |
-| 二指直接滑 | `Ctrl + Shift + Tab` 上一个标签页 | `Ctrl + Tab` 下一个标签页 | `Alt + ←` 后退 | `Alt + →` 前进 |
-| 二指长按后滑 | `Ctrl + Shift + Esc` 控制面板 | 空位 | `Win + Shift + ←` 移到左显示器 | `Win + Shift + →` 移到右显示器 |
+| 左半区一指直接滑 | `Alt + Shift + Esc` 上一个窗口 | `Alt + Esc` 下一个窗口 | 按住 `Alt + Shift`, 点按 `Tab` | 按住 `Alt`, 点按 `Tab` |
 
-除了一指长按后左滑关闭软件、一指长按后右滑截图、二指长按后上滑控制面板、二指长按后左/右滑移动窗口到显示器、二指长按后下滑空位之外, 其余触控板手势都会在识别后持续连发. 第一次快捷键触发后, 先等待 `TouchGestureRepeatDelayMs`, 再按 `TouchGestureRepeatMs` 的间隔连续触发; 连发保持时只要求触控板上仍有至少一根手指.
+连发按移动距离触发. 第一次触发需要移动到 `TouchGestureThreshold`; 识别后每继续移动 `TouchGestureRepeatDistance` 就再触发一次. 第一次触发后会把当前位置作为新的距离锚点, 所以第一下滑得比较多也不会立刻触发多次. 如果保持触控板时反向滑动, 反向第一次也只需要 `TouchGestureRepeatDistance`. 左/右滑会在手指仍停留在触控板时保持 `Alt` 或 `Alt + Shift`, 触摸结束后释放.
 
 ### 触控板参数
 
 | 参数名 | 当前值 | 作用 |
 |---|---:|---|
 | `TouchGestureMoveStartThreshold` | 50 | 认为手指已经开始移动的距离; 只改变状态, 不触发快捷键 |
-| `TouchGestureThreshold` | 250 | 真正识别为滑动手势的主方向距离 |
-| `TouchGestureHoldMs` | 150 ms | 从触摸开始到触发识别时, 超过此时间就按“长按后滑”处理 |
-| `TouchGestureRepeatDelayMs` | 550 ms | 手势首次触发后, 到第一次连发之间的等待时间 |
-| `TouchGestureRepeatMs` | 350 ms | 手势识别后保持触控板时的连发间隔 |
+| `TouchGestureThreshold` | 320 | 第一次识别并触发滑动所需的移动距离 |
+| `TouchGestureRepeatDistance` | 180 | 识别后每次连发所需的追加移动距离 |
+| `TouchGestureSideMiddleLeft` | 800 | 触控板中间区左边界 |
+| `TouchGestureSideMiddleRight` | 1119 | 触控板中间区右边界 |
+| `TouchGestureHoldMs` | 150 ms | 直接滑/长按后滑的分界; 当前长按后滑没有映射 |
 
 ## 语音输入
 

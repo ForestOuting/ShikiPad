@@ -100,28 +100,26 @@ The right stick uses continuous velocity integration. It first applies the 5 ms 
 
 ## Touchpad Gestures
 
-Touchpad gestures are available on PlayStation controllers. The current rule is lenient: if two fingers appear at any point during the gesture, the gesture uses the two-finger map; only gestures that never have two fingers use the one-finger map. Direction no longer uses the center point. Instead, once any active finger moves from its own start point by `TouchGestureThreshold`, ShikiPad recognizes that finger's largest left / right / up / down component. No shortcut fires before that threshold is reached.
+Touchpad gestures are available on PlayStation controllers. Only the left-half one-finger direct swipe map is active for now; all older touchpad mappings are intentionally empty. Direction no longer uses the center point. Instead, once any active finger moves from its own start point by `TouchGestureThreshold`, ShikiPad recognizes that finger's largest left / right / up / down component. If that finger started in the middle band, ShikiPad uses its X position at recognition time to decide left half vs right half.
 
 ### Touchpad Mappings
 
 | Gesture | Up | Down | Left | Right |
 |---|---|---|---|---|
-| One-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | `Win + Ctrl + ←` previous window | `Win + Ctrl + →` next window |
-| One-finger hold-then-swipe | `Home` | `End` | `Alt + F4` close app | `Shift + Win + S` screenshot |
-| Two-finger direct swipe | `Ctrl + Shift + Tab` previous tab | `Ctrl + Tab` next tab | `Alt + ←` back | `Alt + →` forward |
-| Two-finger hold-then-swipe | `Ctrl + Shift + Esc` control panel | Empty | `Win + Shift + ←` move to left monitor | `Win + Shift + →` move to right monitor |
+| Left-half one-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | Hold `Alt + Shift`, tap `Tab` | Hold `Alt`, tap `Tab` |
 
-All touchpad gestures repeat after recognition except one-finger hold-left close app, one-finger hold-right screenshot, two-finger hold-up control panel, two-finger hold-left/right monitor moves, and the empty two-finger hold-down gesture. After the first shortcut fires, ShikiPad waits `TouchGestureRepeatDelayMs`, then repeats at `TouchGestureRepeatMs`; repeat hold only requires at least one finger to remain on the touchpad.
+Repeats are distance-based. The first trigger requires `TouchGestureThreshold`; after that, every additional `TouchGestureRepeatDistance` in any recognized direction triggers another shortcut. The first trigger resets the distance anchor, so an oversized first swipe does not immediately fire multiple repeats. If the held finger reverses direction, the first reverse trigger also uses `TouchGestureRepeatDistance`. Left/right swipes keep `Alt` or `Alt + Shift` held while the finger remains on the touchpad, then release when the touch ends.
 
 ### Touchpad Parameters
 
 | Parameter | Current | Purpose |
 |---|---:|---|
 | `TouchGestureMoveStartThreshold` | 50 | Distance that marks the finger as moving; this only changes state and does not fire a shortcut |
-| `TouchGestureThreshold` | 250 | Direction distance required to recognize a swipe |
-| `TouchGestureHoldMs` | 150 ms | If recognition happens after this much time from touch start, the gesture uses the hold-then-swipe map |
-| `TouchGestureRepeatDelayMs` | 550 ms | Delay between the initial gesture shortcut and the first repeat |
-| `TouchGestureRepeatMs` | 350 ms | Repeat interval while the recognized gesture remains held |
+| `TouchGestureThreshold` | 320 | First distance required to recognize and trigger a swipe |
+| `TouchGestureRepeatDistance` | 180 | Additional movement distance required for each repeat after recognition |
+| `TouchGestureSideMiddleLeft` | 800 | Left edge of the touchpad middle band |
+| `TouchGestureSideMiddleRight` | 1119 | Right edge of the touchpad middle band |
+| `TouchGestureHoldMs` | 150 ms | Direct/hold cutoff; hold gestures are currently unmapped |
 
 ## Voice Input
 

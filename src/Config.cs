@@ -27,10 +27,11 @@ internal sealed class Config {
     public int ScrollSlowIntervalMs = 1500;
     public int ScrollFastIntervalMs = 15;
     public double TouchGestureMoveStartThreshold = 50.0;
-    public double TouchGestureThreshold = 250.0;
+    public double TouchGestureThreshold = 320.0;
+    public double TouchGestureRepeatDistance = 180.0;
+    public int TouchGestureSideMiddleLeft = 800;
+    public int TouchGestureSideMiddleRight = 1119;
     public int TouchGestureHoldMs = 150;
-    public int TouchGestureRepeatDelayMs = 550;
-    public int TouchGestureRepeatMs = 350;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
 }
