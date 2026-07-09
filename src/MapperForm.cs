@@ -10,7 +10,6 @@ internal sealed class MapperForm : Form {
     private const double MaxMouseFrameSeconds = 0.05;
     private readonly DirectHidController _hid;
     private readonly Config _config;
-    private readonly ControllerProfile _controllerProfile;
     private readonly InputInjector _injector;
     private readonly MappingEngine _mapping = new MappingEngine();
 
@@ -58,12 +57,9 @@ internal sealed class MapperForm : Form {
     private double _lastTickMs;
     private double _lastTickExceptionLogMs = -10000.0;
 
-    public bool RestartControllerSelectionRequested { get; private set; }
-
-    public MapperForm(Config config, ControllerProfile controllerProfile) {
+    public MapperForm(Config config) {
         _config = config;
-        _controllerProfile = controllerProfile;
-        _hid = new DirectHidController(controllerProfile);
+        _hid = new DirectHidController();
         _debugSources = false;
         _enabled = config.Enabled;
         _injector = new InputInjector(config.UseScanCode);
@@ -98,18 +94,14 @@ internal sealed class MapperForm : Form {
                         var key = Console.ReadKey(true);
                         if (key.Key == ConsoleKey.Enter) {
                             if (_manualVisible) {
-                                Program.PrintRunningHome(_controllerProfile, _config, _hid.DisplayName, _hid.State.Connected);
+                                Program.PrintRunningHome(_config, _hid.DisplayName, _hid.State.Connected);
                                 _manualVisible = false;
                             } else {
-                                Program.PrintDetailedManual(_controllerProfile, _config);
+                                Program.PrintDetailedManual(_config);
                                 _manualVisible = true;
                             }
                         } else if (key.Key == ConsoleKey.Escape) {
-                            if (_manualVisible) {
-                                try { BeginInvoke((MethodInvoker)delegate { Close(); }); } catch { try { Close(); } catch { } }
-                            } else {
-                                RequestControllerSelectionRestart();
-                            }
+                            CloseFromConsoleThread();
                             break;
                         }
                     }
@@ -121,8 +113,7 @@ internal sealed class MapperForm : Form {
         guideThread.Start();
     }
 
-    private void RequestControllerSelectionRestart() {
-        RestartControllerSelectionRequested = true;
+    private void CloseFromConsoleThread() {
         _manualVisible = false;
         try {
             if (IsHandleCreated) {
@@ -247,7 +238,7 @@ internal sealed class MapperForm : Form {
         }
         _runtimeReleased = false;
         if (!_printedConnectedGuide) {
-            Program.PrintConnectedWelcome(_controllerProfile, _config, _hid.DisplayName);
+            Program.PrintConnectedWelcome(_config, _hid.DisplayName);
             _manualVisible = false;
             _printedConnectedGuide = true;
         }
@@ -327,13 +318,6 @@ internal sealed class MapperForm : Form {
 
     private bool IsClutchActive() {
         return _clutchButton.Active;
-    }
-
-    private bool IsSonyController() {
-        return _controllerProfile == ControllerProfile.DualSense ||
-               _controllerProfile == ControllerProfile.DualSenseBT ||
-               _controllerProfile == ControllerProfile.DualShock4 ||
-               _controllerProfile == ControllerProfile.DualShock4BT;
     }
 
     private PhysicalKey GetLeftStickKey(StickDirection dir) {
@@ -517,12 +501,6 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateTouchpadClick(ControllerState s, double now) {
-        if (!IsSonyController()) {
-            ReleaseTouchpadClickKey();
-            _prevTouchClick = false;
-            return;
-        }
-
         if (s.TouchClick && !_prevTouchClick) {
             TouchpadClickResolution click = ResolveTouchpadClick(s, _config);
             if (click.Kind == TouchpadClickKind.Key && click.Key != PhysicalKey.None) {
@@ -599,7 +577,7 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateTouchGestures(ControllerState s, double now) {
-        if (!IsSonyController() || s.TouchClick) {
+        if (s.TouchClick) {
             _touchGestureBlockedUntilRelease = false;
             ResetTouchGesture();
             return;

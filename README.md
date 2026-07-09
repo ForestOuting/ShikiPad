@@ -1,25 +1,20 @@
 # ShikiPad
 
-ShikiPad is a native Windows controller-to-keyboard and mouse mapper. It works best with PlayStation controllers. DualSense and DualShock 4 expose the full ShikiPad feature set, while Xbox controllers work through XInput and are limited by Windows system behavior.
+ShikiPad is a native Windows controller-to-keyboard and mouse mapper focused on the wired PS5 DualSense controller.
 
 Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
 
-## Controller Choice
+## Supported Controller
 
-Use a DualSense or DualShock 4 controller when possible. This gives ShikiPad the most complete input surface, including Sony-specific buttons such as Home, Create/Share, Options/Menu, and DualSense Mute.
+Use an official DualSense controller over USB. Bluetooth, Xbox, and DualShock 4 modes are intentionally not supported in the current build.
 
-Many third-party controllers support multiple modes. If yours can switch modes, PS4 / DualShock 4 mode is recommended for ShikiPad. Xbox mode can still work for normal mapping, but Windows owns parts of the Xbox stack. In particular, the Xbox Guide/Home button cannot be read through XInput, and HidHide usually cannot hide Xbox controllers at the HID device layer.
+ShikiPad now requires Interception for keyboard and mouse output.
 
-ShikiPad now requires Interception for keyboard and mouse output. This does not stop Xbox controllers from being read, because Xbox input is read through XInput and output is sent through Interception. The practical limitation is not Interception, but the Windows XInput/Xbox stack.
-
-Mode capability summary:
+Capability summary:
 
 | Mode | ShikiPad support | Limits |
 |---|---|---|
-| DualSense USB | Full PlayStation feature set: buttons, sticks, triggers, Home, touchpad click/gestures, Create/Options, DualSense Mute | Recommended when Bluetooth is unreliable |
-| DualSense Bluetooth | Full only when Windows delivers the enhanced `0x31` HID report | If the system or Bluetooth stack only exposes the simple `0x01` report, ShikiPad can read normal buttons/sticks/triggers/Home but cannot read touchpad coordinates or DualSense Mute; use USB, reconnect the controller, or update/change the Bluetooth adapter/driver |
-| DualShock 4 USB / Bluetooth | Buttons, sticks, triggers, Home, touchpad click/gestures, Share/Options | No DualSense Mute key |
-| Xbox / XInput | Normal XInput buttons, sticks, triggers, View/Back, Menu/Start | No touchpad; Guide/Home is usually reserved by Windows and cannot be read through XInput; HidHide usually cannot hide XInput devices at the HID layer |
+| DualSense USB | Full PlayStation feature set: buttons, sticks, triggers, Home, touchpad click/gestures, Create/Options, DualSense Mute | Connect by USB before starting ShikiPad |
 
 ## Driver And HidHide Order
 
@@ -29,14 +24,14 @@ Recommended setup order:
 2. Install Interception with `install_driver.bat` as administrator.
 3. Restart Windows.
 4. Run `ShikiPad.exe` as administrator and confirm it can send keyboard and mouse output.
-5. For PlayStation controllers, configure HidHide to prevent system or game double input.
+5. Configure HidHide for the DualSense controller to prevent system or game double input.
 6. Unplug and reconnect the controller after HidHide changes.
 
-HidHide setup for PlayStation controllers:
+HidHide setup for DualSense:
 
 1. In `Applications`, add the exact path to `ShikiPad.exe`.
 2. Uncheck `Inverse application cloak`.
-3. In `Devices`, check the target PlayStation controller. A red lock icon should appear.
+3. In `Devices`, check the target DualSense controller. A red lock icon should appear.
 4. If the target controller is unclear, connect the controller successfully first, then temporarily check all matching game controllers.
 5. Check `Filter-out disconnected`, `Gaming devices only`, and `Enable device hiding`.
 6. Close HidHide, then unplug and reconnect the controller.
@@ -54,7 +49,6 @@ A release archive follows the actual desktop `ShikiPad.zip` package. The current
 | `interception.dll` | Interception runtime |
 | `install_driver.bat` | Interception driver installer helper |
 | `README.md` / `README.zh-CN.md` | Documentation |
-| `shikipad.default` | Default controller profile |
 | `shiki.ico` | Program icon |
 | `ShikiPad.manifest` | Windows application manifest |
 
@@ -63,8 +57,8 @@ A release archive follows the actual desktop `ShikiPad.zip` package. The current
 1. Extract the release archive.
 2. Right-click `install_driver.bat` and choose `Run as administrator`.
 3. Restart Windows after `Installation complete!`.
-4. Run `ShikiPad.exe` as administrator.
-5. Type `1` to `8` to select a controller profile. You may save it as the default launch profile.
+4. Connect the PS5 DualSense controller by USB.
+5. Run `ShikiPad.exe` as administrator. It starts directly in wired DualSense mode; there is no controller selection page.
 
 ## Startup
 
@@ -88,8 +82,7 @@ Do not rely on the normal Startup folder unless you are willing to handle UAC ma
 
 | Page | Enter | Esc |
 |---|---|---|
-| Controller selection | Confirm selection | Exit |
-| Home | Open mapping manual | Return to controller selection |
+| Home | Open mapping manual | Exit ShikiPad |
 | Mapping manual | Return home | Exit ShikiPad |
 
 Closing the console window also exits and releases held keyboard and mouse inputs.
@@ -102,8 +95,8 @@ Closing the console window also exits and releases held keyboard and mouse input
 | L3 | Left mouse button |
 | R3 | Right mouse button with a short cursor freeze on press |
 | Left stick up / down | Mouse wheel |
-| Sony Create / Share, Xbox View / Back | `Right Alt` |
-| Sony Options / Menu, Xbox Menu / Start | `Right Ctrl` |
+| Create | `Right Alt` |
+| Options | `Right Ctrl` |
 | Press DualSense Mute | Enable / disable ShikiPad |
 | Any touch point in the left confirmed zone during touchpad click | `Delete` |
 | Any touch point in the right confirmed zone during touchpad click | `Backspace` |
@@ -128,7 +121,7 @@ The right stick uses continuous velocity integration. It first applies the 5 ms 
 
 ## Touchpad Gestures
 
-Touchpad gestures are available on PlayStation controllers. Only one-finger direct swipe maps are active for now. Two-finger recognition only applies before a gesture has been recognized; if two touch points are active before recognition, the gesture counts as two-finger and, because two-finger gestures currently have no shortcuts, ShikiPad blocks it until release. Once a one-finger gesture has been recognized, later extra touch points are ignored so the locked one-finger gesture stays stable. A finger must move more than `TouchGestureHoldStillDistance` from its start point before ShikiPad treats it as moving; if it stayed still for `TouchGestureHoldMs` before that, the gesture counts as hold-then-swipe and does not fire the direct-swipe shortcuts. Direction no longer uses the center point. Instead, vertical gestures trigger at 150 distance and horizontal gestures trigger at 180 distance. Touchpad side is decided only at first recognition: the leftmost and rightmost `TouchGestureSideConfirmedWidth` pixels are confirmed zones, so starts in the left confirmed zone lock left and starts in the right confirmed zone lock right. Starts in the middle buffer lock by crossing the center split: right-buffer-to-left-buffer motion locks left, and left-buffer-to-right-buffer motion locks right. Distance moved inside the buffer before side lock still counts toward that direction's first trigger. For distance-repeat gestures, first recognition also consumes every complete direction-specific segment and then continues counting from the last consumed trigger point. After recognition, the side stays locked until touch release and the whole touchpad remains valid movement space for that gesture.
+Touchpad gestures are available on the wired DualSense USB HID report. Only one-finger direct swipe maps are active for now. Two-finger recognition only applies before a gesture has been recognized; if two touch points are active before recognition, the gesture counts as two-finger and, because two-finger gestures currently have no shortcuts, ShikiPad blocks it until release. Once a one-finger gesture has been recognized, later extra touch points are ignored so the locked one-finger gesture stays stable. A finger must move more than `TouchGestureHoldStillDistance` from its start point before ShikiPad treats it as moving; if it stayed still for `TouchGestureHoldMs` before that, the gesture counts as hold-then-swipe and does not fire the direct-swipe shortcuts. Direction no longer uses the center point. Instead, vertical gestures trigger at 150 distance and horizontal gestures trigger at 180 distance. Touchpad side is decided only at first recognition: the leftmost and rightmost `TouchGestureSideConfirmedWidth` pixels are confirmed zones, so starts in the left confirmed zone lock left and starts in the right confirmed zone lock right. Starts in the middle buffer lock by crossing the center split: right-buffer-to-left-buffer motion locks left, and left-buffer-to-right-buffer motion locks right. Distance moved inside the buffer before side lock still counts toward that direction's first trigger. For distance-repeat gestures, first recognition also consumes every complete direction-specific segment and then continues counting from the last consumed trigger point. After recognition, the side stays locked until touch release and the whole touchpad remains valid movement space for that gesture.
 
 ### Touchpad Mappings
 
@@ -137,7 +130,7 @@ Touchpad gestures are available on PlayStation controllers. Only one-finger dire
 | Left-half one-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | Enter Alt-Tab with `Alt + Shift + Tab`, then hold `Alt` | Enter Alt-Tab with `Alt + Tab`, then hold `Alt` |
 | Right-half one-finger direct swipe | `Win + ↑` maximize | `Win + ↓` restore/minimize | `Win + Ctrl + ←` previous desktop | `Win + Ctrl + →` next desktop |
 
-Touchpad click is not the clutch key. It checks the active touch point X positions when the click begins. Any touch point in the left confirmed zone sends `Delete`, any touch point in the right confirmed zone sends `Backspace`, and if active touch points are simultaneously in both confirmed zones, `Backspace` wins. Only when all active touch points are in the middle buffer does the click toggle real `Caps Lock` plus the controller Fn layer. Touchpad `Delete` and `Backspace` count as base-layer action keys while Home is in clutch mode, so they clear a short-tap clutch lock after firing. When Home is being held as a real `Left Shift`, touchpad `Delete` / `Backspace` naturally become shifted combinations such as `Shift + Delete`. Touchpad `Delete` and `Backspace` use the same progressive repeat timing as base-layer repeat. The middle-buffer Caps/Fn click is a separate layer toggle: it is not a base-layer action key, fires once on click-down, and does not repeat. Xbox controllers have no touchpad, so this function is skipped.
+Touchpad click is not the clutch key. It checks the active touch point X positions when the click begins. Any touch point in the left confirmed zone sends `Delete`, any touch point in the right confirmed zone sends `Backspace`, and if active touch points are simultaneously in both confirmed zones, `Backspace` wins. Only when all active touch points are in the middle buffer does the click toggle real `Caps Lock` plus the controller Fn layer. Touchpad `Delete` and `Backspace` count as base-layer action keys while Home is in clutch mode, so they clear a short-tap clutch lock after firing. When Home is being held as a real `Left Shift`, touchpad `Delete` / `Backspace` naturally become shifted combinations such as `Shift + Delete`. Touchpad `Delete` and `Backspace` use the same progressive repeat timing as base-layer repeat. The middle-buffer Caps/Fn click is a separate layer toggle: it is not a base-layer action key, fires once on click-down, and does not repeat.
 
 Every one-finger direct swipe first trigger requires movement from that touch point's start by the direction threshold: 150 for up/down and 180 for left/right. If the touch starts in the middle buffer, distance moved before side lock still counts toward the horizontal 180. After the side locks and the shortcut fires, that trigger point becomes the new origin for later repeat or reverse checks.
 
@@ -164,7 +157,7 @@ Time-based repeat applies to left-half up/down window switching and right-half l
 
 ## Voice Input
 
-If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. PlayStation controllers are especially convenient here: Share maps to `Right Alt`, Options/Menu maps to `Right Ctrl`, Home handles clutch or real `Left Shift` depending on the press state, and pressing DualSense Mute toggles ShikiPad enabled / disabled. The built-in microphone on supported PlayStation controllers also sits close to your mouth and can produce good recognition results in a quiet room.
+If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch or real `Left Shift` depending on the press state, and pressing DualSense Mute toggles ShikiPad enabled / disabled.
 
 ## Left Stick
 
@@ -212,8 +205,7 @@ Touchpad middle-buffer click toggles real system `Caps Lock`, so the keyboard in
 
 | Controller | Activate / hold |
 |---|---|
-| DualSense / DualShock 4 | Hold a left-stick modifier first, then short-tap Home to lock until the next action key, short-tap again to cancel, or long-press Home to hold; press Home without an active modifier for real `Left Shift` |
-| Xbox | Guide/Home is usually unavailable through XInput, so this function is skipped |
+| DualSense | Hold a left-stick modifier first, then short-tap Home to lock until the next action key, short-tap again to cancel, or long-press Home to hold; press Home without an active modifier for real `Left Shift` |
 
 ### Clutch Parameters
 
@@ -225,21 +217,21 @@ Touchpad middle-buffer click toggles real system `Caps Lock`, so the keyboard in
 
 The v3 release maps letters around familiar keyboard positions. This keeps layouts such as `WASD` and `IJKL` recognizable instead of sorting every letter purely by frequency.
 
-The columns in the following tables correspond to: `↑`, `→`, `□/X`, `△/Y`, `←`, `↓`, `×/A`, `○/B`.
+The columns in the following tables correspond to: `↑`, `→`, `□`, `△`, `←`, `↓`, `×`, `○`.
 
-| Layer | ↑ | → | □/X | △/Y | ← | ↓ | ×/A | ○/B |
+| Layer | ↑ | → | □ | △ | ← | ↓ | × | ○ |
 |---|---|---|---|---|---|---|---|---|
 | Base | ↑ | → | Tab | Esc | ← | ↓ | Space | Enter |
-| R1 / RB | o | p | j | i | n | m | k | l |
-| L1 / LB | w | d | q | e | a | s | z | x |
-| R2 / RT | 0 | g | y | u | - | = | b | h |
-| L2 / LT | r | f | t | 1 | c | v | 3 | 2 |
+| R1 | o | p | j | i | n | m | k | l |
+| L1 | w | d | q | e | a | s | z | x |
+| R2 | 0 | g | y | u | - | = | b | h |
+| L2 | r | f | t | 1 | c | v | 3 | 2 |
 | R1 + L1 | 4 | , | . | 7 | 5 | 6 | 9 | 8 |
 | L2 + R2 | + | / | & | * | _ | ^ | $ | % |
 | L1 + R2 | [ | ] | ! | ? | { | } | @ | # |
 | R1 + L2 | ( | ) | ; | ' | < | > | backtick | \ |
 
-The program sends physical keycodes. Characters requiring Shift (", :, |, ~) are shifted automatically by the corresponding layer entries; on PlayStation controllers, pressing Home without an active left-stick modifier holds a real `Left Shift`.
+The program sends physical keycodes. Characters requiring Shift (", :, |, ~) are shifted automatically by the corresponding layer entries; pressing Home without an active left-stick modifier holds a real `Left Shift`.
 
 Base-layer D-pad keys repeat while held. Base-layer face buttons (`Square`, `Triangle`, `Cross`, `Circle`) do not repeat. Character layers are virtual taps: one press sends one key stroke, and holding does not repeat. Once an action key has resolved to a layer and is held, later shoulder/trigger changes do not reassign that held physical key until it is released.
 
@@ -277,6 +269,6 @@ Install Interception, restart Windows, and run `ShikiPad.exe` as administrator.
 
 ### System or game double input
 
-If Windows still sees the physical controller while ShikiPad is running, the same stick movement can be handled twice: once by ShikiPad and once by Windows or the focused app. Typical symptoms include left-stick `Alt` plus `Tab` jumping unpredictably between windows, or the left-stick `Win` modifier failing because Windows treats controller input as Start menu, taskbar, or app icon navigation. Configure HidHide as described above so only ShikiPad can see the PlayStation controller. Xbox controllers use XInput, so HidHide usually cannot hide them at the HID layer.
+If Windows still sees the physical controller while ShikiPad is running, the same stick movement can be handled twice: once by ShikiPad and once by Windows or the focused app. Typical symptoms include left-stick `Alt` plus `Tab` jumping unpredictably between windows, or the left-stick `Win` modifier failing because Windows treats controller input as Start menu, taskbar, or app icon navigation. Configure HidHide as described above so only ShikiPad can see the DualSense controller.
 
 If HidHide is already configured as described above but double input or Windows input stealing still happens, try placing the whole ShikiPad folder at the root of the C drive, for example `C:\ShikiPad`. This is the location currently used by the author.

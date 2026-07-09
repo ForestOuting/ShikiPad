@@ -81,17 +81,6 @@ internal enum StickDirection {
     UpLeft
 }
 
-internal enum ControllerProfile {
-    DualSense,
-    DualSenseBT,
-    DualShock4,
-    DualShock4BT,
-    Xbox360,
-    Xbox360BT,
-    XboxSeries,
-    XboxSeriesBT
-}
-
 internal sealed class ControllerState {
     public bool Connected;
     public double LX, LY, RX, RY, L2, R2;

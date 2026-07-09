@@ -24,13 +24,10 @@ internal static class Program {
     private static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
 
     private static ConsoleCtrlHandler _consoleCtrlHandler;
-    private const string DefaultControllerFileName = "shikipad.default";
     private const string StartupTaskName = "ShikiPad";
-    private static bool _controllerSelectionExitRequested;
-
     public static void PrintGradientBanner() {
         EnableAnsi();
-        PrintInitialControllerSurface(false, ControllerProfile.DualSense);
+        PrintStartupSpinner();
     }
 
     public static void PrintRunHint() {
@@ -55,13 +52,11 @@ internal static class Program {
         return pattern.Replace('#', '\u2588');
     }
 
-    public static void PrintDetailedManual(ControllerProfile profile, Config config) {
+    public static void PrintDetailedManual(Config config) {
         try { Console.Clear(); } catch { }
         EnableAnsi();
         int width = GetConsoleWidth();
         int panelWidth = Math.Min(116, Math.Max(72, width - 6));
-        bool xbox = profile == ControllerProfile.Xbox360 || profile == ControllerProfile.XboxSeries ||
-                    profile == ControllerProfile.Xbox360BT || profile == ControllerProfile.XboxSeriesBT;
 
         Console.WriteLine();
         WriteEmbossedCenteredText(width, panelWidth, "映 射 说 明", SeasonGlowStops(), true);
@@ -84,9 +79,9 @@ internal static class Program {
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↖ Shift; ↑/↓ 滚轮; ↗ Win; ↙ Ctrl; ↘ Alt", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + (xbox ? "蓄力        Guide/Home 不可读取; 跳过" : "蓄力        先推修饰再按 Home; 否则 LShift"), blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "蓄力        先推修饰再按 Home; 否则 LShift", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "触控板中区  按压 -> CapsLock/Fn", blockWidth);
-        if (!xbox) WriteManualGradientLine(width, panelWidth, pad + "静音键      按下禁用 / 再按启用", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "静音键      按下禁用 / 再按启用", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "CapsFn      1..0 / - / =  →  F1..F12 后恢复", blockWidth);
         
@@ -160,15 +155,15 @@ internal static class Program {
         }
     }
 
-    public static void PrintConnectedWelcome(ControllerProfile profile, Config config, string deviceName) {
-        PrintHomeSurface(profile, config, deviceName, true, false);
+    public static void PrintConnectedWelcome(Config config, string deviceName) {
+        PrintHomeSurface(config, deviceName, true, false);
     }
 
-    public static void PrintRunningHome(ControllerProfile profile, Config config, string deviceName, bool connected) {
-        PrintHomeSurface(profile, config, deviceName, connected, false);
+    public static void PrintRunningHome(Config config, string deviceName, bool connected) {
+        PrintHomeSurface(config, deviceName, connected, false);
     }
 
-    private static void PrintHomeSurface(ControllerProfile profile, Config config, string deviceName, bool connected, bool pageBreak) {
+    private static void PrintHomeSurface(Config config, string deviceName, bool connected, bool pageBreak) {
         EnableAnsi();
         if (pageBreak) {
             WritePageBreak();
@@ -183,7 +178,7 @@ internal static class Program {
         WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
         WriteEmbossedCenteredText(width, panelWidth, "手 柄 键 鼠 映 射", SeasonGlowStops(), true);
         Console.WriteLine();
-        WriteEmbossedCenteredText(width, panelWidth, "Enter 映射说明   |   Esc 初始页   |   关闭窗口释放按键", SeasonGlowStops(), false);
+        WriteEmbossedCenteredText(width, panelWidth, "Enter 映射说明   |   Esc 关闭软件   |   关闭窗口释放按键", SeasonGlowStops(), false);
         Console.WriteLine("\x1b[0m");
     }
 
@@ -214,30 +209,7 @@ internal static class Program {
         for (int i = 0; i < lines; i++) Console.WriteLine();
     }
 
-    private static void PrintInitialControllerSurface(bool hasSavedDefault, ControllerProfile savedDefault) {
-        try { Console.Clear(); } catch { }
-        EnableAnsi();
-        int width = GetConsoleWidth();
-        int panelWidth = Math.Min(118, Math.Max(72, width - 6));
-
-        Console.WriteLine();
-        WriteNeonRule(width, panelWidth, "ShikiPad");
-        WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
-        WriteEmbossedCenteredText(width, panelWidth, "选择手柄型号", SeasonGlowStops(), true);
-        int blockWidth = 44;
-        int indent = Math.Max(0, (panelWidth - blockWidth) / 2);
-        string pad = new string(' ', indent);
-
-        WriteManualGradientLine(width, panelWidth, pad + "[1] DualSense        [2] DualSense (BT)", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "[3] DualShock 4      [4] DualShock 4 (BT)", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "[5] Xbox 360         [6] Xbox 360 (BT)", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "[7] Xbox Series X|S  [8] Xbox Series (BT)", blockWidth);
-        Console.WriteLine();
-        WriteEmbossedCenteredText(width, panelWidth, "输入 1-8   |   Enter 确认   |   Esc 退出", SeasonGlowStops(), false);
-        Console.WriteLine("\x1b[0m");
-    }
-
-    private static void PrintStartupSpinner(ControllerProfile profile) {
+    private static void PrintStartupSpinner() {
         try { Console.Clear(); } catch { }
         EnableAnsi();
         int width = GetConsoleWidth();
@@ -643,24 +615,17 @@ internal static class Program {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
-        bool forceControllerMenuAfterRestart = false;
-        while (true) {
-            ControllerProfile controllerProfile = SelectControllerProfile(root, forceControllerMenuAfterRestart);
-            if (_controllerSelectionExitRequested) return 0;
-            PrintStartupSpinner(controllerProfile);
+        PrintStartupSpinner();
 
-            PrintRunHint();
-            MapperForm form;
-            try {
-                form = new MapperForm(config, controllerProfile);
-            } catch (Exception ex) {
-                PrintFatalStartupError(ex.Message);
-                return 1;
-            }
-            Application.Run(form);
-            if (!form.RestartControllerSelectionRequested) break;
-            forceControllerMenuAfterRestart = true;
+        PrintRunHint();
+        MapperForm form;
+        try {
+            form = new MapperForm(config);
+        } catch (Exception ex) {
+            PrintFatalStartupError(ex.Message);
+            return 1;
         }
+        Application.Run(form);
         return 0;
     }
 
@@ -693,190 +658,6 @@ internal static class Program {
     private static void ReleaseAllRuntimeInput() {
         InputInjector.ReleaseAllRegistered();
         InterceptionDriver.Cleanup();
-    }
-
-    private static ControllerProfile SelectControllerProfile(string root, bool forceMenu) {
-        string defaultPath = Path.Combine(root, DefaultControllerFileName);
-
-        ControllerProfile savedDefault;
-        bool hasSavedDefault = TryLoadDefaultControllerProfile(defaultPath, out savedDefault);
-        if (hasSavedDefault && !forceMenu) {
-            return savedDefault;
-        }
-
-        try {
-            if (Console.IsInputRedirected) return ControllerProfile.DualSense;
-        } catch { }
-
-        return PromptControllerProfile(defaultPath, hasSavedDefault, savedDefault);
-    }
-
-    private static ControllerProfile PromptControllerProfile(string defaultPath, bool hasSavedDefault, ControllerProfile savedDefault) {
-        EnableAnsi();
-        PrintInitialControllerSurface(hasSavedDefault, savedDefault);
-
-        while (true) {
-            WriteRgb(SeasonSummer(), "选择手柄型号 [1..8, Enter = 1, Esc = 退出] > ");
-            Console.Write("\x1b[0m");
-            string line = ReadControllerMenuLine(true);
-            if (line == null) {
-                _controllerSelectionExitRequested = true;
-                return ControllerProfile.DualSense;
-            }
-            line = line.Trim();
-            if (line == "\x1b") {
-                _controllerSelectionExitRequested = true;
-                return ControllerProfile.DualSense;
-            }
-
-            ControllerProfile selected;
-            if (TryParseMenuControllerProfile(line.Length == 0 ? "1" : line, out selected)) {
-                MaybeSaveDefaultControllerProfile(defaultPath, selected);
-                return selected;
-            }
-            WriteRgb(SeasonAutumn(), "请选择 1 到 8 之间的数字; 按 Esc 可以退出.\n");
-        }
-    }
-
-    private static string ReadControllerMenuLine(bool allowEsc) {
-        StringBuilder sb = new StringBuilder();
-        while (true) {
-            ConsoleKeyInfo key;
-            try {
-                key = Console.ReadKey(true);
-            } catch {
-                return Console.ReadLine();
-            }
-
-            if (allowEsc && key.Key == ConsoleKey.Escape) {
-                Console.WriteLine();
-                return "\x1b";
-            }
-            if (key.Key == ConsoleKey.Enter) {
-                Console.WriteLine();
-                return sb.ToString();
-            }
-            if (key.Key == ConsoleKey.Backspace) {
-                if (sb.Length > 0) {
-                    sb.Length--;
-                    Console.Write("\b \b");
-                }
-                continue;
-            }
-            if (!Char.IsControl(key.KeyChar) && sb.Length < 24) {
-                sb.Append(key.KeyChar);
-                Console.Write(key.KeyChar);
-            }
-        }
-    }
-
-    private static void MaybeSaveDefaultControllerProfile(string defaultPath, ControllerProfile profile) {
-        bool zh = IsChineseUi();
-        WriteRgb(SeasonGold(), zh ? "将 \"" + ControllerProfileName(profile) + "\" 设为默认启动?[Enter/Y = 保存, N = 仅本次] > " : "Save \"" + ControllerProfileName(profile) + "\" as the default launch profile? [Enter/Y = yes, N = once] > ");
-        Console.Write("\x1b[0m");
-        string line = Console.ReadLine();
-        if (line == null) return;
-        line = line.Trim();
-        if (line.Length > 0 && line.StartsWith("n", StringComparison.OrdinalIgnoreCase)) return;
-        SaveDefaultControllerProfile(defaultPath, profile);
-    }
-
-    private static bool TryParseMenuControllerProfile(string value, out ControllerProfile profile) {
-        value = (value ?? "").Trim();
-        if (value == "1") { profile = ControllerProfile.DualSense; return true; }
-        if (value == "2") { profile = ControllerProfile.DualSenseBT; return true; }
-        if (value == "3") { profile = ControllerProfile.DualShock4; return true; }
-        if (value == "4") { profile = ControllerProfile.DualShock4BT; return true; }
-        if (value == "5") { profile = ControllerProfile.Xbox360; return true; }
-        if (value == "6") { profile = ControllerProfile.Xbox360BT; return true; }
-        if (value == "7") { profile = ControllerProfile.XboxSeries; return true; }
-        if (value == "8") { profile = ControllerProfile.XboxSeriesBT; return true; }
-        return TryParseControllerProfile(value, out profile);
-    }
-
-    private static bool TryLoadDefaultControllerProfile(string defaultPath, out ControllerProfile profile) {
-        profile = ControllerProfile.DualSense;
-        try {
-            if (!File.Exists(defaultPath)) return false;
-            string value = File.ReadAllText(defaultPath, Encoding.UTF8).Trim();
-            return TryParseControllerProfile(value, out profile);
-        } catch {
-            return false;
-        }
-    }
-
-    private static void SaveDefaultControllerProfile(string defaultPath, ControllerProfile profile) {
-        bool zh = IsChineseUi();
-        try {
-            File.WriteAllText(defaultPath, ControllerProfileKey(profile) + Environment.NewLine, Encoding.UTF8);
-            WriteRgb(SeasonSpring(), zh ? "已保存默认启动. 以后直接运行 ShikiPad 即会自动使用这个手柄型号.\n" : "Default launch profile saved.\n");
-        } catch (Exception ex) {
-            WriteRgb(SeasonAutumn(), (zh ? "默认启动保存失败: " : "Could not save default profile: ") + ex.Message + "\n");
-        }
-    }
-
-    private static string ControllerProfileKey(ControllerProfile profile) {
-        switch (profile) {
-            case ControllerProfile.DualSenseBT: return "dualsensebt";
-            case ControllerProfile.DualShock4: return "dualshock4";
-            case ControllerProfile.DualShock4BT: return "dualshock4bt";
-            case ControllerProfile.Xbox360: return "xbox360";
-            case ControllerProfile.Xbox360BT: return "xbox360bt";
-            case ControllerProfile.XboxSeries: return "xboxseries";
-            case ControllerProfile.XboxSeriesBT: return "xboxseriesbt";
-            default: return "dualsense";
-        }
-    }
-
-    private static bool TryParseControllerProfile(string value, out ControllerProfile profile) {
-        string v = (value ?? "").Trim().ToLowerInvariant().Replace("-", "").Replace("_", "").Replace(" ", "");
-        if (v == "1" || v == "ds5" || v == "dualsense" || v == "ps5" || v == "ds5usb") {
-            profile = ControllerProfile.DualSense;
-            return true;
-        }
-        if (v == "2" || v == "ds5bt" || v == "dualsensebt" || v == "ps5bt") {
-            profile = ControllerProfile.DualSenseBT;
-            return true;
-        }
-        if (v == "3" || v == "ds4" || v == "dualshock4" || v == "ps4" || v == "ds4usb") {
-            profile = ControllerProfile.DualShock4;
-            return true;
-        }
-        if (v == "4" || v == "ds4bt" || v == "dualshock4bt" || v == "ps4bt") {
-            profile = ControllerProfile.DualShock4BT;
-            return true;
-        }
-        if (v == "5" || v == "xbox360" || v == "x360" || v == "xbox360usb") {
-            profile = ControllerProfile.Xbox360;
-            return true;
-        }
-        if (v == "6" || v == "xbox360bt" || v == "x360bt") {
-            profile = ControllerProfile.Xbox360BT;
-            return true;
-        }
-        if (v == "7" || v == "xboxseries" || v == "xboxseriesxs" || v == "xsx" || v == "xss" || v == "xboxxs" || v == "xboxseriesusb") {
-            profile = ControllerProfile.XboxSeries;
-            return true;
-        }
-        if (v == "8" || v == "xboxseriesbt" || v == "xsxbt" || v == "xssbt") {
-            profile = ControllerProfile.XboxSeriesBT;
-            return true;
-        }
-        profile = ControllerProfile.DualSense;
-        return false;
-    }
-
-    private static string ControllerProfileName(ControllerProfile profile) {
-        switch (profile) {
-            case ControllerProfile.DualSenseBT: return "DualSense / Direct HID (Bluetooth)";
-            case ControllerProfile.DualShock4: return "DualShock 4 / Direct HID (USB)";
-            case ControllerProfile.DualShock4BT: return "DualShock 4 / Direct HID (Bluetooth)";
-            case ControllerProfile.Xbox360: return "Xbox 360 Controller / XInput (USB)";
-            case ControllerProfile.Xbox360BT: return "Xbox 360 Controller / XInput (Bluetooth)";
-            case ControllerProfile.XboxSeries: return "Xbox Series X|S Controller / XInput (USB)";
-            case ControllerProfile.XboxSeriesBT: return "Xbox Series X|S Controller / XInput (Bluetooth)";
-            default: return "DualSense / Direct HID (USB)";
-        }
     }
 
     private static bool HasArg(string[] args, string value) {
@@ -955,7 +736,7 @@ internal static class Program {
     private static void RunHidEnumTest() {
         Console.WriteLine("\n--- HID DEVICE ENUMERATION TEST ---");
         Console.WriteLine("This test bypasses RawInput and directly queries the OS for connected HID devices.");
-        Console.WriteLine("It will attempt to open each device to read VID/PID.\n");
+        Console.WriteLine("It lists DualSense USB HID paths without opening device handles.\n");
 
         Guid hidGuid;
         NativeMethods.HidD_GetHidGuid(out hidGuid);
@@ -970,8 +751,7 @@ internal static class Program {
         interfaceData.cbSize = (uint)Marshal.SizeOf(interfaceData);
 
         uint index = 0;
-        int foundCount = 0;
-        int sonyCount = 0;
+        int dualSenseUsbPathCount = 0;
 
         while (NativeMethods.SetupDiEnumDeviceInterfaces(deviceInfoSet, IntPtr.Zero, ref hidGuid, index, ref interfaceData)) {
             index++;
@@ -985,45 +765,34 @@ internal static class Program {
 
             if (NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, detailData, requiredSize, out requiredSize, IntPtr.Zero)) {
                 string devicePath = Marshal.PtrToStringAuto(new IntPtr(detailData.ToInt64() + 4));
-
-                IntPtr handle = NativeMethods.CreateFile(devicePath, 0, 3, IntPtr.Zero, 3, 0, IntPtr.Zero);
-                if (handle != new IntPtr(-1)) {
-                    NativeMethods.HIDD_ATTRIBUTES attrs = new NativeMethods.HIDD_ATTRIBUTES();
-                    attrs.Size = (uint)Marshal.SizeOf(attrs);
-                    if (NativeMethods.HidD_GetAttributes(handle, ref attrs)) {
-                        string product = "";
-                        IntPtr prodStr = Marshal.AllocHGlobal(254);
-                        if (NativeMethods.HidD_GetProductString(handle, prodStr, 254)) {
-                            product = Marshal.PtrToStringAuto(prodStr);
-                        }
-                        Marshal.FreeHGlobal(prodStr);
-
-                        if (attrs.VendorID == 0x054C) {
-                            Console.WriteLine("FOUND SONY DEVICE:");
-                            Console.WriteLine("  VID: 0x" + attrs.VendorID.ToString("X4") + "  PID: 0x" + attrs.ProductID.ToString("X4"));
-                            Console.WriteLine("  Product: " + product);
-                            Console.WriteLine("  Path: " + devicePath);
-                            Console.WriteLine();
-                            sonyCount++;
-                        }
-                        foundCount++;
-                    }
-                    NativeMethods.CloseHandle(handle);
+                string lowerPath = (devicePath ?? "").ToLowerInvariant();
+                if (!IsDualSenseUsbPath(lowerPath)) {
+                    Marshal.FreeHGlobal(detailData);
+                    continue;
                 }
+
+                Console.WriteLine("FOUND DUALSENSE USB HID PATH:");
+                Console.WriteLine("  Path: " + devicePath);
+                Console.WriteLine();
+                dualSenseUsbPathCount++;
             }
             Marshal.FreeHGlobal(detailData);
         }
 
         NativeMethods.SetupDiDestroyDeviceInfoList(deviceInfoSet);
 
-        Console.WriteLine("Total HID devices opened successfully: " + foundCount);
-        Console.WriteLine("Total Sony devices (VID 0x054C) found: " + sonyCount);
-        if (sonyCount > 0) {
-            Console.WriteLine("\nSUCCESS: The physical controller is VISIBLE to this process via Direct HID.");
-            Console.WriteLine("If ShikiPad still cannot read input normally, it confirms that HidHide hides devices from the Windows RawInput subsystem itself.");
+        Console.WriteLine("Total DualSense USB HID paths found: " + dualSenseUsbPathCount);
+        if (dualSenseUsbPathCount > 0) {
+            Console.WriteLine("\nSUCCESS: A wired DualSense USB HID path is visible to this process.");
         } else {
-            Console.WriteLine("\nFAILED: No Sony devices visible. Either it is unplugged, or HidHide whitelist failed.");
+            Console.WriteLine("\nFAILED: No wired DualSense USB HID path visible. Either it is unplugged, or HidHide whitelist failed.");
         }
+    }
+
+    private static bool IsDualSenseUsbPath(string lowerPath) {
+        if (String.IsNullOrEmpty(lowerPath)) return false;
+        return lowerPath.Contains("vid_054c") &&
+               (lowerPath.Contains("pid_0ce6") || lowerPath.Contains("pid_0df2"));
     }
 
 }

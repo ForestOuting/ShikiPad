@@ -4,36 +4,28 @@ using System.Runtime.InteropServices;
 using System.Threading;
 
 internal sealed class DirectHidController {
+    private const ushort SonyVendorId = 0x054C;
+    private const ushort DualSenseProductId = 0x0CE6;
+    private const ushort DualSenseEdgeProductId = 0x0DF2;
+    private const int HidpStatusSuccess = 0x110000;
+
     public volatile ControllerState State = new ControllerState();
     public event Action<ControllerState> StateUpdated;
-    private readonly ControllerProfile _profile;
+
     private Thread _thread;
     private volatile bool _running;
     private IntPtr _handle = IntPtr.Zero;
-    private string _deviceName = "Sony Controller";
-    private int _xinputUserIndex = -1;
+    private string _deviceName = "DualSense";
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool ReadFile(IntPtr hFile, byte[] lpBuffer, uint nNumberOfBytesToRead, out uint lpNumberOfBytesRead, IntPtr lpOverlapped);
 
-    public DirectHidController(ControllerProfile profile) {
-        _profile = profile;
-        _deviceName = DisplayName;
+    public DirectHidController() {
+        _deviceName = "DualSense / Direct HID (USB)";
     }
 
     public string DisplayName {
-        get {
-            switch (_profile) {
-                case ControllerProfile.Xbox360: return "Xbox 360 Controller / XInput";
-                case ControllerProfile.Xbox360BT: return "Xbox 360 Controller / XInput (BT)";
-                case ControllerProfile.XboxSeries: return "Xbox Series X|S Controller / XInput";
-                case ControllerProfile.XboxSeriesBT: return "Xbox Series X|S Controller / XInput (BT)";
-                case ControllerProfile.DualSenseBT: return "DualSense / Direct HID (BT)";
-                case ControllerProfile.DualShock4: return "DualShock 4 / Direct HID";
-                case ControllerProfile.DualShock4BT: return "DualShock 4 / Direct HID (BT)";
-                default: return "DualSense / Direct HID";
-            }
-        }
+        get { return _deviceName; }
     }
 
     public void Start() {
@@ -56,29 +48,20 @@ internal sealed class DirectHidController {
     }
 
     private void Loop() {
-        bool isSonyHid = _profile == ControllerProfile.DualSense || _profile == ControllerProfile.DualSenseBT ||
-                         _profile == ControllerProfile.DualShock4 || _profile == ControllerProfile.DualShock4BT;
-        if (!isSonyHid) {
-            XInputLoop();
-            return;
-        }
-
         byte[] buffer = new byte[1024];
         while (_running) {
             if (_handle == IntPtr.Zero || _handle == new IntPtr(-1)) {
                 State = new ControllerState();
                 _handle = FindAndOpenDevice();
                 if (_handle != IntPtr.Zero && _handle != new IntPtr(-1)) {
-                    ControllerState cs = new ControllerState();
-                    cs.Connected = true;
-                    State = cs;
+                    State = new ControllerState { Connected = true };
                 } else {
                     Thread.Sleep(1000);
                     continue;
                 }
             }
 
-            uint bytesRead = 0;
+            uint bytesRead;
             if (ReadFile(_handle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero)) {
                 if (bytesRead > 0) {
                     byte[] report = new byte[bytesRead];
@@ -95,83 +78,6 @@ internal sealed class DirectHidController {
             }
         }
     }
-
-    private void XInputLoop() {
-        bool wasConnected = false;
-        while (_running) {
-            NativeMethods.XINPUT_STATE state;
-            int result = XInputGetState(ref _xinputUserIndex, out state);
-            if (result == 0) {
-                if (!wasConnected) {
-                    wasConnected = true;
-                }
-                ParseXInput(state.Gamepad);
-                StateUpdated?.Invoke(State);
-                Thread.Sleep(0);
-            } else {
-                if (wasConnected) {
-                    wasConnected = false;
-                }
-                State = new ControllerState();
-                _xinputUserIndex = -1;
-                Thread.Sleep(1000);
-            }
-        }
-    }
-
-    private static int XInputGetState(ref int userIndex, out NativeMethods.XINPUT_STATE state) {
-        state = new NativeMethods.XINPUT_STATE();
-        if (userIndex >= 0) {
-            int result = NativeMethods.XInputGetStateAny(userIndex, out state);
-            if (result == 0) return 0;
-            userIndex = -1;
-        }
-
-        for (int i = 0; i < 4; i++) {
-            int result = NativeMethods.XInputGetStateAny(i, out state);
-            if (result == 0) {
-                userIndex = i;
-                return 0;
-            }
-        }
-        return 1167;
-    }
-
-    private void ParseXInput(NativeMethods.XINPUT_GAMEPAD gamepad) {
-        State = ParseXInputState(gamepad);
-    }
-
-    internal static ControllerState ParseXInputState(NativeMethods.XINPUT_GAMEPAD gamepad) {
-        ControllerState s = new ControllerState();
-        s.Connected = true;
-        ushort b = gamepad.wButtons;
-        s.LX = Axis(gamepad.sThumbLX);
-        s.LY = -Axis(gamepad.sThumbLY);
-        s.RX = Axis(gamepad.sThumbRX);
-        s.RY = -Axis(gamepad.sThumbRY);
-        s.L2 = Trigger(gamepad.bLeftTrigger);
-        s.R2 = Trigger(gamepad.bRightTrigger);
-
-        s.Up = (b & NativeMethods.XINPUT_GAMEPAD_DPAD_UP) != 0;
-        s.Down = (b & NativeMethods.XINPUT_GAMEPAD_DPAD_DOWN) != 0;
-        s.Left = (b & NativeMethods.XINPUT_GAMEPAD_DPAD_LEFT) != 0;
-        s.Right = (b & NativeMethods.XINPUT_GAMEPAD_DPAD_RIGHT) != 0;
-        s.Square = (b & NativeMethods.XINPUT_GAMEPAD_X) != 0;
-        s.Cross = (b & NativeMethods.XINPUT_GAMEPAD_A) != 0;
-        s.Circle = (b & NativeMethods.XINPUT_GAMEPAD_B) != 0;
-        s.Triangle = (b & NativeMethods.XINPUT_GAMEPAD_Y) != 0;
-        s.L1 = (b & NativeMethods.XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
-        s.R1 = (b & NativeMethods.XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0;
-        s.L3 = (b & NativeMethods.XINPUT_GAMEPAD_LEFT_THUMB) != 0;
-        s.R3 = (b & NativeMethods.XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
-        s.Create = (b & NativeMethods.XINPUT_GAMEPAD_BACK) != 0;
-        s.Options = (b & NativeMethods.XINPUT_GAMEPAD_START) != 0;
-
-        // Xbox has no physical touchpad, and Home/Guide is intercepted by Windows
-        // for Xbox Game Bar, so Home-based clutch is skipped for XInput profiles.
-        return s;
-    }
-
 
     private IntPtr FindAndOpenDevice() {
         Guid hidGuid;
@@ -190,193 +96,160 @@ internal sealed class DirectHidController {
             index++;
             uint requiredSize = 0;
             NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, IntPtr.Zero, 0, out requiredSize, IntPtr.Zero);
-
             if (requiredSize == 0) continue;
 
             IntPtr detailData = Marshal.AllocHGlobal((int)requiredSize);
-            Marshal.WriteInt32(detailData, (IntPtr.Size == 8) ? 8 : (Marshal.SystemDefaultCharSize == 1 ? 5 : 6));
+            try {
+                Marshal.WriteInt32(detailData, (IntPtr.Size == 8) ? 8 : (Marshal.SystemDefaultCharSize == 1 ? 5 : 6));
+                if (!NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, detailData, requiredSize, out requiredSize, IntPtr.Zero)) {
+                    continue;
+                }
 
-            if (NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, detailData, requiredSize, out requiredSize, IntPtr.Zero)) {
                 string devicePath = Marshal.PtrToStringAuto(new IntPtr(detailData.ToInt64() + 4));
+                if (!IsDualSenseUsbPath(devicePath)) continue;
 
-                IntPtr handle = NativeMethods.CreateFile(devicePath, 0x80000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero); // GENERIC_READ, FILE_SHARE_READ|WRITE, OPEN_EXISTING
-                if (handle != new IntPtr(-1)) {
+                IntPtr handle = NativeMethods.CreateFile(devicePath, 0x80000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero);
+                if (handle == new IntPtr(-1)) continue;
+
+                bool keepHandle = false;
+                try {
                     NativeMethods.HIDD_ATTRIBUTES attrs = new NativeMethods.HIDD_ATTRIBUTES();
                     attrs.Size = (uint)Marshal.SizeOf(attrs);
-                    if (NativeMethods.HidD_GetAttributes(handle, ref attrs)) {
-                        if (attrs.VendorID == 0x054C) { // Sony
-                            bool isGamepad = false;
-                            IntPtr preparsedData;
-                            if (NativeMethods.HidD_GetPreparsedData(handle, out preparsedData)) {
-                                NativeMethods.HIDP_CAPS caps;
-                                if (NativeMethods.HidP_GetCaps(preparsedData, out caps) == 0x110000) { // HIDP_STATUS_SUCCESS
-                                    if (caps.UsagePage == 1 && (caps.Usage == 4 || caps.Usage == 5)) {
-                                        isGamepad = true;
-                                    }
-                                }
-                                NativeMethods.HidD_FreePreparsedData(preparsedData);
-                            }
+                    if (!NativeMethods.HidD_GetAttributes(handle, ref attrs)) continue;
+                    if (!IsDualSenseProduct(attrs.VendorID, attrs.ProductID)) continue;
 
-                            if (!isGamepad) {
-                                NativeMethods.CloseHandle(handle);
-                                continue;
-                            }
+                    if (!IsGamepadCollection(handle)) continue;
 
-                            IntPtr prodStr = Marshal.AllocHGlobal(254);
-                            string productName = "";
-                            if (NativeMethods.HidD_GetProductString(handle, prodStr, 254)) {
-                                productName = Marshal.PtrToStringAuto(prodStr);
-                            }
-                            Marshal.FreeHGlobal(prodStr);
-                            _deviceName = String.IsNullOrEmpty(productName)
-                                ? "Sony Controller"
-                                : productName + " (PID 0x" + attrs.ProductID.ToString("X4", CultureInfo.InvariantCulture) + ")";
-                            foundHandle = handle;
-                            Marshal.FreeHGlobal(detailData);
-                            break;
-                        }
-                    }
-                    NativeMethods.CloseHandle(handle);
+                    _deviceName = ProductName(attrs.ProductID);
+                    foundHandle = handle;
+                    keepHandle = true;
+                    break;
+                } finally {
+                    if (!keepHandle) NativeMethods.CloseHandle(handle);
                 }
+            } finally {
+                Marshal.FreeHGlobal(detailData);
             }
-            Marshal.FreeHGlobal(detailData);
         }
 
         NativeMethods.SetupDiDestroyDeviceInfoList(deviceInfoSet);
         return foundHandle;
     }
 
+    private static bool IsDualSenseProduct(ushort vendorId, ushort productId) {
+        return vendorId == SonyVendorId &&
+               (productId == DualSenseProductId || productId == DualSenseEdgeProductId);
+    }
+
+    private static bool IsDualSenseUsbPath(string devicePath) {
+        if (String.IsNullOrEmpty(devicePath)) return false;
+        string path = devicePath.ToLowerInvariant();
+        return path.Contains("vid_054c") &&
+               (path.Contains("pid_0ce6") || path.Contains("pid_0df2"));
+    }
+
+    private static bool IsGamepadCollection(IntPtr handle) {
+        IntPtr preparsedData;
+        if (!NativeMethods.HidD_GetPreparsedData(handle, out preparsedData)) return false;
+        try {
+            NativeMethods.HIDP_CAPS caps;
+            if (NativeMethods.HidP_GetCaps(preparsedData, out caps) != HidpStatusSuccess) return false;
+            if (caps.UsagePage != 1 || (caps.Usage != 4 && caps.Usage != 5)) return false;
+            return true;
+        } finally {
+            NativeMethods.HidD_FreePreparsedData(preparsedData);
+        }
+    }
+
+    private static string ProductName(ushort productId) {
+        string name = productId == DualSenseEdgeProductId ? "DualSense Edge" : "DualSense";
+        return name + " (PID 0x" + productId.ToString("X4", CultureInfo.InvariantCulture) + ")";
+    }
 
     private void ParseReport(byte[] r) {
         ControllerState s;
-        if (!TryParseDualSenseReport(r, _profile, out s)) return;
-        State = s;  // Volatile publish: reference swap ensures state is visible atomically
+        if (!TryParseDualSenseReport(r, out s)) return;
+        State = s;
     }
 
-    internal static bool TryParseDualSenseReport(byte[] r, ControllerProfile profile, out ControllerState s) {
+    internal static bool TryParseDualSenseReport(byte[] r, out ControllerState s) {
         s = null;
-        if (r == null || r.Length < 10) return false;
+        if (r == null || r.Length < 8) return false;
 
-        bool isUsbProfile = (profile == ControllerProfile.DualSense || profile == ControllerProfile.DualShock4);
-        bool isBtProfile = (profile == ControllerProfile.DualSenseBT || profile == ControllerProfile.DualShock4BT);
-        bool isAdvancedBt = (r[0] == 0x31 || r[0] == 0x11);
-
-        if (isUsbProfile) {
-            if (r[0] != 0x01) {
-                return false;
-            }
-        } else if (isBtProfile) {
-            if (r[0] != 0x01 && !isAdvancedBt) {
-                return false;
-            }
-        } else {
-            return false;
+        if (r[0] == 0x01) {
+            if (r.Length >= 64) return TryParseDualSenseFullReport(r, 1, out s);
+            return TryParseDualSenseSimpleReport(r, out s);
         }
 
-        s = new ControllerState();
-        s.Connected = true;
+        return false;
+    }
 
-        if (isBtProfile && !isAdvancedBt) {
-            s.LX = Axis(r[1]);
-            s.LY = Axis(r[2]);
-            s.RX = Axis(r[3]);
-            s.RY = Axis(r[4]);
+    private static bool TryParseDualSenseSimpleReport(byte[] r, out ControllerState s) {
+        s = null;
+        if (r.Length < 8) return false;
 
-            FillDpadAndFace(s, r[5]);
+        s = new ControllerState { Connected = true };
+        s.LX = Axis(r[1]);
+        s.LY = Axis(r[2]);
+        s.RX = Axis(r[3]);
+        s.RY = Axis(r[4]);
 
-            byte b2 = r[6];
-            s.L1 = (b2 & 0x01) != 0;
-            s.R1 = (b2 & 0x02) != 0;
-            s.L2 = Trigger(r[8], (b2 & 0x04) != 0);
-            s.R2 = Trigger(r[9], (b2 & 0x08) != 0);
-            s.Create = (b2 & 0x10) != 0;
-            s.Options = (b2 & 0x20) != 0;
-            s.L3 = (b2 & 0x40) != 0;
-            s.R3 = (b2 & 0x80) != 0;
-
-            byte b3 = r[7];
-            s.Home = (b3 & 0x01) != 0;
-            s.TouchClick = (b3 & 0x02) != 0;
-            TryParseTouchPoints(s, r, 10);
-        } else {
-            int offset = isUsbProfile ? 1 : (r[0] == 0x11 ? 3 : 2);
-            bool isDs4 = (profile == ControllerProfile.DualShock4 || profile == ControllerProfile.DualShock4BT);
-
-            if (r.Length < offset + 9) return false;
-
-            s.LX = Axis(r[offset + 0]);
-            s.LY = Axis(r[offset + 1]);
-            s.RX = Axis(r[offset + 2]);
-            s.RY = Axis(r[offset + 3]);
-
-            if (isDs4) {
-                // DS4 layout: sticks, dpad+face, shoulders, ps+touch, L2, R2
-                FillDpadAndFace(s, r[offset + 4]);
-
-                byte b2 = r[offset + 5];
-                s.L1 = (b2 & 0x01) != 0;
-                s.R1 = (b2 & 0x02) != 0;
-                s.Create = (b2 & 0x10) != 0;
-                s.Options = (b2 & 0x20) != 0;
-                s.L3 = (b2 & 0x40) != 0;
-                s.R3 = (b2 & 0x80) != 0;
-
-                if (r.Length > offset + 6) {
-                    s.Home = (r[offset + 6] & 0x01) != 0;
-                    s.TouchClick = (r[offset + 6] & 0x02) != 0;
-                }
-                TryParseDualShock4TouchPoints(s, r, offset);
-
-                s.L2 = Trigger(r[offset + 7], (b2 & 0x04) != 0);
-                s.R2 = Trigger(r[offset + 8], (b2 & 0x08) != 0);
-            } else {
-                // DS5 layout: sticks, L2, R2, counter, dpad+face, shoulders, ps+touch
-                FillDpadAndFace(s, r[offset + 7]);
-
-                byte b2 = r[offset + 8];
-                s.L1 = (b2 & 0x01) != 0;
-                s.R1 = (b2 & 0x02) != 0;
-                s.L2 = Trigger(r[offset + 4], (b2 & 0x04) != 0);
-                s.R2 = Trigger(r[offset + 5], (b2 & 0x08) != 0);
-                s.Create = (b2 & 0x10) != 0;
-                s.Options = (b2 & 0x20) != 0;
-                s.L3 = (b2 & 0x40) != 0;
-                s.R3 = (b2 & 0x80) != 0;
-
-                if (r.Length > offset + 9) {
-                    s.Home = (r[offset + 9] & 0x01) != 0;
-                    s.TouchClick = (r[offset + 9] & 0x02) != 0;
-                    s.Mute = (r[offset + 9] & 0x04) != 0;
-                }
-                TryParseTouchPoints(s, r, offset + 32);
-            }
-        }
-
+        FillDpadAndFace(s, r[5]);
+        s.L2 = r.Length > 8 ? Trigger(r[8]) : 0.0;
+        s.R2 = r.Length > 9 ? Trigger(r[9]) : 0.0;
+        FillShoulderAndSystemButtons(s, r[6], r[7]);
         return true;
     }
 
-    private static void TryParseDualShock4TouchPoints(ControllerState s, byte[] r, int commonOffset) {
-        int touchReportCountOffset = commonOffset + 32;
-        if (r == null || r.Length <= touchReportCountOffset) return;
-        if (r[touchReportCountOffset] == 0) return;
+    private static bool TryParseDualSenseFullReport(byte[] r, int offset, out ControllerState s) {
+        s = null;
+        if (offset < 0 || r.Length <= offset + 9) return false;
 
-        // DS4 touch reports begin with a timestamp byte, then two 4-byte touch points.
-        TryParseTouchPoints(s, r, commonOffset + 34);
+        s = new ControllerState { Connected = true };
+        s.LX = Axis(r[offset + 0]);
+        s.LY = Axis(r[offset + 1]);
+        s.RX = Axis(r[offset + 2]);
+        s.RY = Axis(r[offset + 3]);
+        s.L2 = Trigger(r[offset + 4]);
+        s.R2 = Trigger(r[offset + 5]);
+
+        FillDpadAndFace(s, r[offset + 7]);
+        FillShoulderAndSystemButtons(s, r[offset + 8], r[offset + 9]);
+
+        if (!TryParseTouchPoints(s, r, offset + 32)) {
+            TryParseTouchPoints(s, r, offset + 31);
+        }
+        return true;
     }
 
-    private static void TryParseTouchPoints(ControllerState s, byte[] r, int offset) {
+    private static void FillShoulderAndSystemButtons(ControllerState s, byte buttons1, byte buttons2) {
+        s.L1 = (buttons1 & 0x01) != 0;
+        s.R1 = (buttons1 & 0x02) != 0;
+        s.L2 = Math.Max(s.L2, (buttons1 & 0x04) != 0 ? 1.0 : 0.0);
+        s.R2 = Math.Max(s.R2, (buttons1 & 0x08) != 0 ? 1.0 : 0.0);
+        s.Create = (buttons1 & 0x10) != 0;
+        s.Options = (buttons1 & 0x20) != 0;
+        s.L3 = (buttons1 & 0x40) != 0;
+        s.R3 = (buttons1 & 0x80) != 0;
+
+        s.Home = (buttons2 & 0x01) != 0;
+        s.TouchClick = (buttons2 & 0x02) != 0;
+        s.Mute = (buttons2 & 0x04) != 0;
+    }
+
+    private static bool TryParseTouchPoints(ControllerState s, byte[] r, int offset) {
         TouchPoint p1;
         TouchPoint p2;
-        if (TryReadTouchPair(r, offset, out p1, out p2)) {
-            AssignTouchPoints(s, p1, p2);
-        }
+        if (!TryReadTouchPair(r, offset, out p1, out p2)) return false;
+        AssignTouchPoints(s, p1, p2);
+        return true;
     }
 
     private static bool TryReadTouchPair(byte[] r, int offset, out TouchPoint p1, out TouchPoint p2) {
         p1 = new TouchPoint();
         p2 = new TouchPoint();
         if (!TryReadTouchPoint(r, offset, out p1)) return false;
-        TryReadTouchPoint(r, offset + 4, out p2);
+        if (!TryReadTouchPoint(r, offset + 4, out p2)) return false;
         return true;
     }
 
@@ -400,7 +273,7 @@ internal sealed class DirectHidController {
         point.Active = (r[offset] & 0x80) == 0;
         point.X = r[offset + 1] | ((r[offset + 2] & 0x0F) << 8);
         point.Y = ((r[offset + 2] >> 4) & 0x0F) | (r[offset + 3] << 4);
-        if (point.Active && (point.X > 1919 || point.Y > 943)) return false;
+        if (point.Active && (point.X > 1919 || point.Y > 1079)) return false;
         return true;
     }
 
@@ -422,16 +295,15 @@ internal sealed class DirectHidController {
         s.Triangle = (b & 0x80) != 0;
     }
 
-    private static double Axis(byte value) { return Clamp(((double)value - 127.5) / 127.5, -1.0, 1.0); }
-    private static double Axis(short value) {
-        return value < 0
-            ? Clamp((double)value / 32768.0, -1.0, 0.0)
-            : Clamp((double)value / 32767.0, 0.0, 1.0);
+    private static double Axis(byte value) {
+        return Clamp(((double)value - 127.5) / 127.5, -1.0, 1.0);
     }
-    private static double Trigger(byte value) { return Clamp((double)value / 255.0, 0.0, 1.0); }
-    private static double Trigger(byte value, bool digitalPressed) {
-        return Trigger(value);
-    }
-    private static double Clamp(double value, double min, double max) { return value < min ? min : (value > max ? max : value); }
 
+    private static double Trigger(byte value) {
+        return Clamp((double)value / 255.0, 0.0, 1.0);
+    }
+
+    private static double Clamp(double value, double min, double max) {
+        return value < min ? min : (value > max ? max : value);
+    }
 }
