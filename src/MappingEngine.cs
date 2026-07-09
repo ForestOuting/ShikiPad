@@ -6,7 +6,7 @@ internal sealed class MappingEngine {
 
     public MappingEngine() {
         _tables = new KeyStroke[(int)Layer.Reserved][];
-        _tables[(int)Layer.Base] = Row(PhysicalKey.ArrowUp, PhysicalKey.ArrowRight, PhysicalKey.Space, PhysicalKey.Backspace, PhysicalKey.ArrowLeft, PhysicalKey.ArrowDown, PhysicalKey.Enter, PhysicalKey.Tab);
+        _tables[(int)Layer.Base] = Row(PhysicalKey.ArrowUp, PhysicalKey.ArrowRight, PhysicalKey.Tab, PhysicalKey.Escape, PhysicalKey.ArrowLeft, PhysicalKey.ArrowDown, PhysicalKey.Space, PhysicalKey.Enter);
         _tables[(int)Layer.R1] = Row(PhysicalKey.O, PhysicalKey.P, PhysicalKey.J, PhysicalKey.I, PhysicalKey.N, PhysicalKey.M, PhysicalKey.K, PhysicalKey.L);
         _tables[(int)Layer.L1] = Row(PhysicalKey.W, PhysicalKey.D, PhysicalKey.Q, PhysicalKey.E, PhysicalKey.A, PhysicalKey.S, PhysicalKey.Z, PhysicalKey.X);
         _tables[(int)Layer.R2] = Row(PhysicalKey.Num0, PhysicalKey.G, PhysicalKey.Y, PhysicalKey.U, PhysicalKey.Minus, PhysicalKey.Equals, PhysicalKey.B, PhysicalKey.H);

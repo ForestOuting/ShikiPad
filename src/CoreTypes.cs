@@ -75,11 +75,9 @@ internal enum StickDirection {
     None,
     Up,
     UpRight,
-    Right,
     DownRight,
     Down,
     DownLeft,
-    Left,
     UpLeft
 }
 

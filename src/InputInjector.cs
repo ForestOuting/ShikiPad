@@ -69,18 +69,29 @@ internal sealed class InputInjector {
 
     public void KeyTap(PhysicalKey key, bool shift, bool ctrl, bool alt, bool win) {
         if (key == PhysicalKey.None || !_keys.ContainsKey(key)) return;
+        bool pressShift = shift && !IsHeld(PhysicalKey.LShift);
+        bool pressCtrl = ctrl && !IsHeld(PhysicalKey.LCtrl);
+        bool pressAlt = alt && !IsHeld(PhysicalKey.LAlt);
+        bool pressWin = win && !IsHeld(PhysicalKey.LWin);
+
         List<INPUT> inputs = new List<INPUT>();
-        if (shift) AddKey(inputs, _shift, false);
-        if (ctrl) AddKey(inputs, _ctrl, false);
-        if (alt) AddKey(inputs, _alt, false);
-        if (win) AddKey(inputs, _win, false);
+        if (pressShift) AddKey(inputs, _shift, false);
+        if (pressCtrl) AddKey(inputs, _ctrl, false);
+        if (pressAlt) AddKey(inputs, _alt, false);
+        if (pressWin) AddKey(inputs, _win, false);
         AddKey(inputs, _keys[key], false);
         AddKey(inputs, _keys[key], true);
-        if (win) AddKey(inputs, _win, true);
-        if (alt) AddKey(inputs, _alt, true);
-        if (ctrl) AddKey(inputs, _ctrl, true);
-        if (shift) AddKey(inputs, _shift, true);
+        if (pressWin) AddKey(inputs, _win, true);
+        if (pressAlt) AddKey(inputs, _alt, true);
+        if (pressCtrl) AddKey(inputs, _ctrl, true);
+        if (pressShift) AddKey(inputs, _shift, true);
         Send(inputs, "KeyTap(" + key + ")");
+    }
+
+    private bool IsHeld(PhysicalKey key) {
+        lock (_heldLock) {
+            return _heldKeys.Contains(key);
+        }
     }
 
     public void MouseMove(int dx, int dy) {

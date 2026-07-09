@@ -25,6 +25,7 @@ internal static class Program {
 
     private static ConsoleCtrlHandler _consoleCtrlHandler;
     private const string DefaultControllerFileName = "shikipad.default";
+    private const string StartupTaskName = "ShikiPad";
     private static bool _controllerSelectionExitRequested;
 
     public static void PrintGradientBanner() {
@@ -70,7 +71,7 @@ internal static class Program {
         int indent = Math.Max(0, (panelWidth - blockWidth) / 2);
         string pad = new string(' ', indent);
 
-        WriteManualSingleLayer(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Space", "Back", "←", "↓", "Enter", "Tab");
+        WriteManualSingleLayer(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Tab", "Esc", "←", "↓", "Space", "Enter");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1/RB", "o", "p", "j", "i", "n", "m", "k", "l",
             "L1/LB", "w", "d", "q", "e", "a", "s", "z", "x");
         WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "0", "g", "y", "u", "-", "=", "b", "h",
@@ -82,11 +83,12 @@ internal static class Program {
         WriteManualGradientLine(width, panelWidth, pad + "Shift       ;→:  '→\"  `→~  \\→|", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↑/↓ 滚轮; ← Shift; ↙ Ctrl; ↘ Alt; → Win; ↖ Esc; ↗ Fn", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + (xbox ? "蓄力        View/Menu 短按锁定 / 长按保持" : "蓄力        触控板短按锁定 / 长按保持"), blockWidth);
-        if (!xbox) WriteManualGradientLine(width, panelWidth, pad + "静音键      大写锁定", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↖ Shift; ↑/↓ 滚轮; ↗ Win; ↙ Ctrl; ↘ Alt", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + (xbox ? "蓄力        Guide/Home 不可读取; 跳过" : "蓄力        先推修饰再按 Home; 否则 LShift"), blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "触控板中区  按压 -> CapsLock/Fn", blockWidth);
+        if (!xbox) WriteManualGradientLine(width, panelWidth, pad + "静音键      按下禁用 / 再按启用", blockWidth);
         Console.WriteLine();
-        WriteManualGradientLine(width, panelWidth, pad + "Fn          1..0 / - / =  →  F1..F12", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "CapsFn      1..0 / - / =  →  F1..F12 后恢复", blockWidth);
         
         Console.WriteLine();
         WriteEmbossedCenteredText(width, panelWidth, "Enter 主界面   |   Esc 关闭软件", SeasonGlowStops(), false);
@@ -609,6 +611,14 @@ internal static class Program {
             return 0;
         }
 
+        if (HasArg(args, "--install-startup")) {
+            return InstallStartupTask();
+        }
+
+        if (HasArg(args, "--uninstall-startup")) {
+            return UninstallStartupTask();
+        }
+
         if (HasArg(args, "--identity")) {
             Console.WriteLine("\n--- SHIKIPAD PROCESS IDENTITY ---");
             Console.WriteLine("Current process exe path: " + Process.GetCurrentProcess().MainModule.FileName);
@@ -872,6 +882,74 @@ internal static class Program {
     private static bool HasArg(string[] args, string value) {
         for (int i = 0; i < args.Length; i++) if (String.Equals(args[i], value, StringComparison.OrdinalIgnoreCase)) return true;
         return false;
+    }
+
+    private static int InstallStartupTask() {
+        string exePath = Process.GetCurrentProcess().MainModule.FileName;
+        string taskRun = "\"" + exePath + "\"";
+        string arguments = "/Create /F /TN " + QuoteArgument(StartupTaskName) +
+            " /SC ONLOGON /RL HIGHEST /TR " + QuoteArgument(taskRun);
+
+        int exitCode = RunSchtasks(arguments);
+        if (exitCode == 0) {
+            Console.WriteLine("Startup task installed: " + StartupTaskName);
+            Console.WriteLine("Target: " + exePath);
+        } else {
+            Console.WriteLine("Failed to install startup task. Run this command from an elevated terminal.");
+        }
+        return exitCode;
+    }
+
+    private static int UninstallStartupTask() {
+        string arguments = "/Delete /F /TN " + QuoteArgument(StartupTaskName);
+        int exitCode = RunSchtasks(arguments);
+        if (exitCode == 0) {
+            Console.WriteLine("Startup task removed: " + StartupTaskName);
+        } else {
+            Console.WriteLine("Failed to remove startup task. Run this command from an elevated terminal.");
+        }
+        return exitCode;
+    }
+
+    private static int RunSchtasks(string arguments) {
+        ProcessStartInfo info = new ProcessStartInfo();
+        info.FileName = "schtasks.exe";
+        info.Arguments = arguments;
+        info.UseShellExecute = false;
+        info.RedirectStandardOutput = true;
+        info.RedirectStandardError = true;
+        using (Process process = Process.Start(info)) {
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            if (!String.IsNullOrWhiteSpace(output)) Console.WriteLine(output.TrimEnd());
+            if (!String.IsNullOrWhiteSpace(error)) Console.Error.WriteLine(error.TrimEnd());
+            return process.ExitCode;
+        }
+    }
+
+    private static string QuoteArgument(string value) {
+        if (String.IsNullOrEmpty(value)) return "\"\"";
+        StringBuilder builder = new StringBuilder();
+        builder.Append('"');
+        int backslashes = 0;
+        for (int i = 0; i < value.Length; i++) {
+            char c = value[i];
+            if (c == '\\') {
+                backslashes++;
+            } else if (c == '"') {
+                builder.Append('\\', backslashes * 2 + 1);
+                builder.Append('"');
+                backslashes = 0;
+            } else {
+                builder.Append('\\', backslashes);
+                backslashes = 0;
+                builder.Append(c);
+            }
+        }
+        builder.Append('\\', backslashes * 2);
+        builder.Append('"');
+        return builder.ToString();
     }
 
     private static void RunHidEnumTest() {

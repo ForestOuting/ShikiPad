@@ -23,7 +23,7 @@ internal sealed class LeftStickScrollIntegrator {
         if (direction == 0 || deltaSec <= 0.0) return false;
 
         double clampedRadius = Clamp(radius, 0.0, 1.0);
-        if (clampedRadius <= config.LeftStickExitDeadzone) {
+        if (clampedRadius <= config.LeftStickEnterDeadzone) {
             Reset();
             return false;
         }

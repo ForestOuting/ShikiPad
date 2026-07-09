@@ -42,11 +42,9 @@ internal sealed class ClutchButtonStateMachine {
         _prevDown = down;
     }
 
-    public bool DeactivateToggle() {
-        bool affected = Toggled || (Held && !_longPress);
+    public void DeactivateToggle() {
         Toggled = false;
         if (Held && !_longPress) _suppressShortTap = true;
-        return affected;
     }
 
     public void Reset() {

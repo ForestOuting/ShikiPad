@@ -167,8 +167,8 @@ internal sealed class DirectHidController {
         s.Create = (b & NativeMethods.XINPUT_GAMEPAD_BACK) != 0;
         s.Options = (b & NativeMethods.XINPUT_GAMEPAD_START) != 0;
 
-        // Xbox has no physical touchpad; clutch toggle is handled in MapperForm
-        // Xbox Home/Guide button is intercepted by Windows for Xbox Game Bar and cannot be read via XInput
+        // Xbox has no physical touchpad, and Home/Guide is intercepted by Windows
+        // for Xbox Game Bar, so Home-based clutch is skipped for XInput profiles.
         return s;
     }
 
@@ -325,7 +325,7 @@ internal sealed class DirectHidController {
                     s.Home = (r[offset + 6] & 0x01) != 0;
                     s.TouchClick = (r[offset + 6] & 0x02) != 0;
                 }
-                TryParseTouchPoints(s, r, offset + 36);
+                TryParseDualShock4TouchPoints(s, r, offset);
 
                 s.L2 = Trigger(r[offset + 7], (b2 & 0x04) != 0);
                 s.R2 = Trigger(r[offset + 8], (b2 & 0x08) != 0);
@@ -353,6 +353,15 @@ internal sealed class DirectHidController {
         }
 
         return true;
+    }
+
+    private static void TryParseDualShock4TouchPoints(ControllerState s, byte[] r, int commonOffset) {
+        int touchReportCountOffset = commonOffset + 32;
+        if (r == null || r.Length <= touchReportCountOffset) return;
+        if (r[touchReportCountOffset] == 0) return;
+
+        // DS4 touch reports begin with a timestamp byte, then two 4-byte touch points.
+        TryParseTouchPoints(s, r, commonOffset + 34);
     }
 
     private static void TryParseTouchPoints(ControllerState s, byte[] r, int offset) {
