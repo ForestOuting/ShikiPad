@@ -1989,6 +1989,14 @@ internal sealed class MapperForm : Form {
         _capsFnLayerActive = true;
     }
 
+    private void ToggleCapsFnLayer(string source) {
+        if (_capsFnLayerActive) {
+            DeactivateCapsFnLayer("Mute short press Caps/Fn layer off");
+        } else {
+            ActivateCapsFnLayer(source);
+        }
+    }
+
     private void DeactivateCapsFnLayer(string reason) {
         if (!_capsFnLayerActive) return;
         _injector.CurrentSource = "CapsFnLayer";
@@ -2012,7 +2020,7 @@ internal sealed class MapperForm : Form {
             }
         } else if (!down && _prevMute) {
             if (!_muteLongPressTriggered && _enabled) {
-                ActivateCapsFnLayer("Mute");
+                ToggleCapsFnLayer("Mute");
             }
             _muteDownMs = 0.0;
             _muteLongPressTriggered = false;

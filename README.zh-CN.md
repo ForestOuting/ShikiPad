@@ -16,7 +16,7 @@ ShikiPad 现在必须使用 Interception 来输出键盘和鼠标.
 |---|---|---|
 | DualSense USB | 完整 PlayStation 功能: 按键、摇杆、扳机、Home、触控板按压/手势、Create/Options、DualSense 静音键 | 启动 ShikiPad 前请先用 USB 连接手柄 |
 
-## 驱动与 HidHide 顺序
+## 驱动与安装顺序
 
 推荐设置顺序:
 
@@ -49,16 +49,9 @@ DualSense 的 HidHide 设置:
 | `interception.dll` | Interception 运行库 |
 | `install_driver.bat` | Interception 驱动安装脚本 |
 | `README.md` / `README.zh-CN.md` | 说明文档 |
+| `RELEASE_NOTES.md` | 版本说明 |
 | `shiki.ico` | 程序图标 |
 | `ShikiPad.manifest` | Windows 程序清单 |
-
-## 安装
-
-1. 解压发布包.
-2. 右键 `install_driver.bat`, 以管理员身份运行.
-3. 看到 `Installation complete!` 后重启 Windows.
-4. 用 USB 连接 PS5 DualSense 手柄.
-5. 运行 `ShikiPad.exe`. 程序需要管理员权限, 因为键鼠注入依赖 Interception. 程序会直接进入有线 DualSense 连接状态, 不再显示手柄选择页面.
 
 ## 开机自启动
 
@@ -97,7 +90,7 @@ ShikiPad 需要管理员权限才能稳定使用 Interception 输出键盘和鼠
 | 左摇杆上 / 下 | 鼠标滚轮 |
 | Create | `Right Alt` |
 | Options | `Right Ctrl` |
-| DualSense 静音键短按 | 打开下一次动作键的一次性 Caps/Fn 层 |
+| DualSense 静音键短按 | 开关下一次动作键的一次性 Caps/Fn 层 |
 | DualSense 静音键长按 | 启用 / 禁用 ShikiPad |
 | 触控板按压时任一触点在左确定区 | `Delete` |
 | 触控板按压时任一触点在右确定区 | `Backspace` |
@@ -163,7 +156,7 @@ ShikiPad 需要管理员权限才能稳定使用 Interception 输出键盘和鼠
 
 ## 语音输入
 
-如果觉得手柄打字仍然太难, 建议搭配 Typeless, 闪电说等语音输入软件. DualSense 在这里很顺手: Create 是 `Right Alt`, Options 是 `Right Ctrl`, Home 负责蓄力, 静音键短按打开一次性 Caps/Fn 层, 静音键长按切换启用 / 禁用 ShikiPad.
+如果觉得手柄打字仍然太难, 建议搭配 Typeless, 闪电说等语音输入软件. DualSense 在这里很顺手: Create 是 `Right Alt`, Options 是 `Right Ctrl`, Home 负责蓄力, 静音键短按开关一次性 Caps/Fn 层, 静音键长按切换启用 / 禁用 ShikiPad.
 
 ## 左摇杆
 
@@ -203,7 +196,7 @@ ShikiPad 需要管理员权限才能稳定使用 Interception 输出键盘和鼠
 
 蓄力激活时, 已收集的修饰键会继续保持, 即使左摇杆移动到其他位置也不会丢失. 如果要继续叠加另一个修饰键, 直接移动到对应修饰键扇区即可; 如果要在蓄力期间滚轮, 直接移动到上/下扇区即可. Home 现在只作为蓄力键, 没有修饰键时也不再变成真实 `Left Shift`. 短按锁定的蓄力会在锁定形成那一刻记录自己是否可被动作键消费: 如果那一刻已经收集至少一个修饰键, 下一次动作键实际发出后会自动解除这次短按锁定; 如果那一刻没有收集修饰键, 之后再推摇杆收集修饰键也不改变这次锁定状态, 它不会被第一次动作键消费, 需要再次短按 Home 取消. 长按保持的蓄力仍然按住保持, 松开释放. 蓄力期间动作键保持正常映射, 正常映射里的 `1` 仍然输出 `1`, 不会变成 `F1`.
 
-静音键负责手柄 Caps/Fn 层. 短按静音键会打开一次性 Caps/Fn: 未带 Shift 的动作键映射 `1..0`, `-`, `=` 会变成 `F1..F12`; 未带 Shift 的字母会输出为带 Shift 的大写字母, 不再输出原本小写. 下一次动作键无论是否转换都会清空 Caps/Fn; 其他按键保持原本映射. 长按静音键使用和 Home 蓄力相同的时间 `ClutchLongPressMs`, 用于切换 ShikiPad 启用 / 禁用.
+静音键负责手柄 Caps/Fn 层. 短按静音键会开关一次性 Caps/Fn; 如果动作键还没触发, 再短按一次就取消这一层并恢复正常输出. Caps/Fn 激活时, 未带 Shift 的动作键映射 `1..0`, `-`, `=` 会变成 `F1..F12`; 未带 Shift 的字母会输出为带 Shift 的大写字母, 不再输出原本小写. 下一次动作键无论是否转换都会清空 Caps/Fn; 其他按键保持原本映射. 长按静音键使用和 Home 蓄力相同的时间 `ClutchLongPressMs`, 用于切换 ShikiPad 启用 / 禁用.
 
 触控板中间缓冲区按压只触发真实系统 `Caps Lock`, 键盘指示灯会跟着变化. 它不再打开 Fn, 也不参与蓄力释放.
 

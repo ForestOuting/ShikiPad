@@ -16,7 +16,7 @@ Capability summary:
 |---|---|---|
 | DualSense USB | Full PlayStation feature set: buttons, sticks, triggers, Home, touchpad click/gestures, Create/Options, DualSense Mute | Connect by USB before starting ShikiPad |
 
-## Driver And HidHide Order
+## Driver And Installation Order
 
 Recommended setup order:
 
@@ -49,16 +49,9 @@ A release archive follows the actual desktop `ShikiPad.zip` package. The current
 | `interception.dll` | Interception runtime |
 | `install_driver.bat` | Interception driver installer helper |
 | `README.md` / `README.zh-CN.md` | Documentation |
+| `RELEASE_NOTES.md` | Release notes |
 | `shiki.ico` | Program icon |
 | `ShikiPad.manifest` | Windows application manifest |
-
-## Install
-
-1. Extract the release archive.
-2. Right-click `install_driver.bat` and choose `Run as administrator`.
-3. Restart Windows after `Installation complete!`.
-4. Connect the PS5 DualSense controller by USB.
-5. Run `ShikiPad.exe` as administrator. It starts directly in wired DualSense mode; there is no controller selection page.
 
 ## Startup
 
@@ -97,7 +90,7 @@ Closing the console window also exits and releases held keyboard and mouse input
 | Left stick up / down | Mouse wheel |
 | Create | `Right Alt` |
 | Options | `Right Ctrl` |
-| Short-tap DualSense Mute | Enable one-shot Caps/Fn layer for the next action key |
+| Short-tap DualSense Mute | Toggle one-shot Caps/Fn layer for the next action key |
 | Long-press DualSense Mute | Enable / disable ShikiPad |
 | Any touch point in the left confirmed zone during touchpad click | `Delete` |
 | Any touch point in the right confirmed zone during touchpad click | `Backspace` |
@@ -163,7 +156,7 @@ Time-based repeat applies to left-half one-finger direct up/down window switchin
 
 ## Voice Input
 
-If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch, Mute short-tap opens the one-shot Caps/Fn layer, and Mute long-press toggles ShikiPad enabled / disabled.
+If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch, Mute short-tap toggles the one-shot Caps/Fn layer, and Mute long-press toggles ShikiPad enabled / disabled.
 
 ## Left Stick
 
@@ -203,7 +196,7 @@ Normally, the left stick holds one modifier at a time. Clutch collects multiple 
 
 While clutch is active, the currently collected modifiers remain held even as the left stick moves elsewhere. To add another modifier, move directly into its sector; to use wheel input, move into the Up/Down sector. Home is only a clutch key and no longer becomes real `Left Shift` when no modifier is active. A short-tap clutch lock records whether it can be consumed at the moment the lock is formed: if at least one modifier has already been collected then, the next action key releases that short-tap lock after firing; if no modifier has been collected then, later modifier collection does not make that same lock action-consumable, and it must be cancelled with another short tap. Long-press clutch still holds while pressed and releases on button up. Action buttons keep their normal mappings while clutch modifiers are held. Pressing a normal mapped `1` still sends `1`, not `F1`.
 
-Mute provides the controller Caps/Fn layer. Short-tap Mute enables one-shot Caps/Fn: unshifted action mappings `1..0`, `-`, and `=` become `F1..F12`; unshifted letters are sent as shifted uppercase letters instead of their normal lowercase output. The next action key always clears Caps/Fn. Other keys keep their normal mapping. Long-press Mute uses the same timing as Home clutch, `ClutchLongPressMs`, and toggles ShikiPad enabled / disabled.
+Mute provides the controller Caps/Fn layer. Short-tap Mute toggles one-shot Caps/Fn on or off; pressing it again before an action key cancels the layer and restores normal output. While active, unshifted action mappings `1..0`, `-`, and `=` become `F1..F12`; unshifted letters are sent as shifted uppercase letters instead of their normal lowercase output. The next action key always clears Caps/Fn. Other keys keep their normal mapping. Long-press Mute uses the same timing as Home clutch, `ClutchLongPressMs`, and toggles ShikiPad enabled / disabled.
 
 Touchpad middle-buffer click taps real system `Caps Lock`, so the keyboard indicator follows it. It does not enable Fn and does not participate in clutch release.
 
