@@ -44,7 +44,7 @@ internal sealed class MapperForm : Form {
     private double _touchClickRepeatStartedMs;
     private double _touchClickNextRepeatMs;
     private bool _prevClutchActive;
-    private bool _fnLayerActive;
+    private bool _capsFnLayerActive;
     private bool _prevCreate;
     private bool _prevOptions;
     private bool _prevMute;
@@ -428,16 +428,23 @@ internal sealed class MapperForm : Form {
     private ResolvedActionStroke ResolveActionStroke(KeyStroke stroke) {
         if (stroke.IsNone) return new ResolvedActionStroke(stroke, false);
 
-        if (_fnLayerActive) {
+        if (_capsFnLayerActive) {
             if (!stroke.Shift) {
                 PhysicalKey fKey = TranslateToFKey(stroke.Key);
                 if (fKey != PhysicalKey.None) {
                     return new ResolvedActionStroke(KeyStroke.Of(fKey), true);
                 }
+                if (IsLetterKey(stroke.Key)) {
+                    return new ResolvedActionStroke(KeyStroke.Shifted(stroke.Key), true);
+                }
             }
         }
 
         return new ResolvedActionStroke(stroke, false);
+    }
+
+    private static bool IsLetterKey(PhysicalKey key) {
+        return key >= PhysicalKey.A && key <= PhysicalKey.Z;
     }
 
     private static bool IsFunctionKey(KeyStroke stroke) {
@@ -1846,8 +1853,8 @@ internal sealed class MapperForm : Form {
     }
 
     private void CompleteAction(bool fnTranslated) {
-        if (_fnLayerActive) {
-            DeactivateFnLayer(fnTranslated ? "Fn translated action complete" : "Fn normal action complete");
+        if (_capsFnLayerActive) {
+            DeactivateCapsFnLayer(fnTranslated ? "Caps/Fn translated action complete" : "Caps/Fn normal action complete");
         }
         ReleaseClutchAfterAction();
     }
@@ -1976,17 +1983,17 @@ internal sealed class MapperForm : Form {
         _injector.KeyTap(PhysicalKey.CapsLock, false, false, false, false);
     }
 
-    private void ActivateFnLayer(string source) {
+    private void ActivateCapsFnLayer(string source) {
         _injector.CurrentSource = source;
-        _injector.CurrentReason = "Fn layer on";
-        _fnLayerActive = true;
+        _injector.CurrentReason = "Caps/Fn layer on";
+        _capsFnLayerActive = true;
     }
 
-    private void DeactivateFnLayer(string reason) {
-        if (!_fnLayerActive) return;
-        _injector.CurrentSource = "FnLayer";
+    private void DeactivateCapsFnLayer(string reason) {
+        if (!_capsFnLayerActive) return;
+        _injector.CurrentSource = "CapsFnLayer";
         _injector.CurrentReason = reason;
-        _fnLayerActive = false;
+        _capsFnLayerActive = false;
     }
 
     private void UpdateEmergency(ControllerState s, double now) {
@@ -2005,7 +2012,7 @@ internal sealed class MapperForm : Form {
             }
         } else if (!down && _prevMute) {
             if (!_muteLongPressTriggered && _enabled) {
-                ActivateFnLayer("Mute");
+                ActivateCapsFnLayer("Mute");
             }
             _muteDownMs = 0.0;
             _muteLongPressTriggered = false;
@@ -2024,7 +2031,7 @@ internal sealed class MapperForm : Form {
         _leftStickScroll.Reset();
         _heldLeftStickKeys.Clear();
         _accumulatedModifiers.Clear();
-        DeactivateFnLayer("Runtime release Fn layer");
+        DeactivateCapsFnLayer("Runtime release Caps/Fn layer");
         for (int i = 0; i < _holds.Length; i++) _holds[i] = new ButtonHold();
         for (int i = 0; i < _prevDown.Length; i++) _prevDown[i] = false;
         _prevL1 = false;

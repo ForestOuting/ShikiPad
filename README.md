@@ -97,7 +97,7 @@ Closing the console window also exits and releases held keyboard and mouse input
 | Left stick up / down | Mouse wheel |
 | Create | `Right Alt` |
 | Options | `Right Ctrl` |
-| Short-tap DualSense Mute | Enable one-shot Fn layer for the next action key |
+| Short-tap DualSense Mute | Enable one-shot Caps/Fn layer for the next action key |
 | Long-press DualSense Mute | Enable / disable ShikiPad |
 | Any touch point in the left confirmed zone during touchpad click | `Delete` |
 | Any touch point in the right confirmed zone during touchpad click | `Backspace` |
@@ -163,7 +163,7 @@ Time-based repeat applies to left-half one-finger direct up/down window switchin
 
 ## Voice Input
 
-If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch, Mute short-tap opens the one-shot Fn layer, and Mute long-press toggles ShikiPad enabled / disabled.
+If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch, Mute short-tap opens the one-shot Caps/Fn layer, and Mute long-press toggles ShikiPad enabled / disabled.
 
 ## Left Stick
 
@@ -203,7 +203,7 @@ Normally, the left stick holds one modifier at a time. Clutch collects multiple 
 
 While clutch is active, the currently collected modifiers remain held even as the left stick moves elsewhere. To add another modifier, move directly into its sector; to use wheel input, move into the Up/Down sector. Home is only a clutch key and no longer becomes real `Left Shift` when no modifier is active. A short-tap clutch lock records whether it can be consumed at the moment the lock is formed: if at least one modifier has already been collected then, the next action key releases that short-tap lock after firing; if no modifier has been collected then, later modifier collection does not make that same lock action-consumable, and it must be cancelled with another short tap. Long-press clutch still holds while pressed and releases on button up. Action buttons keep their normal mappings while clutch modifiers are held. Pressing a normal mapped `1` still sends `1`, not `F1`.
 
-Mute provides the controller Fn layer. Short-tap Mute enables one-shot Fn: unshifted action mappings `1..0`, `-`, and `=` become `F1..F12`. The next action key always clears Fn; if that action is not one of those 12 keys, it is sent normally. Long-press Mute uses the same timing as Home clutch, `ClutchLongPressMs`, and toggles ShikiPad enabled / disabled.
+Mute provides the controller Caps/Fn layer. Short-tap Mute enables one-shot Caps/Fn: unshifted action mappings `1..0`, `-`, and `=` become `F1..F12`; unshifted letters are sent as shifted uppercase letters instead of their normal lowercase output. The next action key always clears Caps/Fn. Other keys keep their normal mapping. Long-press Mute uses the same timing as Home clutch, `ClutchLongPressMs`, and toggles ShikiPad enabled / disabled.
 
 Touchpad middle-buffer click taps real system `Caps Lock`, so the keyboard indicator follows it. It does not enable Fn and does not participate in clutch release.
 

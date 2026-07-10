@@ -82,9 +82,9 @@ internal static class Program {
         WriteManualGradientLine(width, panelWidth, pad + "蓄力        Home 短按锁定 / 长按保持; 锁定瞬间有修饰才被动作键消费", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "触控板中区  按压 -> 真实 CapsLock", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "触控板手势  直接滑 / 450ms 长按后滑 / 二指滑动", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "静音键      短按 Fn; 长按禁用 / 再长按启用", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "静音键      短按 Caps/Fn; 长按禁用 / 再长按启用", blockWidth);
         Console.WriteLine();
-        WriteManualGradientLine(width, panelWidth, pad + "Fn          1..0 / - / =  →  F1..F12; 任意动作键后恢复", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "Caps/Fn     1..0/-/= -> F1..F12; 字母 -> 大写", blockWidth);
         
         Console.WriteLine();
         WriteEmbossedCenteredText(width, panelWidth, "Enter 主界面   |   Esc 关闭软件", SeasonGlowStops(), false);
