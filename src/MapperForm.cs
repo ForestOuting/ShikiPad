@@ -36,21 +36,21 @@ internal sealed class MapperForm : Form {
     private readonly ClutchButtonStateMachine _clutchButton = new ClutchButtonStateMachine();
     private TouchGestureState _touchGesture = new TouchGestureState();
     private bool _touchAltTabAltDown;
+    private bool _touchAltTabAltOwned;
     private bool _touchGestureBlockedUntilRelease;
     private bool _prevTouchClick;
     private PhysicalKey _touchClickKey = PhysicalKey.None;
     private bool _touchClickKeyDown;
     private double _touchClickRepeatStartedMs;
     private double _touchClickNextRepeatMs;
-    private bool _prevHome;
-    private bool _homeShiftMode;
-    private bool _homeShiftDown;
     private bool _prevClutchActive;
-    private bool _capsLayerActive;
-    private bool _capsLayerOriginalCapsLockOn;
+    private bool _fnLayerActive;
     private bool _prevCreate;
     private bool _prevOptions;
     private bool _prevMute;
+    private double _muteDownMs;
+    private bool _muteLongPressTriggered;
+    private bool _clutchToggleActionReleases;
     private bool _createKeyDown;
     private bool _optionsKeyDown;
     private volatile bool _manualVisible;
@@ -227,7 +227,7 @@ internal sealed class MapperForm : Form {
         _prevL1 = s.L1;
         _prevR1 = s.R1;
 
-        UpdateEmergency(s);
+        UpdateEmergency(s, now);
         if (!s.Connected || !_enabled) {
             if (!s.Connected) _printedConnectedGuide = false;
             if (!_runtimeReleased) {
@@ -291,29 +291,13 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateClutchButton(ControllerState s, double now) {
-        bool down = s.Home;
-        bool justDown = down && !_prevHome;
-
-        if (justDown) {
-            _homeShiftMode = !IsLeftStickModifierActiveNow(s);
-            if (_homeShiftMode) {
-                _clutchButton.Reset();
-                _prevClutchActive = false;
-                PressHomeShiftKey();
-            }
+        bool wasToggled = _clutchButton.Toggled;
+        _clutchButton.Update(s.Home, now, _config.ClutchLongPressMs);
+        if (!wasToggled && _clutchButton.Toggled) {
+            _clutchToggleActionReleases = _accumulatedModifiers.Count > 0;
+        } else if (wasToggled && !_clutchButton.Toggled) {
+            _clutchToggleActionReleases = false;
         }
-
-        if (_homeShiftMode) {
-            _clutchButton.Update(false, now, _config.ClutchLongPressMs);
-            if (!down) {
-                ReleaseHomeShiftKey("Home LShift release");
-                _homeShiftMode = false;
-            }
-        } else {
-            _clutchButton.Update(down, now, _config.ClutchLongPressMs);
-        }
-
-        _prevHome = down;
     }
 
     private bool IsClutchActive() {
@@ -332,11 +316,6 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private bool IsLeftStickModifierActiveNow(ControllerState s) {
-        if (_accumulatedModifiers.Count > 0) return true;
-        return IsLeftStickModifierDirection(ResolveLeftStickDirection(s.LX, s.LY));
-    }
-
     private StickDirection ResolveLeftStickDirection(double x, double y) {
         double radius = Math.Sqrt(x * x + y * y);
         StickDirection candidate = Sector(x, y);
@@ -349,22 +328,6 @@ internal sealed class MapperForm : Form {
         return IsLeftStickModifierDirection(direction)
             ? Clamp(_config.LeftStickModifierEnterDeadzone, 0.0, 1.0)
             : Clamp(_config.LeftStickEnterDeadzone, 0.0, 1.0);
-    }
-
-    private void PressHomeShiftKey() {
-        if (_homeShiftDown) return;
-        _injector.CurrentSource = "Home";
-        _injector.CurrentReason = "Home as real LShift";
-        _injector.KeyDown(PhysicalKey.LShift);
-        _homeShiftDown = true;
-    }
-
-    private void ReleaseHomeShiftKey(string reason) {
-        if (!_homeShiftDown) return;
-        _injector.CurrentSource = "Home";
-        _injector.CurrentReason = reason;
-        _injector.KeyUp(PhysicalKey.LShift);
-        _homeShiftDown = false;
     }
 
     private void UpdateLeftStick(ControllerState s, double deltaSec) {
@@ -389,9 +352,7 @@ internal sealed class MapperForm : Form {
             }
         }
 
-        if (_homeShiftMode) {
-            _accumulatedModifiers.Clear();
-        } else if (IsLeftStickModifierDirection(_leftDirection)) {
+        if (IsLeftStickModifierDirection(_leftDirection)) {
             PhysicalKey rawStickKey = GetLeftStickKey(_leftDirection);
             if (clutch) {
                 AccumulateLeftStickKey(rawStickKey);
@@ -467,7 +428,7 @@ internal sealed class MapperForm : Form {
     private ResolvedActionStroke ResolveActionStroke(KeyStroke stroke) {
         if (stroke.IsNone) return new ResolvedActionStroke(stroke, false);
 
-        if (_capsLayerActive) {
+        if (_fnLayerActive) {
             if (!stroke.Shift) {
                 PhysicalKey fKey = TranslateToFKey(stroke.Key);
                 if (fKey != PhysicalKey.None) {
@@ -514,8 +475,8 @@ internal sealed class MapperForm : Form {
                     _touchClickNextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
                 }
                 CompleteAction(false);
-            } else if (click.Kind == TouchpadClickKind.ControllerCapsFn) {
-                ToggleControllerCapsLayer("TouchpadClick");
+            } else if (click.Kind == TouchpadClickKind.CapsLock) {
+                TapCapsLock("TouchpadClick", "Touchpad middle CapsLock");
             }
         } else if (!s.TouchClick && _prevTouchClick) {
             ReleaseTouchpadClickKey();
@@ -566,7 +527,7 @@ internal sealed class MapperForm : Form {
         if (leftConfirmed && rightConfirmed) return TouchpadClickResolution.ForKey(PhysicalKey.Backspace);
         if (leftConfirmed) return TouchpadClickResolution.ForKey(PhysicalKey.Delete);
         if (rightConfirmed) return TouchpadClickResolution.ForKey(PhysicalKey.Backspace);
-        return anyActive ? TouchpadClickResolution.ControllerCapsFn() : TouchpadClickResolution.None();
+        return anyActive ? TouchpadClickResolution.CapsLock() : TouchpadClickResolution.None();
     }
 
     private static void AddTouchpadClickPoint(bool active, int x, double confirmedWidth, double touchpadWidth, ref bool anyActive, ref bool leftConfirmed, ref bool rightConfirmed) {
@@ -598,29 +559,23 @@ internal sealed class MapperForm : Form {
         }
 
         UpdateTouchGestureFingers(ref _touchGesture, s);
-        if (!_touchGesture.Completed && _touchGesture.HadTwoFingers) {
-            BlockTouchGestureUntilRelease();
-            return;
-        }
 
         if (!_touchGesture.Completed) {
             if (!_touchGesture.Moving) {
                 double primary = MaxTouchGesturePrimaryMovement(_touchGesture, s);
                 if (primary < Math.Max(1.0, _config.TouchGestureHoldStillDistance)) return;
                 _touchGesture.Moving = true;
-                _touchGesture.MoveStartMs = now;
-                if (_touchGesture.MoveStartMs - _touchGesture.StartMs >= Math.Max(1, _config.TouchGestureHoldMs)) {
-                    BlockTouchGestureUntilRelease();
-                    return;
-                }
             }
 
             TouchGestureRecognition recognition;
             if (!TryRecognizeTouchGesture(_touchGesture, s, _config, out recognition)) return;
 
             int fingers = _touchGesture.HadTwoFingers ? 2 : 1;
+            TouchGesturePressType pressType = now - _touchGesture.StartMs >= Math.Max(1, _config.TouchGestureHoldMs)
+                ? TouchGesturePressType.Hold
+                : TouchGesturePressType.Direct;
             TouchGestureShortcut shortcut;
-            if (!TryResolveTouchGestureShortcut(fingers, recognition.Side, recognition.Direction, out shortcut)) {
+            if (!TryResolveTouchGestureShortcut(fingers, pressType, recognition.Side, recognition.Direction, out shortcut)) {
                 BlockTouchGestureUntilRelease();
                 return;
             }
@@ -649,7 +604,7 @@ internal sealed class MapperForm : Form {
                 ComputeTouchGestureAnchorAfterPrimaryMove(recognition.StartX, recognition.StartY, recognition.CurrentX, recognition.CurrentY, recognition.Direction, consumed, out anchorX, out anchorY);
             }
 
-            ArmTouchGestureRepeat(shortcut, repeatMode, fingers, recognition.Side, recognition.Direction, recognition.Finger, anchorX, anchorY, now);
+            ArmTouchGestureRepeat(shortcut, repeatMode, fingers, pressType, recognition.Side, recognition.Direction, recognition.Finger, anchorX, anchorY, now);
             return;
         }
 
@@ -664,6 +619,7 @@ internal sealed class MapperForm : Form {
         InitializeTouchGestureFingerStarts(ref _touchGesture, s);
         _touchGesture.StartMs = now;
         _touchGesture.Direction = TouchGestureDirection.None;
+        _touchGesture.PressType = TouchGesturePressType.Direct;
     }
 
     private void ResetTouchGesture() {
@@ -698,7 +654,7 @@ internal sealed class MapperForm : Form {
                 double anchorX;
                 double anchorY;
                 ComputeTouchGestureAnchorAfterPrimaryMove(_touchGesture.RepeatAnchorX, _touchGesture.RepeatAnchorY, currentX, currentY, direction, consumed, out anchorX, out anchorY);
-                ArmTouchGestureRepeat(_touchGesture.Shortcut, _touchGesture.RepeatMode, _touchGesture.FingerCount, _touchGesture.Side, direction, _touchGesture.ActiveFinger, anchorX, anchorY, now);
+                ArmTouchGestureRepeat(_touchGesture.Shortcut, _touchGesture.RepeatMode, _touchGesture.FingerCount, _touchGesture.PressType, _touchGesture.Side, direction, _touchGesture.ActiveFinger, anchorX, anchorY, now);
                 return;
             }
 
@@ -707,7 +663,7 @@ internal sealed class MapperForm : Form {
                 _touchGesture.RepeatAnchorY = currentY;
             } else {
                 TouchGestureShortcut shortcut;
-                if (!TryResolveTouchGestureShortcut(_touchGesture.FingerCount, _touchGesture.Side, direction, out shortcut)) {
+                if (!TryResolveTouchGestureShortcut(_touchGesture.FingerCount, _touchGesture.PressType, _touchGesture.Side, direction, out shortcut)) {
                     BlockTouchGestureUntilRelease();
                     return;
                 }
@@ -723,7 +679,7 @@ internal sealed class MapperForm : Form {
                         ? TouchGestureConsumedDistance(triggerCount, repeatDistance, repeatDistance)
                         : repeatDistance;
                     ComputeTouchGestureAnchorAfterPrimaryMove(_touchGesture.RepeatAnchorX, _touchGesture.RepeatAnchorY, currentX, currentY, direction, consumed, out anchorX, out anchorY);
-                    ArmTouchGestureRepeat(shortcut, repeatMode, _touchGesture.FingerCount, _touchGesture.Side, direction, _touchGesture.ActiveFinger, anchorX, anchorY, now);
+                    ArmTouchGestureRepeat(shortcut, repeatMode, _touchGesture.FingerCount, _touchGesture.PressType, _touchGesture.Side, direction, _touchGesture.ActiveFinger, anchorX, anchorY, now);
                     return;
                 }
             }
@@ -735,9 +691,10 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private void ArmTouchGestureRepeat(TouchGestureShortcut shortcut, TouchGestureRepeatMode repeatMode, int fingers, TouchGestureSide side, TouchGestureDirection direction, int finger, double anchorX, double anchorY, double now) {
+    private void ArmTouchGestureRepeat(TouchGestureShortcut shortcut, TouchGestureRepeatMode repeatMode, int fingers, TouchGesturePressType pressType, TouchGestureSide side, TouchGestureDirection direction, int finger, double anchorX, double anchorY, double now) {
         _touchGesture.Completed = true;
         _touchGesture.FingerCount = fingers;
+        _touchGesture.PressType = pressType;
         _touchGesture.Shortcut = shortcut;
         _touchGesture.RepeatMode = repeatMode;
         _touchGesture.Direction = direction;
@@ -1019,38 +976,116 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private static bool TryResolveTouchGestureShortcut(int fingers, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
+    private static bool TryResolveTouchGestureShortcut(int fingers, TouchGesturePressType pressType, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
         shortcut = TouchGestureShortcut.None;
-        if (fingers != 1) return false;
+        return pressType == TouchGesturePressType.Hold
+            ? TryResolveHoldTouchGestureShortcut(fingers, side, direction, out shortcut)
+            : TryResolveDirectTouchGestureShortcut(fingers, side, direction, out shortcut);
+    }
 
-        if (side == TouchGestureSide.Left) {
-            switch (direction) {
-                case TouchGestureDirection.Up:
-                    shortcut = TouchGestureShortcut.PreviousWindow;
-                    return true;
-                case TouchGestureDirection.Down:
-                    shortcut = TouchGestureShortcut.NextWindow;
-                    return true;
-                case TouchGestureDirection.Left:
-                    shortcut = TouchGestureShortcut.PreviousAltTabWindow;
-                    return true;
-                case TouchGestureDirection.Right:
-                    shortcut = TouchGestureShortcut.NextAltTabWindow;
-                    return true;
+    private static bool TryResolveDirectTouchGestureShortcut(int fingers, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
+        shortcut = TouchGestureShortcut.None;
+        if (fingers == 1) {
+            if (side == TouchGestureSide.Left) {
+                switch (direction) {
+                    case TouchGestureDirection.Up:
+                        shortcut = TouchGestureShortcut.PreviousWindow;
+                        return true;
+                    case TouchGestureDirection.Down:
+                        shortcut = TouchGestureShortcut.NextWindow;
+                        return true;
+                    case TouchGestureDirection.Left:
+                        shortcut = TouchGestureShortcut.PreviousAltTabWindow;
+                        return true;
+                    case TouchGestureDirection.Right:
+                        shortcut = TouchGestureShortcut.NextAltTabWindow;
+                        return true;
+                }
+            } else if (side == TouchGestureSide.Right) {
+                switch (direction) {
+                    case TouchGestureDirection.Left:
+                        shortcut = TouchGestureShortcut.PreviousDesktop;
+                        return true;
+                    case TouchGestureDirection.Right:
+                        shortcut = TouchGestureShortcut.NextDesktop;
+                        return true;
+                    case TouchGestureDirection.Up:
+                        shortcut = TouchGestureShortcut.MaximizeWindow;
+                        return true;
+                    case TouchGestureDirection.Down:
+                        shortcut = TouchGestureShortcut.RestoreOrMinimizeWindow;
+                        return true;
+                }
             }
-        } else if (side == TouchGestureSide.Right) {
+        } else if (fingers == 2) {
+            if (side == TouchGestureSide.Left) {
+                switch (direction) {
+                    case TouchGestureDirection.Up:
+                        shortcut = TouchGestureShortcut.OpenTaskManager;
+                        return true;
+                    case TouchGestureDirection.Down:
+                        shortcut = TouchGestureShortcut.Screenshot;
+                        return true;
+                    case TouchGestureDirection.Right:
+                        shortcut = TouchGestureShortcut.CloseWindow;
+                        return true;
+                }
+            } else if (side == TouchGestureSide.Right) {
+                switch (direction) {
+                    case TouchGestureDirection.Up:
+                        shortcut = TouchGestureShortcut.PreviousTab;
+                        return true;
+                    case TouchGestureDirection.Down:
+                        shortcut = TouchGestureShortcut.NextTab;
+                        return true;
+                    case TouchGestureDirection.Left:
+                        shortcut = TouchGestureShortcut.BackNavigation;
+                        return true;
+                    case TouchGestureDirection.Right:
+                        shortcut = TouchGestureShortcut.ForwardNavigation;
+                        return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryResolveHoldTouchGestureShortcut(int fingers, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
+        shortcut = TouchGestureShortcut.None;
+        if (fingers == 1) {
+            if (side == TouchGestureSide.Left) {
+                switch (direction) {
+                    case TouchGestureDirection.Up:
+                        shortcut = TouchGestureShortcut.RestoreMinimizedWindows;
+                        return true;
+                    case TouchGestureDirection.Down:
+                        shortcut = TouchGestureShortcut.MinimizeAllWindows;
+                        return true;
+                }
+            } else if (side == TouchGestureSide.Right) {
+                switch (direction) {
+                    case TouchGestureDirection.Up:
+                        shortcut = TouchGestureShortcut.HomeKey;
+                        return true;
+                    case TouchGestureDirection.Down:
+                        shortcut = TouchGestureShortcut.EndKey;
+                        return true;
+                    case TouchGestureDirection.Left:
+                        shortcut = TouchGestureShortcut.MoveWindowLeftMonitor;
+                        return true;
+                    case TouchGestureDirection.Right:
+                        shortcut = TouchGestureShortcut.MoveWindowRightMonitor;
+                        return true;
+                }
+            }
+        } else if (fingers == 2 && side == TouchGestureSide.Right) {
             switch (direction) {
                 case TouchGestureDirection.Left:
-                    shortcut = TouchGestureShortcut.PreviousDesktop;
+                    shortcut = TouchGestureShortcut.MoveWindowLeftMonitor;
                     return true;
                 case TouchGestureDirection.Right:
-                    shortcut = TouchGestureShortcut.NextDesktop;
-                    return true;
-                case TouchGestureDirection.Up:
-                    shortcut = TouchGestureShortcut.MaximizeWindow;
-                    return true;
-                case TouchGestureDirection.Down:
-                    shortcut = TouchGestureShortcut.RestoreOrMinimizeWindow;
+                    shortcut = TouchGestureShortcut.MoveWindowRightMonitor;
                     return true;
             }
         }
@@ -1064,6 +1099,8 @@ internal sealed class MapperForm : Form {
             case TouchGestureShortcut.NextWindow:
             case TouchGestureShortcut.PreviousDesktop:
             case TouchGestureShortcut.NextDesktop:
+            case TouchGestureShortcut.PreviousTab:
+            case TouchGestureShortcut.NextTab:
                 return TouchGestureRepeatMode.Timed;
             case TouchGestureShortcut.PreviousAltTabWindow:
             case TouchGestureShortcut.NextAltTabWindow:
@@ -1114,6 +1151,58 @@ internal sealed class MapperForm : Form {
                 ReleaseTouchGestureModifiers();
                 _injector.KeyTap(PhysicalKey.ArrowDown, false, false, false, true);
                 break;
+            case TouchGestureShortcut.RestoreMinimizedWindows:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.M, true, false, false, true);
+                break;
+            case TouchGestureShortcut.MinimizeAllWindows:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.M, false, false, false, true);
+                break;
+            case TouchGestureShortcut.MoveWindowLeftMonitor:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.ArrowLeft, true, false, false, true);
+                break;
+            case TouchGestureShortcut.MoveWindowRightMonitor:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.ArrowRight, true, false, false, true);
+                break;
+            case TouchGestureShortcut.HomeKey:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.Home, false, false, false, false);
+                break;
+            case TouchGestureShortcut.EndKey:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.End, false, false, false, false);
+                break;
+            case TouchGestureShortcut.Screenshot:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.S, true, false, false, true);
+                break;
+            case TouchGestureShortcut.OpenTaskManager:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.Escape, true, true, false, false);
+                break;
+            case TouchGestureShortcut.CloseWindow:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.F4, false, false, true, false);
+                break;
+            case TouchGestureShortcut.PreviousTab:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.Tab, true, true, false, false);
+                break;
+            case TouchGestureShortcut.NextTab:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.Tab, false, true, false, false);
+                break;
+            case TouchGestureShortcut.BackNavigation:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.ArrowLeft, false, false, true, false);
+                break;
+            case TouchGestureShortcut.ForwardNavigation:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.ArrowRight, false, false, true, false);
+                break;
         }
     }
 
@@ -1122,7 +1211,12 @@ internal sealed class MapperForm : Form {
         _injector.CurrentReason = previous ? "Touch Alt+Shift+Tab enter" : "Touch Alt+Tab enter";
 
         if (!_touchAltTabAltDown) {
-            _injector.KeyDown(PhysicalKey.LAlt);
+            if (!_injector.IsKeyHeld(PhysicalKey.LAlt)) {
+                _injector.KeyDown(PhysicalKey.LAlt);
+                _touchAltTabAltOwned = true;
+            } else {
+                _touchAltTabAltOwned = false;
+            }
             _touchAltTabAltDown = true;
         }
 
@@ -1138,7 +1232,12 @@ internal sealed class MapperForm : Form {
         if (!_touchAltTabAltDown) {
             _injector.CurrentSource = "TouchGesture";
             _injector.CurrentReason = "Touch Alt hold for Alt-Tab navigation";
-            _injector.KeyDown(PhysicalKey.LAlt);
+            if (!_injector.IsKeyHeld(PhysicalKey.LAlt)) {
+                _injector.KeyDown(PhysicalKey.LAlt);
+                _touchAltTabAltOwned = true;
+            } else {
+                _touchAltTabAltOwned = false;
+            }
             _touchAltTabAltDown = true;
         }
 
@@ -1161,10 +1260,13 @@ internal sealed class MapperForm : Form {
 
     private void ReleaseTouchGestureModifiers() {
         if (_touchAltTabAltDown) {
-            _injector.CurrentSource = "TouchGesture";
-            _injector.CurrentReason = "Touch Alt release";
-            _injector.KeyUp(PhysicalKey.LAlt);
+            if (_touchAltTabAltOwned) {
+                _injector.CurrentSource = "TouchGesture";
+                _injector.CurrentReason = "Touch Alt release";
+                _injector.KeyUp(PhysicalKey.LAlt);
+            }
             _touchAltTabAltDown = false;
+            _touchAltTabAltOwned = false;
         }
     }
 
@@ -1206,7 +1308,7 @@ internal sealed class MapperForm : Form {
                 KeyStroke resolvedLayerKey = resolvedLayerAction.Stroke;
                 if (!resolvedLayerKey.IsNone) {
                     if (resolvedLayer != Layer.Base || IsFunctionKey(resolvedLayerKey)) {
-                        TapActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " virtual tap", resolvedLayerAction.CapsFn);
+                        TapActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " virtual tap", resolvedLayerAction.FnTranslated);
                         if (!releasedPending) {
                             hold.Pending = false;
                             hold.PendingReleased = false;
@@ -1224,7 +1326,7 @@ internal sealed class MapperForm : Form {
                     if (releasedPending) {
                         hold.Pending = false;
                         hold.PendingReleased = false;
-                        PressActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, false, now, resolvedLayerAction.CapsFn);
+                        PressActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, false, now, resolvedLayerAction.FnTranslated);
                         ReleaseActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " release after layer settle");
                         _holds[i] = new ButtonHold();
                         _prevDown[i] = curr;
@@ -1233,7 +1335,7 @@ internal sealed class MapperForm : Form {
 
                     hold.Pending = false;
                     hold.PendingReleased = false;
-                    PressActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, IsBaseRepeatableAction(i, resolvedLayer), now, resolvedLayerAction.CapsFn);
+                    PressActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, IsBaseRepeatableAction(i, resolvedLayer), now, resolvedLayerAction.FnTranslated);
                     _holds[i] = hold;
                     _prevDown[i] = curr;
                     continue;
@@ -1266,10 +1368,10 @@ internal sealed class MapperForm : Form {
 
                 if (!key.IsNone) {
                     if (layer != Layer.Base || IsFunctionKey(key)) {
-                        TapActionKey(i, key, "Button " + ActionButtonName(i) + " virtual tap", initialAction.CapsFn);
+                        TapActionKey(i, key, "Button " + ActionButtonName(i) + " virtual tap", initialAction.FnTranslated);
                         hold.SuppressUntilRelease = true;
                     } else {
-                        PressActionKey(i, key, "Button " + ActionButtonName(i), ref hold, layer, IsBaseRepeatableAction(i, layer), now, initialAction.CapsFn);
+                        PressActionKey(i, key, "Button " + ActionButtonName(i), ref hold, layer, IsBaseRepeatableAction(i, layer), now, initialAction.FnTranslated);
                     }
                 }
 
@@ -1299,7 +1401,7 @@ internal sealed class MapperForm : Form {
                 if (hold.Key != currentLayerKey) {
                     if (layer != Layer.Base || IsFunctionKey(currentLayerKey)) {
                         if (!currentLayerKey.IsNone) {
-                            TapActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change virtual tap", layerAction.CapsFn);
+                            TapActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change virtual tap", layerAction.FnTranslated);
                             hold.Key = currentLayerKey;
                             hold.KeyLayer = layer;
                             hold.KeyIsDown = false;
@@ -1312,7 +1414,7 @@ internal sealed class MapperForm : Form {
                     }
 
                     if (!currentLayerKey.IsNone) {
-                        PressActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change press", ref hold, layer, IsBaseRepeatableAction(i, layer), now, layerAction.CapsFn);
+                        PressActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change press", ref hold, layer, IsBaseRepeatableAction(i, layer), now, layerAction.FnTranslated);
                     }
 
                     hold.Key = currentLayerKey;
@@ -1715,7 +1817,7 @@ internal sealed class MapperForm : Form {
         return layer == Layer.R1L1 || layer == Layer.R2L2 || layer == Layer.L1R2 || layer == Layer.R1L2;
     }
 
-    private void PressActionKey(int index, KeyStroke key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now, bool capsFn) {
+    private void PressActionKey(int index, KeyStroke key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now, bool fnTranslated) {
         string source = ActionSource(index);
         string btn = ActionButtonName(index);
         _injector.CurrentSource = source;
@@ -1730,28 +1832,31 @@ internal sealed class MapperForm : Form {
         hold.KeyDownMs = now;
         hold.RepeatStartedMs = now;
         hold.NextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
-        CompleteAction(capsFn);
+        CompleteAction(fnTranslated);
     }
 
-    private void TapActionKey(int index, KeyStroke key, string reason, bool capsFn) {
+    private void TapActionKey(int index, KeyStroke key, string reason, bool fnTranslated) {
         string source = ActionSource(index);
         string btn = ActionButtonName(index);
         _injector.CurrentSource = source;
         _injector.CurrentReason = reason;
         DebugSources("Source=" + source + " Button=" + btn + " Mode=Tap -> " + MappingEngine.KeyName(key));
         _injector.KeyTap(key.Key, key.Shift, false, false, false);
-        CompleteAction(capsFn);
+        CompleteAction(fnTranslated);
     }
 
-    private void CompleteAction(bool capsFn) {
-        if (capsFn) {
-            DeactivateControllerCapsLayer("ControllerCapsFn", "Caps Fn action complete");
+    private void CompleteAction(bool fnTranslated) {
+        if (_fnLayerActive) {
+            DeactivateFnLayer(fnTranslated ? "Fn translated action complete" : "Fn normal action complete");
         }
         ReleaseClutchAfterAction();
     }
 
     private void ReleaseClutchAfterAction() {
-        _clutchButton.DeactivateToggle();
+        if (_clutchButton.Toggled && _clutchToggleActionReleases) {
+            _clutchButton.DeactivateToggle();
+            _clutchToggleActionReleases = false;
+        }
     }
 
     private void ReleaseActionKey(int index, KeyStroke key, string reason) {
@@ -1865,57 +1970,53 @@ internal sealed class MapperForm : Form {
         prevDown = down;
     }
 
-    private void ToggleControllerCapsLayer(string source) {
-        if (_capsLayerActive) {
-            DeactivateControllerCapsLayer(source, "Controller Caps/Fn layer off");
-        } else {
-            ActivateControllerCapsLayer(source);
-        }
-    }
-
-    private void ActivateControllerCapsLayer(string source) {
-        _capsLayerOriginalCapsLockOn = IsSystemCapsLockOn();
-        _capsLayerActive = true;
-        if (!_capsLayerOriginalCapsLockOn) {
-            TapCapsLock(source, "Controller Caps/Fn layer on");
-        }
-    }
-
-    private void DeactivateControllerCapsLayer(string source, string reason) {
-        if (!_capsLayerActive) return;
-        _capsLayerActive = false;
-        if (!_capsLayerOriginalCapsLockOn && IsSystemCapsLockOn()) {
-            TapCapsLock(source, reason);
-        }
-        _capsLayerOriginalCapsLockOn = false;
-    }
-
     private void TapCapsLock(string source, string reason) {
         _injector.CurrentSource = source;
         _injector.CurrentReason = reason;
         _injector.KeyTap(PhysicalKey.CapsLock, false, false, false, false);
     }
 
-    private static bool IsSystemCapsLockOn() {
-        return (NativeMethods.GetKeyState(0x14) & 0x0001) != 0;
+    private void ActivateFnLayer(string source) {
+        _injector.CurrentSource = source;
+        _injector.CurrentReason = "Fn layer on";
+        _fnLayerActive = true;
     }
 
-    private void UpdateEmergency(ControllerState s) {
-        if (s.Mute && !_prevMute) {
-            _enabled = !_enabled;
-            if (!_enabled) {
-                ReleaseRuntimeHolds();
-                _runtimeReleased = true;
+    private void DeactivateFnLayer(string reason) {
+        if (!_fnLayerActive) return;
+        _injector.CurrentSource = "FnLayer";
+        _injector.CurrentReason = reason;
+        _fnLayerActive = false;
+    }
+
+    private void UpdateEmergency(ControllerState s, double now) {
+        bool down = s.Mute;
+        if (down && !_prevMute) {
+            _muteDownMs = now;
+            _muteLongPressTriggered = false;
+        } else if (down && _prevMute) {
+            if (!_muteLongPressTriggered && now - _muteDownMs >= Math.Max(1, _config.ClutchLongPressMs)) {
+                _muteLongPressTriggered = true;
+                _enabled = !_enabled;
+                if (!_enabled) {
+                    ReleaseRuntimeHolds();
+                    _runtimeReleased = true;
+                }
             }
+        } else if (!down && _prevMute) {
+            if (!_muteLongPressTriggered && _enabled) {
+                ActivateFnLayer("Mute");
+            }
+            _muteDownMs = 0.0;
+            _muteLongPressTriggered = false;
         }
-        _prevMute = s.Mute;
+        _prevMute = down;
     }
 
     private void ReleaseRuntimeHolds() {
         ReleaseHeldActionKeys();
         ReleaseTouchGestureModifiers();
         ReleaseTouchpadClickKey();
-        ReleaseHomeShiftKey("Runtime release Home LShift");
         _injector.ReleaseAll();
         _leftMouseDown = false;
         _rightMouseDown = false;
@@ -1923,7 +2024,7 @@ internal sealed class MapperForm : Form {
         _leftStickScroll.Reset();
         _heldLeftStickKeys.Clear();
         _accumulatedModifiers.Clear();
-        DeactivateControllerCapsLayer("Runtime", "Runtime release Caps layer");
+        DeactivateFnLayer("Runtime release Fn layer");
         for (int i = 0; i < _holds.Length; i++) _holds[i] = new ButtonHold();
         for (int i = 0; i < _prevDown.Length; i++) _prevDown[i] = false;
         _prevL1 = false;
@@ -1951,8 +2052,7 @@ internal sealed class MapperForm : Form {
         _l2Pressed = false;
         _r2Pressed = false;
         _clutchButton.Reset();
-        _prevHome = false;
-        _homeShiftMode = false;
+        _clutchToggleActionReleases = false;
         _prevClutchActive = false;
         _touchGesture.Reset();
         _touchGestureBlockedUntilRelease = false;
@@ -1963,6 +2063,7 @@ internal sealed class MapperForm : Form {
         _rightStickMouse.Reset();
         _createKeyDown = false;
         _optionsKeyDown = false;
+        _muteDownMs = 0.0;
     }
 
     private void ReleaseHeldActionKeys() {
@@ -2019,6 +2120,11 @@ internal sealed class MapperForm : Form {
         Right
     }
 
+    private enum TouchGesturePressType {
+        Direct,
+        Hold
+    }
+
     private enum TouchGestureShortcut {
         None,
         PreviousWindow,
@@ -2028,7 +2134,20 @@ internal sealed class MapperForm : Form {
         PreviousDesktop,
         NextDesktop,
         MaximizeWindow,
-        RestoreOrMinimizeWindow
+        RestoreOrMinimizeWindow,
+        RestoreMinimizedWindows,
+        MinimizeAllWindows,
+        MoveWindowLeftMonitor,
+        MoveWindowRightMonitor,
+        HomeKey,
+        EndKey,
+        Screenshot,
+        OpenTaskManager,
+        CloseWindow,
+        PreviousTab,
+        NextTab,
+        BackNavigation,
+        ForwardNavigation
     }
 
     private enum TouchGestureRepeatMode {
@@ -2040,7 +2159,7 @@ internal sealed class MapperForm : Form {
     private enum TouchpadClickKind {
         None,
         Key,
-        ControllerCapsFn
+        CapsLock
     }
 
     private struct TouchpadClickResolution {
@@ -2060,8 +2179,8 @@ internal sealed class MapperForm : Form {
             return new TouchpadClickResolution(TouchpadClickKind.Key, key);
         }
 
-        public static TouchpadClickResolution ControllerCapsFn() {
-            return new TouchpadClickResolution(TouchpadClickKind.ControllerCapsFn, PhysicalKey.None);
+        public static TouchpadClickResolution CapsLock() {
+            return new TouchpadClickResolution(TouchpadClickKind.CapsLock, PhysicalKey.None);
         }
     }
 
@@ -2087,9 +2206,9 @@ internal sealed class MapperForm : Form {
         public double Touch2StartX;
         public double Touch2StartY;
         public double StartMs;
-        public double MoveStartMs;
         public bool Moving;
         public bool Completed;
+        public TouchGesturePressType PressType;
         public TouchGestureShortcut Shortcut;
         public TouchGestureRepeatMode RepeatMode;
         public TouchGestureDirection Direction;
@@ -2106,11 +2225,11 @@ internal sealed class MapperForm : Form {
 
     private struct ResolvedActionStroke {
         public readonly KeyStroke Stroke;
-        public readonly bool CapsFn;
+        public readonly bool FnTranslated;
 
-        public ResolvedActionStroke(KeyStroke stroke, bool capsFn) {
+        public ResolvedActionStroke(KeyStroke stroke, bool fnTranslated) {
             Stroke = stroke;
-            CapsFn = capsFn;
+            FnTranslated = fnTranslated;
         }
     }
 

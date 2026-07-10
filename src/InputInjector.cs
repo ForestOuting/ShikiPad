@@ -13,6 +13,7 @@ internal sealed class InputInjector {
     private static readonly List<InputInjector> s_instances = new List<InputInjector>();
 
     private readonly Dictionary<PhysicalKey, KeyDef> _keys = new Dictionary<PhysicalKey, KeyDef>();
+    private readonly Dictionary<PhysicalKey, int> _modifierHoldCounts = new Dictionary<PhysicalKey, int>();
     private readonly HashSet<PhysicalKey> _heldKeys = new HashSet<PhysicalKey>();
     private readonly object _heldLock = new object();
     private readonly KeyDef _shift;
@@ -53,6 +54,18 @@ internal sealed class InputInjector {
 
     public void KeyDown(PhysicalKey key) {
         if (key == PhysicalKey.None || !_keys.ContainsKey(key)) return;
+        if (IsReferenceCountedModifier(key)) {
+            bool shouldSend = true;
+            lock (_heldLock) {
+                int count;
+                _modifierHoldCounts.TryGetValue(key, out count);
+                _modifierHoldCounts[key] = count + 1;
+                shouldSend = count == 0;
+                _heldKeys.Add(key);
+            }
+            if (!shouldSend) return;
+        }
+
         List<INPUT> inputs = new List<INPUT>();
         AddKey(inputs, _keys[key], false);
         Send(inputs, "KeyDown(" + key + ")");
@@ -61,6 +74,23 @@ internal sealed class InputInjector {
 
     public void KeyUp(PhysicalKey key) {
         if (key == PhysicalKey.None || !_keys.ContainsKey(key)) return;
+        if (IsReferenceCountedModifier(key)) {
+            bool shouldSend = true;
+            lock (_heldLock) {
+                int count;
+                if (_modifierHoldCounts.TryGetValue(key, out count)) {
+                    if (count > 1) {
+                        _modifierHoldCounts[key] = count - 1;
+                        return;
+                    }
+                    _modifierHoldCounts.Remove(key);
+                }
+                shouldSend = _heldKeys.Contains(key);
+                _heldKeys.Remove(key);
+            }
+            if (!shouldSend) return;
+        }
+
         List<INPUT> inputs = new List<INPUT>();
         AddKey(inputs, _keys[key], true);
         Send(inputs, "KeyUp(" + key + ")");
@@ -92,6 +122,10 @@ internal sealed class InputInjector {
         lock (_heldLock) {
             return _heldKeys.Contains(key);
         }
+    }
+
+    public bool IsKeyHeld(PhysicalKey key) {
+        return IsHeld(key);
     }
 
     public void MouseMove(int dx, int dy) {
@@ -158,10 +192,22 @@ internal sealed class InputInjector {
             if (_rightMouseHeld) AddMouseButton(inputs, 1, false);
 
             _heldKeys.Clear();
+            _modifierHoldCounts.Clear();
             _leftMouseHeld = false;
             _rightMouseHeld = false;
         }
         Send(inputs, "ReleaseAll");
+    }
+
+    private static bool IsReferenceCountedModifier(PhysicalKey key) {
+        return key == PhysicalKey.LShift ||
+               key == PhysicalKey.RShift ||
+               key == PhysicalKey.LCtrl ||
+               key == PhysicalKey.RCtrl ||
+               key == PhysicalKey.LAlt ||
+               key == PhysicalKey.RAlt ||
+               key == PhysicalKey.LWin ||
+               key == PhysicalKey.RWin;
     }
 
     private void InitKeys() {

@@ -16,7 +16,6 @@ internal static class NativeMethods {
         [DllImport("hid.dll", SetLastError = true)] public static extern int HidP_GetCaps(IntPtr PreparsedData, out HIDP_CAPS Capabilities);
         [DllImport("winmm.dll")] public static extern uint timeBeginPeriod(uint uMilliseconds);
         [DllImport("winmm.dll")] public static extern uint timeEndPeriod(uint uMilliseconds);
-        [DllImport("user32.dll")] public static extern short GetKeyState(int nVirtKey);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct HIDP_CAPS {

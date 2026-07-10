@@ -35,7 +35,7 @@ internal sealed class Config {
     public int TouchGestureTimeRepeatIntervalMs = 450;
     public int TouchGestureDesktopRepeatIntervalMs = 550;
     public int TouchGestureSideConfirmedWidth = 550;
-    public int TouchGestureHoldMs = 600;
+    public int TouchGestureHoldMs = 450;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
 }

@@ -97,10 +97,11 @@ Closing the console window also exits and releases held keyboard and mouse input
 | Left stick up / down | Mouse wheel |
 | Create | `Right Alt` |
 | Options | `Right Ctrl` |
-| Press DualSense Mute | Enable / disable ShikiPad |
+| Short-tap DualSense Mute | Enable one-shot Fn layer for the next action key |
+| Long-press DualSense Mute | Enable / disable ShikiPad |
 | Any touch point in the left confirmed zone during touchpad click | `Delete` |
 | Any touch point in the right confirmed zone during touchpad click | `Backspace` |
-| All touch points in the middle buffer during touchpad click | Toggle real `Caps Lock` plus controller Fn layer |
+| All touch points in the middle buffer during touchpad click | Tap real `Caps Lock` |
 
 ### Mouse Parameters
 
@@ -121,7 +122,7 @@ The right stick uses continuous velocity integration. It first applies the 5 ms 
 
 ## Touchpad Gestures
 
-Touchpad gestures are available on the wired DualSense USB HID report. Only one-finger direct swipe maps are active for now. Two-finger recognition only applies before a gesture has been recognized; if two touch points are active before recognition, the gesture counts as two-finger and, because two-finger gestures currently have no shortcuts, ShikiPad blocks it until release. Once a one-finger gesture has been recognized, later extra touch points are ignored so the locked one-finger gesture stays stable. A finger must move more than `TouchGestureHoldStillDistance` from its start point before ShikiPad treats it as moving; if it stayed still for `TouchGestureHoldMs` before that, the gesture counts as hold-then-swipe and does not fire the direct-swipe shortcuts. Direction no longer uses the center point. Instead, vertical gestures trigger at 150 distance and horizontal gestures trigger at 180 distance. Touchpad side is decided only at first recognition: the leftmost and rightmost `TouchGestureSideConfirmedWidth` pixels are confirmed zones, so starts in the left confirmed zone lock left and starts in the right confirmed zone lock right. Starts in the middle buffer lock by crossing the center split: right-buffer-to-left-buffer motion locks left, and left-buffer-to-right-buffer motion locks right. Distance moved inside the buffer before side lock still counts toward that direction's first trigger. For distance-repeat gestures, first recognition also consumes every complete direction-specific segment and then continues counting from the last consumed trigger point. After recognition, the side stays locked until touch release and the whole touchpad remains valid movement space for that gesture.
+Touchpad gestures are available on the wired DualSense USB HID report. One-finger and two-finger gestures both exist in direct-swipe and hold-then-swipe forms. Finger count is decided only before a gesture has been recognized: if two touch points appear before recognition, the gesture counts as two-finger; once a gesture has been recognized, later extra touch points are ignored so the locked gesture stays stable. A finger must move more than `TouchGestureHoldStillDistance` from its start point before ShikiPad treats it as moving, but direct-vs-hold classification is decided later, when the swipe reaches the 150/180 trigger distance. If the touch has lasted at least `TouchGestureHoldMs`, currently 450 ms, at that trigger moment, the gesture counts as hold-then-swipe; otherwise it counts as direct-swipe. Direction no longer uses the center point. Instead, vertical gestures trigger at 150 distance and horizontal gestures trigger at 180 distance. Touchpad side is decided only at first recognition: the leftmost and rightmost `TouchGestureSideConfirmedWidth` pixels are confirmed zones, so starts in the left confirmed zone lock left and starts in the right confirmed zone lock right. Starts in the middle buffer lock by crossing the center split: right-buffer-to-left-buffer motion locks left, and left-buffer-to-right-buffer motion locks right. Distance moved inside the buffer before side lock still counts toward that direction's first trigger. For distance-repeat gestures, first recognition also consumes every complete direction-specific segment and then continues counting from the last consumed trigger point. After recognition, the side stays locked until touch release and the whole touchpad remains valid movement space for that gesture.
 
 ### Touchpad Mappings
 
@@ -129,16 +130,21 @@ Touchpad gestures are available on the wired DualSense USB HID report. Only one-
 |---|---|---|---|---|
 | Left-half one-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | Enter Alt-Tab with `Alt + Shift + Tab`, then hold `Alt` | Enter Alt-Tab with `Alt + Tab`, then hold `Alt` |
 | Right-half one-finger direct swipe | `Win + ↑` maximize | `Win + ↓` restore/minimize | `Win + Ctrl + ←` previous desktop | `Win + Ctrl + →` next desktop |
+| Left-half one-finger hold-then-swipe | `Win + Shift + M` restore minimized windows | `Win + M` minimize all windows | Unmapped | Unmapped |
+| Right-half one-finger hold-then-swipe | `Home` | `End` | `Win + Shift + ←` move window to left monitor | `Win + Shift + →` move window to right monitor |
+| Left-half two-finger direct swipe | `Ctrl + Shift + Esc` | `Shift + Win + S` screenshot | Unmapped | `Alt + F4` |
+| Right-half two-finger direct swipe | `Ctrl + Shift + Tab` previous tab | `Ctrl + Tab` next tab | `Alt + ←` back | `Alt + →` forward |
+| Right-half two-finger hold-then-swipe | Unmapped | Unmapped | `Win + Shift + ←` move window to left monitor | `Win + Shift + →` move window to right monitor |
 
-Touchpad click is not the clutch key. It checks the active touch point X positions when the click begins. Any touch point in the left confirmed zone sends `Delete`, any touch point in the right confirmed zone sends `Backspace`, and if active touch points are simultaneously in both confirmed zones, `Backspace` wins. Only when all active touch points are in the middle buffer does the click toggle real `Caps Lock` plus the controller Fn layer. Touchpad `Delete` and `Backspace` count as base-layer action keys while Home is in clutch mode, so they clear a short-tap clutch lock after firing. When Home is being held as a real `Left Shift`, touchpad `Delete` / `Backspace` naturally become shifted combinations such as `Shift + Delete`. Touchpad `Delete` and `Backspace` use the same progressive repeat timing as base-layer repeat. The middle-buffer Caps/Fn click is a separate layer toggle: it is not a base-layer action key, fires once on click-down, and does not repeat.
+Touchpad click is not the clutch key. It checks the active touch point X positions when the click begins. Any touch point in the left confirmed zone sends `Delete`, any touch point in the right confirmed zone sends `Backspace`, and if active touch points are simultaneously in both confirmed zones, `Backspace` wins. Only when all active touch points are in the middle buffer does the click tap real `Caps Lock`; this is pure Caps Lock and does not enable Fn. Touchpad `Delete` and `Backspace` count as base-layer action keys. Whether a short-tap Home clutch lock can be consumed by an action key is decided once, when that Home short-tap lock is formed. If at least one modifier had already been collected at that moment, touchpad `Delete` or `Backspace` clears the lock after firing; modifiers collected later do not make that same lock consumable. Touchpad `Delete` and `Backspace` use the same progressive repeat timing as base-layer repeat. The middle-buffer Caps Lock click fires once on click-down and does not repeat.
 
-Every one-finger direct swipe first trigger requires movement from that touch point's start by the direction threshold: 150 for up/down and 180 for left/right. If the touch starts in the middle buffer, distance moved before side lock still counts toward the horizontal 180. After the side locks and the shortcut fires, that trigger point becomes the new origin for later repeat or reverse checks.
+Every touchpad swipe first trigger requires movement from that touch point's start by the direction threshold: 150 for up/down and 180 for left/right. If the touch starts in the middle buffer, distance moved before side lock still counts toward the horizontal 180. After the side locks and the shortcut fires, that trigger point becomes the new origin for later repeat or reverse checks.
 
 Middle-buffer horizontal recognition is not a fixed decision based only on the start buffer. If the touch starts in the left buffer, `550..959`, moving left by 180 immediately locks left and fires the left-side shortcut. Moving right by 180 while still inside the left buffer does not lock right; it waits until the touch enters the right buffer, `960..1369`, then locks right and fires the right-side shortcut once. The right buffer is symmetric: moving right by 180 locks right immediately, while moving left must enter the left buffer before it locks left. In short, moving away from the center can lock within the current buffer, while moving toward the other side locks only after crossing the center split.
 
 Distance-based repeat applies to the left-half left/right Alt-Tab entry gesture after the first trigger. The first left/right trigger enters the Alt-Tab switcher once with `Alt + Shift + Tab` or `Alt + Tab`, then only `Alt` stays held while the finger remains on the touchpad. After the switcher is open, each additional movement segment sends the matching arrow key: 180 left/right sends `←`/`→`, and 150 up/down sends `↑`/`↓`. Reversing does not use Shift; it sends the reverse arrow. If one state update jumps across multiple complete segments, ShikiPad sends one arrow per extra segment after the initial Alt-Tab entry and keeps the leftover distance for the next arrow.
 
-Time-based repeat applies to left-half up/down window switching and right-half left/right desktop switching. The first trigger uses the same direction thresholds: 150 for up/down and 180 for left/right. Left-half up/down fires every `TouchGestureTimeRepeatIntervalMs`, currently 450 ms. Right-half left/right desktop switching uses `TouchGestureDesktopRepeatIntervalMs`, currently 550 ms. Continuing in the same direction by that direction's repeat distance does not fire an extra shortcut; it only refreshes the origin used for reverse detection. Reversing without lifting by 150 vertically or 180 horizontally from that latest origin immediately fires the reverse shortcut, then the reverse direction continues with the same fixed interval for that shortcut. Right-half up/down `Win + ↑/↓` shortcuts do not repeat.
+Time-based repeat applies to left-half one-finger direct up/down window switching, right-half one-finger direct left/right desktop switching, and right-half two-finger direct up/down tab switching. The first trigger uses the same direction thresholds: 150 for up/down and 180 for left/right. Left-half up/down and right-half two-finger up/down tab switching use `TouchGestureTimeRepeatIntervalMs`, currently 450 ms. Right-half one-finger left/right desktop switching uses `TouchGestureDesktopRepeatIntervalMs`, currently 550 ms. Continuing in the same direction by that direction's repeat distance does not fire an extra shortcut; it only refreshes the origin used for reverse detection. Reversing without lifting by 150 vertically or 180 horizontally from that latest origin immediately fires the reverse shortcut, then the reverse direction continues with the same fixed interval for that shortcut. Hold-then-swipe shortcuts, right-half one-finger up/down `Win + ↑/↓`, two-finger left-half shortcuts, and two-finger right-half horizontal `Alt + ←/→` shortcuts do not repeat.
 
 ### Touchpad Parameters
 
@@ -153,11 +159,11 @@ Time-based repeat applies to left-half up/down window switching and right-half l
 | `TouchGestureTimeRepeatIntervalMs` | 450 ms | Fixed interval for left-half up/down time repeat after either forward or reverse trigger |
 | `TouchGestureDesktopRepeatIntervalMs` | 550 ms | Initial delay and fixed interval for right-half left/right desktop switching repeat |
 | `TouchGestureSideConfirmedWidth` | 550 | Width of each left/right confirmed zone; the 550..959 and 960..1369 middle buffers lock by crossing the center split |
-| `TouchGestureHoldMs` | 600 ms | Time the finger must stay still before movement starts to count as hold-then-swipe; hold-then-swipe gestures are currently unmapped |
+| `TouchGestureHoldMs` | 450 ms | Touch duration required at the 150/180 trigger moment to count as hold-then-swipe |
 
 ## Voice Input
 
-If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch or real `Left Shift` depending on the press state, and pressing DualSense Mute toggles ShikiPad enabled / disabled.
+If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch, Mute short-tap opens the one-shot Fn layer, and Mute long-press toggles ShikiPad enabled / disabled.
 
 ## Left Stick
 
@@ -195,23 +201,21 @@ The left-stick wheel now follows the right-stick mouse integration idea more clo
 
 Normally, the left stick holds one modifier at a time. Clutch collects multiple modifiers and releases them together.
 
-While clutch is active, the currently collected modifiers remain held even as the left stick moves elsewhere. To add another modifier, move directly into its sector; to use wheel input, move into the Up/Down sector. A short-tap clutch lock releases automatically after any action key actually sends a key, including touchpad-confirmed base-layer `Delete` / `Backspace`; if no action key has fired yet, short-tap again to cancel the lock. Long-press clutch still holds while pressed and releases on button up.
+While clutch is active, the currently collected modifiers remain held even as the left stick moves elsewhere. To add another modifier, move directly into its sector; to use wheel input, move into the Up/Down sector. Home is only a clutch key and no longer becomes real `Left Shift` when no modifier is active. A short-tap clutch lock records whether it can be consumed at the moment the lock is formed: if at least one modifier has already been collected then, the next action key releases that short-tap lock after firing; if no modifier has been collected then, later modifier collection does not make that same lock action-consumable, and it must be cancelled with another short tap. Long-press clutch still holds while pressed and releases on button up. Action buttons keep their normal mappings while clutch modifiers are held. Pressing a normal mapped `1` still sends `1`, not `F1`.
 
-Home decides its mode when Home is pressed. If no left-stick modifier is already active at that moment, Home becomes a real `Left Shift` key for that press and releases `Left Shift` when Home is released. While this Home-as-Shift mode is active, left-stick modifiers do not output. After Home is released, the current left-stick sector can take effect immediately.
+Mute provides the controller Fn layer. Short-tap Mute enables one-shot Fn: unshifted action mappings `1..0`, `-`, and `=` become `F1..F12`. The next action key always clears Fn; if that action is not one of those 12 keys, it is sent normally. Long-press Mute uses the same timing as Home clutch, `ClutchLongPressMs`, and toggles ShikiPad enabled / disabled.
 
-If a left-stick modifier is already active when Home is pressed, Home follows the pure clutch logic: short-tap locks the collected modifiers until the next action key, short-tap again cancels if no action has fired, and long-press holds the collected modifiers until Home is released. Action buttons keep their normal mappings while clutch modifiers are held. Pressing a normal mapped `1` still sends `1`, not `F1`.
-
-Touchpad middle-buffer click toggles real system `Caps Lock`, so the keyboard indicator follows it. ShikiPad also tracks this as the controller Fn layer: while it is active, unshifted action mappings `1..0`, `-`, and `=` become `F1..F12`; after one such Fn action fires, ShikiPad restores `Caps Lock` to the state it had before the controller Caps/Fn layer was opened and clears the layer. Clutch release remains governed only by Home: short-tap clutch releases after an action key fires, while long-press clutch releases when Home is released. Other action keys are sent normally while real `Caps Lock` is active and do not clear the controller Fn layer. Press the touchpad middle buffer again to cancel and restore `Caps Lock` manually. This controller Fn layer resolves before Home clutch output, so Caps/Fn layer plus Home-collected modifiers can produce shortcuts such as `Win + Alt + F4`.
+Touchpad middle-buffer click taps real system `Caps Lock`, so the keyboard indicator follows it. It does not enable Fn and does not participate in clutch release.
 
 | Controller | Activate / hold |
 |---|---|
-| DualSense | Hold a left-stick modifier first, then short-tap Home to lock until the next action key, short-tap again to cancel, or long-press Home to hold; press Home without an active modifier for real `Left Shift` |
+| DualSense | Short-tap Home to toggle clutch, or long-press Home to hold clutch until release; action keys consume a short-tap clutch only if at least one modifier was already collected when that short-tap lock formed |
 
 ### Clutch Parameters
 
 | Parameter | Current | Purpose |
 |---|---:|---|
-| `ClutchLongPressMs` | 250 ms | Long-press time for holding clutch on Home |
+| `ClutchLongPressMs` | 250 ms | Long-press time for holding clutch on Home and for Mute long-press enable / disable |
 
 ## Typing Layers
 
@@ -231,7 +235,7 @@ The columns in the following tables correspond to: `↑`, `→`, `□`, `△`, `
 | L1 + R2 | [ | ] | ! | ? | { | } | @ | # |
 | R1 + L2 | ( | ) | ; | ' | < | > | backtick | \ |
 
-The program sends physical keycodes. Characters requiring Shift (", :, |, ~) are shifted automatically by the corresponding layer entries; pressing Home without an active left-stick modifier holds a real `Left Shift`.
+The program sends physical keycodes. Characters requiring Shift (", :, |, ~) are shifted automatically by the corresponding layer entries.
 
 Base-layer D-pad keys repeat while held. Base-layer face buttons (`Square`, `Triangle`, `Cross`, `Circle`) do not repeat. Character layers are virtual taps: one press sends one key stroke, and holding does not repeat. Once an action key has resolved to a layer and is held, later shoulder/trigger changes do not reassign that held physical key until it is released.
 
