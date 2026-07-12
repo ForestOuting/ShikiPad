@@ -89,6 +89,7 @@ internal sealed class ControllerState {
     public bool TouchClick;
     public int TouchCount;
     public bool Touch1Active, Touch2Active;
+    public int Touch1Id, Touch2Id;
     public int Touch1X, Touch1Y, Touch2X, Touch2Y;
     public bool Home;
     public bool Mute;

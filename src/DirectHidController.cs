@@ -259,9 +259,11 @@ internal sealed class DirectHidController {
 
     private static void AssignTouchPoints(ControllerState s, TouchPoint p1, TouchPoint p2) {
         s.Touch1Active = p1.Active;
+        s.Touch1Id = p1.Id;
         s.Touch1X = p1.X;
         s.Touch1Y = p1.Y;
         s.Touch2Active = p2.Active;
+        s.Touch2Id = p2.Id;
         s.Touch2X = p2.X;
         s.Touch2Y = p2.Y;
         s.TouchCount = ActiveTouchCount(p1, p2);
@@ -271,6 +273,7 @@ internal sealed class DirectHidController {
         point = new TouchPoint();
         if (r == null || offset < 0 || r.Length <= offset + 3) return false;
         point.Active = (r[offset] & 0x80) == 0;
+        point.Id = r[offset] & 0x7F;
         point.X = r[offset + 1] | ((r[offset + 2] & 0x0F) << 8);
         point.Y = ((r[offset + 2] >> 4) & 0x0F) | (r[offset + 3] << 4);
         if (point.Active && (point.X > 1919 || point.Y > 1079)) return false;
@@ -279,6 +282,7 @@ internal sealed class DirectHidController {
 
     private struct TouchPoint {
         public bool Active;
+        public int Id;
         public int X;
         public int Y;
     }
