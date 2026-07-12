@@ -753,7 +753,6 @@ internal sealed class MapperForm : Form {
         int staticY;
         int staticFinger;
         if (!TryGetTwoFingerContinuationStatic(s, out staticFinger, out staticX, out staticY)) {
-            RestartTouchGestureFromCurrentContacts(s, now);
             return;
         }
         _touchGesture.StaticFinger = staticFinger;

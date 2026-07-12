@@ -2,6 +2,7 @@
 
 ## 2026-07-12
 
+- Two-finger touchpad continuation now survives brief edge unreadable samples: one out-of-bounds touch point no longer drops the whole touch report, and continuation waits instead of restarting when the still finger briefly disappears.
 - Touchpad click now sends `Backspace` when the click report has no active touch point, and also when two touch points are active.
 - Create/Options system buttons now use deterministic press-before-actions and release-after-actions ordering, so `Right Alt` / `Right Ctrl` combinations are less likely to miss when pressed in the same frame as action keys or touchpad actions.
 - Keyboard and mouse hold bookkeeping is serialized inside the injector, reducing release races between mapper ticks, disable/enable, disconnect, and process shutdown.

@@ -8,6 +8,9 @@ internal sealed class DirectHidController {
     private const ushort DualSenseProductId = 0x0CE6;
     private const ushort DualSenseEdgeProductId = 0x0DF2;
     private const int HidpStatusSuccess = 0x110000;
+    private const int TouchpadMaxX = 1919;
+    private const int TouchpadMaxY = 1079;
+    private const int TouchpadEdgeTolerance = 128;
 
     public volatile ControllerState State = new ControllerState();
     public event Action<ControllerState> StateUpdated;
@@ -276,8 +279,25 @@ internal sealed class DirectHidController {
         point.Id = r[offset] & 0x7F;
         point.X = r[offset + 1] | ((r[offset + 2] & 0x0F) << 8);
         point.Y = ((r[offset + 2] >> 4) & 0x0F) | (r[offset + 3] << 4);
-        if (point.Active && (point.X > 1919 || point.Y > 1079)) return false;
+        if (point.Active) NormalizeTouchPointBounds(ref point);
         return true;
+    }
+
+    private static void NormalizeTouchPointBounds(ref TouchPoint point) {
+        if (point.X <= TouchpadMaxX + TouchpadEdgeTolerance &&
+            point.Y <= TouchpadMaxY + TouchpadEdgeTolerance) {
+            point.X = Clamp(point.X, 0, TouchpadMaxX);
+            point.Y = Clamp(point.Y, 0, TouchpadMaxY);
+            return;
+        }
+
+        point.Active = false;
+    }
+
+    private static int Clamp(int value, int min, int max) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
     }
 
     private struct TouchPoint {
