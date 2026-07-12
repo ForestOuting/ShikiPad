@@ -605,7 +605,7 @@ internal sealed class MapperForm : Form {
         if (!_touchGesture.Completed) {
             if (!_touchGesture.Moving) {
                 double primary = MaxTouchGesturePrimaryMovement(_touchGesture, s);
-                if (primary < Math.Max(1.0, _config.TouchGestureHoldStillDistance)) return;
+                if (IsTouchGestureStill(primary, _config)) return;
                 _touchGesture.Moving = true;
             }
 
@@ -618,6 +618,10 @@ internal sealed class MapperForm : Form {
                 : TouchGesturePressType.Direct;
             TouchGestureShortcut shortcut;
             if (!TryResolveTouchGestureShortcut(fingers, pressType, recognition.Side, recognition.Direction, out shortcut)) {
+                if (fingers == 2 && recognition.TwoFingerContinuation) {
+                    ArmIgnoredTwoFingerContinuationSegment(pressType, recognition.Side, recognition.Direction, recognition.Finger, recognition.CurrentX, recognition.CurrentY, recognition.StaticFinger, recognition.StaticFingerId, recognition.StaticStartX, recognition.StaticStartY, now);
+                    return;
+                }
                 BlockTouchGestureUntilRelease();
                 return;
             }
@@ -656,6 +660,11 @@ internal sealed class MapperForm : Form {
         }
 
         UpdateTouchGestureRepeat(s, now);
+    }
+
+    private void ArmIgnoredTwoFingerContinuationSegment(TouchGesturePressType pressType, TouchGestureSide side, TouchGestureDirection direction, int finger, int currentX, int currentY, int staticFinger, int staticFingerId, double staticStartX, double staticStartY, double now) {
+        ReleaseTouchGestureModifiers();
+        ArmTouchGestureRepeat(TouchGestureShortcut.None, TouchGestureRepeatMode.None, 2, pressType, side, direction, finger, currentX, currentY, true, staticFinger, staticFingerId, staticStartX, staticStartY, now);
     }
 
     private void StartTouchGesture(ControllerState s, double now) {
@@ -757,8 +766,12 @@ internal sealed class MapperForm : Form {
         }
         _touchGesture.StaticFinger = staticFinger;
 
+        if (!HasTwoFingerContinuationMoverCandidate(s)) {
+            RefreshTwoFingerContinuationStaticAnchor(staticFinger, TouchGestureCurrentId(staticFinger, s), staticX, staticY);
+        }
+
         double staticPrimary = PrimaryMovement(staticX - _touchGesture.StaticStartX, staticY - _touchGesture.StaticStartY);
-        if (staticPrimary > Math.Max(1.0, _config.TouchGestureHoldStillDistance)) {
+        if (!IsTouchGestureStill(staticPrimary, _config)) {
             if (_touchGesture.TwoFingerContinuationSingleFingerResume &&
                 _touchGesture.ResumeFingerId == _touchGesture.StaticFingerId) {
                 RestartTouchGestureFromSingleFingerResume(s, staticFinger, now);
@@ -800,7 +813,7 @@ internal sealed class MapperForm : Form {
                     : _touchGesture.PressType;
                 TouchGestureShortcut shortcut;
                 if (!TryResolveTouchGestureShortcut(2, pressType, side, direction, out shortcut)) {
-                    RestartTouchGestureFromCurrentContacts(s, now);
+                    ArmIgnoredTwoFingerContinuationSegment(pressType, side, direction, _touchGesture.ActiveFinger, currentX, currentY, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
                     return;
                 }
 
@@ -835,10 +848,28 @@ internal sealed class MapperForm : Form {
 
         _touchGesture.ActiveFinger = finger;
         _touchGesture.ActiveFingerId = TouchGestureCurrentId(finger, s);
-        _touchGesture.RepeatAnchorX = currentX;
-        _touchGesture.RepeatAnchorY = currentY;
+        if (TryGetTouchGestureTrackedStart(finger, out double startX, out double startY)) {
+            _touchGesture.RepeatAnchorX = startX;
+            _touchGesture.RepeatAnchorY = startY;
+        } else {
+            _touchGesture.RepeatAnchorX = currentX;
+            _touchGesture.RepeatAnchorY = currentY;
+        }
         ClearTwoFingerContinuationSingleFingerResume();
+        return true;
+    }
+
+    private bool HasTwoFingerContinuationMoverCandidate(ControllerState s) {
+        if (s.Touch1Active && s.Touch1Id != _touchGesture.StaticFingerId) return true;
+        if (s.Touch2Active && s.Touch2Id != _touchGesture.StaticFingerId) return true;
         return false;
+    }
+
+    private void RefreshTwoFingerContinuationStaticAnchor(int finger, int id, int x, int y) {
+        _touchGesture.StaticFinger = finger;
+        _touchGesture.StaticFingerId = id;
+        _touchGesture.StaticStartX = x;
+        _touchGesture.StaticStartY = y;
     }
 
     private void StopTwoFingerContinuationMover(ControllerState s, double now) {
@@ -869,6 +900,23 @@ internal sealed class MapperForm : Form {
         return 0.0;
     }
 
+    private bool TryGetTouchGestureTrackedStart(int finger, out double x, out double y) {
+        if (finger == 1 && _touchGesture.Touch1Tracking) {
+            x = _touchGesture.Touch1StartX;
+            y = _touchGesture.Touch1StartY;
+            return true;
+        }
+        if (finger == 2 && _touchGesture.Touch2Tracking) {
+            x = _touchGesture.Touch2StartX;
+            y = _touchGesture.Touch2StartY;
+            return true;
+        }
+
+        x = 0.0;
+        y = 0.0;
+        return false;
+    }
+
     private TouchGesturePressType TouchGesturePressTypeForFinger(int finger, double now) {
         double startMs = TouchGestureTrackedStartMs(finger);
         if (startMs <= 0.0) startMs = now;
@@ -883,7 +931,6 @@ internal sealed class MapperForm : Form {
             return true;
         }
 
-        double stillDistance = Math.Max(1.0, _config.TouchGestureHoldStillDistance);
         double bestPrimary = double.MaxValue;
         int bestFinger = 0;
         int bestX = 0;
@@ -892,7 +939,7 @@ internal sealed class MapperForm : Form {
 
         if (s.Touch1Active) {
             double primary = PrimaryMovement(s.Touch1X - _touchGesture.StaticStartX, s.Touch1Y - _touchGesture.StaticStartY);
-            if (primary <= stillDistance && primary < bestPrimary) {
+            if (IsTouchGestureStill(primary, _config) && primary < bestPrimary) {
                 bestPrimary = primary;
                 bestFinger = 1;
                 bestX = s.Touch1X;
@@ -902,7 +949,7 @@ internal sealed class MapperForm : Form {
         }
         if (s.Touch2Active) {
             double primary = PrimaryMovement(s.Touch2X - _touchGesture.StaticStartX, s.Touch2Y - _touchGesture.StaticStartY);
-            if (primary <= stillDistance && primary < bestPrimary) {
+            if (IsTouchGestureStill(primary, _config) && primary < bestPrimary) {
                 bestPrimary = primary;
                 bestFinger = 2;
                 bestX = s.Touch2X;
@@ -912,6 +959,25 @@ internal sealed class MapperForm : Form {
         }
 
         if (bestFinger == 0) {
+            if (s.TouchCount == 1) {
+                if (s.Touch1Active && s.Touch1Id != _touchGesture.ActiveFingerId) {
+                    _touchGesture.StaticFinger = 1;
+                    _touchGesture.StaticFingerId = s.Touch1Id;
+                    finger = 1;
+                    x = s.Touch1X;
+                    y = s.Touch1Y;
+                    return true;
+                }
+                if (s.Touch2Active && s.Touch2Id != _touchGesture.ActiveFingerId) {
+                    _touchGesture.StaticFinger = 2;
+                    _touchGesture.StaticFingerId = s.Touch2Id;
+                    finger = 2;
+                    x = s.Touch2X;
+                    y = s.Touch2Y;
+                    return true;
+                }
+            }
+
             finger = 0;
             x = 0;
             y = 0;
@@ -941,6 +1007,7 @@ internal sealed class MapperForm : Form {
         _touchGesture.ResumeStartX = x;
         _touchGesture.ResumeStartY = y;
         _touchGesture.ResumeStartMs = now;
+        RefreshTwoFingerContinuationStaticAnchor(finger, _touchGesture.StaticFingerId, x, y);
     }
 
     private void ClearTwoFingerContinuationSingleFingerResume() {
@@ -1186,15 +1253,13 @@ internal sealed class MapperForm : Form {
 
         double touch1Primary = PrimaryMovement(s.Touch1X - gesture.Touch1StartX, s.Touch1Y - gesture.Touch1StartY);
         double touch2Primary = PrimaryMovement(s.Touch2X - gesture.Touch2StartX, s.Touch2Y - gesture.Touch2StartY);
-        double stillDistance = Math.Max(1.0, config.TouchGestureHoldStillDistance);
-
         bool found = false;
         TouchGestureRecognition candidate;
-        if (touch2Primary <= stillDistance && TryBuildTwoFingerContinuationRecognition(1, gesture.Touch1StartX, gesture.Touch1StartY, gesture.Touch1StartMs, s.Touch1X, s.Touch1Y, 2, gesture.Touch2Id, gesture.Touch2StartX, gesture.Touch2StartY, config, out candidate)) {
+        if (IsTouchGestureStill(touch2Primary, config) && TryBuildTwoFingerContinuationRecognition(1, gesture.Touch1StartX, gesture.Touch1StartY, gesture.Touch1StartMs, s.Touch1X, s.Touch1Y, 2, gesture.Touch2Id, gesture.Touch2StartX, gesture.Touch2StartY, config, out candidate)) {
             recognition = candidate;
             found = true;
         }
-        if (touch1Primary <= stillDistance && TryBuildTwoFingerContinuationRecognition(2, gesture.Touch2StartX, gesture.Touch2StartY, gesture.Touch2StartMs, s.Touch2X, s.Touch2Y, 1, gesture.Touch1Id, gesture.Touch1StartX, gesture.Touch1StartY, config, out candidate)) {
+        if (IsTouchGestureStill(touch1Primary, config) && TryBuildTwoFingerContinuationRecognition(2, gesture.Touch2StartX, gesture.Touch2StartY, gesture.Touch2StartMs, s.Touch2X, s.Touch2Y, 1, gesture.Touch1Id, gesture.Touch1StartX, gesture.Touch1StartY, config, out candidate)) {
             if (!found || candidate.PrimaryDistance > recognition.PrimaryDistance) {
                 recognition = candidate;
                 found = true;
@@ -1308,12 +1373,12 @@ internal sealed class MapperForm : Form {
         return Math.Max(absX, absY);
     }
 
-    private static TouchGestureDirection DirectionFromDelta(double dx, double dy) {
-        double absX = Math.Abs(dx);
-        double absY = Math.Abs(dy);
-        return absX > absY
-            ? (dx < 0.0 ? TouchGestureDirection.Left : TouchGestureDirection.Right)
-            : (dy < 0.0 ? TouchGestureDirection.Up : TouchGestureDirection.Down);
+    private static bool IsTouchGestureStill(double primaryMovement, Config config) {
+        return primaryMovement < TouchGestureStillDistance(config);
+    }
+
+    private static double TouchGestureStillDistance(Config config) {
+        return Math.Max(1.0, config.TouchGestureHoldStillDistance);
     }
 
     private static bool TryResolveTouchGestureSide(double startX, int currentX, TouchGestureDirection direction, Config config, out TouchGestureSide side) {
@@ -1328,6 +1393,14 @@ internal sealed class MapperForm : Form {
             return true;
         }
         if (startX >= rightConfirmedLeft) {
+            side = TouchGestureSide.Right;
+            return true;
+        }
+        if (currentX < confirmedWidth) {
+            side = TouchGestureSide.Left;
+            return true;
+        }
+        if (currentX >= rightConfirmedLeft) {
             side = TouchGestureSide.Right;
             return true;
         }
@@ -1444,18 +1517,6 @@ internal sealed class MapperForm : Form {
             if (side == TouchGestureSide.Left) {
                 switch (direction) {
                     case TouchGestureDirection.Up:
-                        shortcut = TouchGestureShortcut.OpenTaskManager;
-                        return true;
-                    case TouchGestureDirection.Down:
-                        shortcut = TouchGestureShortcut.Screenshot;
-                        return true;
-                    case TouchGestureDirection.Right:
-                        shortcut = TouchGestureShortcut.CloseWindow;
-                        return true;
-                }
-            } else if (side == TouchGestureSide.Right) {
-                switch (direction) {
-                    case TouchGestureDirection.Up:
                         shortcut = TouchGestureShortcut.PreviousTab;
                         return true;
                     case TouchGestureDirection.Down:
@@ -1466,6 +1527,18 @@ internal sealed class MapperForm : Form {
                         return true;
                     case TouchGestureDirection.Right:
                         shortcut = TouchGestureShortcut.ForwardNavigation;
+                        return true;
+                }
+            } else if (side == TouchGestureSide.Right) {
+                switch (direction) {
+                    case TouchGestureDirection.Up:
+                        shortcut = TouchGestureShortcut.OpenTaskManager;
+                        return true;
+                    case TouchGestureDirection.Down:
+                        shortcut = TouchGestureShortcut.Screenshot;
+                        return true;
+                    case TouchGestureDirection.Left:
+                        shortcut = TouchGestureShortcut.CloseWindow;
                         return true;
                 }
             }
@@ -1501,15 +1574,6 @@ internal sealed class MapperForm : Form {
                         shortcut = TouchGestureShortcut.MoveWindowRightMonitor;
                         return true;
                 }
-            }
-        } else if (fingers == 2 && side == TouchGestureSide.Right) {
-            switch (direction) {
-                case TouchGestureDirection.Left:
-                    shortcut = TouchGestureShortcut.MoveWindowLeftMonitor;
-                    return true;
-                case TouchGestureDirection.Right:
-                    shortcut = TouchGestureShortcut.MoveWindowRightMonitor;
-                    return true;
             }
         }
 

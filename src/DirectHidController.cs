@@ -279,25 +279,20 @@ internal sealed class DirectHidController {
         point.Id = r[offset] & 0x7F;
         point.X = r[offset + 1] | ((r[offset + 2] & 0x0F) << 8);
         point.Y = ((r[offset + 2] >> 4) & 0x0F) | (r[offset + 3] << 4);
-        if (point.Active) NormalizeTouchPointBounds(ref point);
+        if (point.Active && !TryNormalizeTouchPointBounds(ref point)) return false;
         return true;
     }
 
-    private static void NormalizeTouchPointBounds(ref TouchPoint point) {
+    private static bool TryNormalizeTouchPointBounds(ref TouchPoint point) {
+        if (point.X <= TouchpadMaxX && point.Y <= TouchpadMaxY) return true;
+
         if (point.X <= TouchpadMaxX + TouchpadEdgeTolerance &&
             point.Y <= TouchpadMaxY + TouchpadEdgeTolerance) {
-            point.X = Clamp(point.X, 0, TouchpadMaxX);
-            point.Y = Clamp(point.Y, 0, TouchpadMaxY);
-            return;
+            point.Active = false;
+            return true;
         }
 
-        point.Active = false;
-    }
-
-    private static int Clamp(int value, int min, int max) {
-        if (value < min) return min;
-        if (value > max) return max;
-        return value;
+        return false;
     }
 
     private struct TouchPoint {
