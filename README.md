@@ -92,9 +92,11 @@ Closing the console window also exits and releases held keyboard and mouse input
 | Options | `Right Ctrl` |
 | Short-tap DualSense Mute | Toggle one-shot Caps/Fn layer for the next action key |
 | Long-press DualSense Mute | Enable / disable ShikiPad |
-| Any touch point in the left confirmed zone during touchpad click | `Delete` |
-| Any touch point in the right confirmed zone during touchpad click | `Backspace` |
-| All touch points in the middle buffer during touchpad click | Tap real `Caps Lock` |
+| No active touch point during touchpad click | `Backspace` |
+| Two active touch points during touchpad click | `Backspace` |
+| One active touch point in the left confirmed zone during touchpad click | `Delete` |
+| One active touch point in the right confirmed zone during touchpad click | `Backspace` |
+| One active touch point in the middle buffer during touchpad click | Tap real `Caps Lock` |
 
 ### Mouse Parameters
 
@@ -129,7 +131,7 @@ Touchpad gestures are available on the wired DualSense USB HID report. One-finge
 | Right-half two-finger direct swipe | `Ctrl + Shift + Tab` previous tab | `Ctrl + Tab` next tab | `Alt + ←` back | `Alt + →` forward |
 | Right-half two-finger hold-then-swipe | Unmapped | Unmapped | `Win + Shift + ←` move window to left monitor | `Win + Shift + →` move window to right monitor |
 
-Touchpad click is not the clutch key. It checks the active touch point X positions when the click begins. Any touch point in the left confirmed zone sends `Delete`, any touch point in the right confirmed zone sends `Backspace`, and if active touch points are simultaneously in both confirmed zones, `Backspace` wins. Only when all active touch points are in the middle buffer does the click tap real `Caps Lock`; this is pure Caps Lock and does not enable Fn. Touchpad `Delete` and `Backspace` count as base-layer action keys. Whether a short-tap Home clutch lock can be consumed by an action key is decided once, when that Home short-tap lock is formed. If at least one modifier had already been collected at that moment, touchpad `Delete` or `Backspace` clears the lock after firing; modifiers collected later do not make that same lock consumable. Touchpad `Delete` and `Backspace` use the same progressive repeat timing as base-layer repeat. The middle-buffer Caps Lock click fires once on click-down and does not repeat.
+Touchpad click is not the clutch key. It checks the active touch point state when the click begins. No active touch point sends `Backspace`, and any two active touch points also send `Backspace`. With exactly one active touch point, the left confirmed zone sends `Delete`, the right confirmed zone sends `Backspace`, and the middle buffer taps real `Caps Lock`; this is pure Caps Lock and does not enable Fn. Touchpad `Delete` and `Backspace` count as base-layer action keys. Whether a short-tap Home clutch lock can be consumed by an action key is decided once, when that Home short-tap lock is formed. If at least one modifier had already been collected at that moment, touchpad `Delete` or `Backspace` clears the lock after firing; modifiers collected later do not make that same lock consumable. Touchpad `Delete` and `Backspace` use the same progressive repeat timing as base-layer repeat. The middle-buffer Caps Lock click fires once on click-down and does not repeat.
 
 Every touchpad swipe first trigger requires movement from that touch point's start by the direction threshold: 150 for up/down and 180 for left/right. If the touch starts in the middle buffer, distance moved before side lock still counts toward the horizontal 180. After the side locks and the shortcut fires, that trigger point becomes the new origin for later repeat or reverse checks.
 

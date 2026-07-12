@@ -54,68 +54,67 @@ internal sealed class InputInjector {
 
     public void KeyDown(PhysicalKey key) {
         if (key == PhysicalKey.None || !_keys.ContainsKey(key)) return;
-        if (IsReferenceCountedModifier(key)) {
-            bool shouldSend = true;
-            lock (_heldLock) {
+        lock (_heldLock) {
+            if (IsReferenceCountedModifier(key)) {
                 int count;
                 _modifierHoldCounts.TryGetValue(key, out count);
                 _modifierHoldCounts[key] = count + 1;
-                shouldSend = count == 0;
                 _heldKeys.Add(key);
+                if (count > 0) return;
             }
-            if (!shouldSend) return;
-        }
 
-        List<INPUT> inputs = new List<INPUT>();
-        AddKey(inputs, _keys[key], false);
-        Send(inputs, "KeyDown(" + key + ")");
-        lock (_heldLock) _heldKeys.Add(key);
+            List<INPUT> inputs = new List<INPUT>();
+            AddKey(inputs, _keys[key], false);
+            Send(inputs, "KeyDown(" + key + ")");
+            _heldKeys.Add(key);
+        }
     }
 
     public void KeyUp(PhysicalKey key) {
         if (key == PhysicalKey.None || !_keys.ContainsKey(key)) return;
-        if (IsReferenceCountedModifier(key)) {
-            bool shouldSend = true;
-            lock (_heldLock) {
+        lock (_heldLock) {
+            bool releaseTrackedModifier = false;
+            if (IsReferenceCountedModifier(key)) {
                 int count;
                 if (_modifierHoldCounts.TryGetValue(key, out count)) {
                     if (count > 1) {
                         _modifierHoldCounts[key] = count - 1;
                         return;
                     }
-                    _modifierHoldCounts.Remove(key);
                 }
-                shouldSend = _heldKeys.Contains(key);
-                _heldKeys.Remove(key);
+                if (!_heldKeys.Contains(key)) return;
+                releaseTrackedModifier = true;
             }
-            if (!shouldSend) return;
-        }
 
-        List<INPUT> inputs = new List<INPUT>();
-        AddKey(inputs, _keys[key], true);
-        Send(inputs, "KeyUp(" + key + ")");
-        lock (_heldLock) _heldKeys.Remove(key);
+            List<INPUT> inputs = new List<INPUT>();
+            AddKey(inputs, _keys[key], true);
+            Send(inputs, "KeyUp(" + key + ")");
+            if (releaseTrackedModifier) _modifierHoldCounts.Remove(key);
+            _heldKeys.Remove(key);
+        }
     }
 
     public void KeyTap(PhysicalKey key, bool shift, bool ctrl, bool alt, bool win) {
         if (key == PhysicalKey.None || !_keys.ContainsKey(key)) return;
-        bool pressShift = shift && !IsHeld(PhysicalKey.LShift);
-        bool pressCtrl = ctrl && !IsHeld(PhysicalKey.LCtrl);
-        bool pressAlt = alt && !IsHeld(PhysicalKey.LAlt);
-        bool pressWin = win && !IsHeld(PhysicalKey.LWin);
+        lock (_heldLock) {
+            bool pressShift = shift && !_heldKeys.Contains(PhysicalKey.LShift);
+            bool pressCtrl = ctrl && !_heldKeys.Contains(PhysicalKey.LCtrl);
+            bool pressAlt = alt && !_heldKeys.Contains(PhysicalKey.LAlt);
+            bool pressWin = win && !_heldKeys.Contains(PhysicalKey.LWin);
 
-        List<INPUT> inputs = new List<INPUT>();
-        if (pressShift) AddKey(inputs, _shift, false);
-        if (pressCtrl) AddKey(inputs, _ctrl, false);
-        if (pressAlt) AddKey(inputs, _alt, false);
-        if (pressWin) AddKey(inputs, _win, false);
-        AddKey(inputs, _keys[key], false);
-        AddKey(inputs, _keys[key], true);
-        if (pressWin) AddKey(inputs, _win, true);
-        if (pressAlt) AddKey(inputs, _alt, true);
-        if (pressCtrl) AddKey(inputs, _ctrl, true);
-        if (pressShift) AddKey(inputs, _shift, true);
-        Send(inputs, "KeyTap(" + key + ")");
+            List<INPUT> inputs = new List<INPUT>();
+            if (pressShift) AddKey(inputs, _shift, false);
+            if (pressCtrl) AddKey(inputs, _ctrl, false);
+            if (pressAlt) AddKey(inputs, _alt, false);
+            if (pressWin) AddKey(inputs, _win, false);
+            AddKey(inputs, _keys[key], false);
+            AddKey(inputs, _keys[key], true);
+            if (pressWin) AddKey(inputs, _win, true);
+            if (pressAlt) AddKey(inputs, _alt, true);
+            if (pressCtrl) AddKey(inputs, _ctrl, true);
+            if (pressShift) AddKey(inputs, _shift, true);
+            Send(inputs, "KeyTap(" + key + ")");
+        }
     }
 
     private bool IsHeld(PhysicalKey key) {
@@ -143,16 +142,16 @@ internal sealed class InputInjector {
     }
 
     public void MouseButton(int button, bool down) {
-        INPUT input = new INPUT();
-        input.type = INPUT_MOUSE;
-        MOUSEINPUT mouse = new MOUSEINPUT();
-        if (button == 0) mouse.dwFlags = down ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP;
-        else mouse.dwFlags = down ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_RIGHTUP;
-        input.mi = mouse;
-        List<INPUT> inputs = new List<INPUT>();
-        inputs.Add(input);
-        Send(inputs, "MouseButton(" + button + ", " + down + ")");
         lock (_heldLock) {
+            INPUT input = new INPUT();
+            input.type = INPUT_MOUSE;
+            MOUSEINPUT mouse = new MOUSEINPUT();
+            if (button == 0) mouse.dwFlags = down ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP;
+            else mouse.dwFlags = down ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_RIGHTUP;
+            input.mi = mouse;
+            List<INPUT> inputs = new List<INPUT>();
+            inputs.Add(input);
+            Send(inputs, "MouseButton(" + button + ", " + down + ")");
             if (button == 0) _leftMouseHeld = down;
             else _rightMouseHeld = down;
         }

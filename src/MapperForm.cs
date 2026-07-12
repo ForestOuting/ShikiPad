@@ -242,6 +242,7 @@ internal sealed class MapperForm : Form {
             _manualVisible = false;
             _printedConnectedGuide = true;
         }
+        UpdateSystemButtonPresses(s);
         UpdateTriggers(s, now);
         MarkActiveLayerOverlap();
         UpdateClutchButton(s, now);
@@ -253,7 +254,7 @@ internal sealed class MapperForm : Form {
         UpdateLeftStick(s, deltaSec);
         UpdateActionButtons(s, now);
         ClearInactiveLayerOverlapFlags(s);
-        UpdateSystemButtons(s);
+        UpdateSystemButtonReleases(s);
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
@@ -524,6 +525,12 @@ internal sealed class MapperForm : Form {
     private static TouchpadClickResolution ResolveTouchpadClick(ControllerState s, Config config) {
         const double touchpadWidth = 1920.0;
         double confirmedWidth = Clamp(config.TouchGestureSideConfirmedWidth, 1.0, touchpadWidth / 2.0);
+        int activeTouchCount = 0;
+        if (s.Touch1Active) activeTouchCount++;
+        if (s.Touch2Active) activeTouchCount++;
+
+        if (activeTouchCount == 0) return TouchpadClickResolution.ForKey(PhysicalKey.Backspace);
+        if (activeTouchCount >= 2 || s.TouchCount >= 2) return TouchpadClickResolution.ForKey(PhysicalKey.Backspace);
 
         bool anyActive = false;
         bool leftConfirmed = false;
@@ -1954,27 +1961,36 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private void UpdateSystemButtons(ControllerState s) {
-        UpdateMappedSystemButton("Share/Create", s.Create, PhysicalKey.RAlt, ref _prevCreate, ref _createKeyDown);
-        UpdateMappedSystemButton("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
+    private void UpdateSystemButtonPresses(ControllerState s) {
+        UpdateMappedSystemButtonPress("Share/Create", s.Create, PhysicalKey.RAlt, ref _prevCreate, ref _createKeyDown);
+        UpdateMappedSystemButtonPress("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
     }
 
-    private void UpdateMappedSystemButton(string source, bool down, PhysicalKey key, ref bool prevDown, ref bool keyDown) {
+    private void UpdateSystemButtonReleases(ControllerState s) {
+        UpdateMappedSystemButtonRelease("Share/Create", s.Create, PhysicalKey.RAlt, ref _prevCreate, ref _createKeyDown);
+        UpdateMappedSystemButtonRelease("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
+    }
+
+    private void UpdateMappedSystemButtonPress(string source, bool down, PhysicalKey key, ref bool prevDown, ref bool keyDown) {
         if (down && !prevDown) {
             _injector.CurrentSource = source;
             _injector.CurrentReason = source + " press";
             _injector.KeyDown(key);
             keyDown = true;
-        } else if (!down && prevDown) {
+            prevDown = true;
+        }
+    }
+
+    private void UpdateMappedSystemButtonRelease(string source, bool down, PhysicalKey key, ref bool prevDown, ref bool keyDown) {
+        if (!down && prevDown) {
             if (keyDown) {
                 _injector.CurrentSource = source;
                 _injector.CurrentReason = source + " release";
                 _injector.KeyUp(key);
                 keyDown = false;
             }
+            prevDown = false;
         }
-
-        prevDown = down;
     }
 
     private void TapCapsLock(string source, string reason) {
