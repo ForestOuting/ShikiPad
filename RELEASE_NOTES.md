@@ -2,6 +2,9 @@
 
 ## 2026-07-21
 
+- Caps/Fn is now a persistent toggle: only a letter capitalization or an actual `1..0 - =` to `F1..F12` translation automatically exits the mode. Touchpad clicks and every untranslated action leave it active.
+- Raised the left-stick scroll-sector deadzone from 0.15 to 0.30 and the four modifier-sector deadzones from 0.45 to 0.50.
+- A primed Home clutch is now consumed only by the eight mapped action positions across every layer or by L3/R3. Touchpad `Delete`, `Backspace`, and `Caps Lock` preserve the clutch state, while Base repeat actions continue emitting the saved modifiers with every repeat pulse.
 - Restored the pure layer timing state machine: Base is only the eight D-pad/face mappings with no shoulder or trigger held, and modifier capture can no longer override layer ownership. The 45 ms layer grace, 15 ms post-grace, 35 ms combo window, and 20/30 ms occupancy limits are independent from the new 45 ms modifier-binding window.
 - Touchpad clicks, Home, Mute, and mouse buttons retain separate module identities. The independent 45 ms modifier-binding window now covers only L3/R3 and all eight action positions across Base and character layers; Home no longer registers or captures bindings from this window.
 - Modifier-bound Base repeat keys now emit a complete chord pulse on the initial event and every repeat tick: modifiers and the action key are pressed together, then the action and that pulse's modifier references are released. The binding never leaves a modifier artificially held between repeats.

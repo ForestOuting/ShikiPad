@@ -16,6 +16,7 @@ static class Program {
         VerifyTwoFingerContinuationKeepsStaticFinger(assembly, mapper);
         VerifyTouchpadClicks(assembly, mapper);
         VerifyModifierActionWindow(assembly, mapper);
+        VerifyCapsFnTranslation(assembly, mapper);
         VerifyPureBaseAndLayerSelection(assembly, mapper);
         NotNull(mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance), "two-finger continuation update remains available");
         NotNull(mapper.GetMethod("TryRecognizeTwoFingerContinuationGesture", PrivateStatic), "two-finger continuation recognition remains available");
@@ -56,6 +57,8 @@ static class Program {
         Type keyType = RequiredType(assembly, "PhysicalKey");
         Type layerType = RequiredType(assembly, "Layer");
         object config = Activator.CreateInstance(configType);
+        Equal(0.30, configType.GetField("LeftStickEnterDeadzone").GetValue(config), "left-stick scroll deadzone default");
+        Equal(0.50, configType.GetField("LeftStickModifierEnterDeadzone").GetValue(config), "left-stick modifier sector deadzone default");
         Equal(45, configType.GetField("ActionLayerGraceMs").GetValue(config), "pure layer grace window default");
         Equal(15, configType.GetField("ActionLayerPostGraceMs").GetValue(config), "pure layer post-grace default");
         Equal(35, configType.GetField("ComboLayerWindowMs").GetValue(config), "combo-layer window default");
@@ -102,6 +105,16 @@ static class Program {
         Type holdType = RequiredType(mapper.Assembly, "MapperForm+ButtonHold");
         NotNull(holdType.GetField("BoundRepeatPulse"), "action hold records bound repeat pulse mode");
 
+        Type clutchConsumerType = RequiredType(mapper.Assembly, "MapperForm+ClutchConsumer");
+        MethodInfo canConsumeClutch = RequiredMethod(mapper, "CanConsumeClutchToggle");
+        Equal(true, canConsumeClutch.Invoke(null, new[] { Enum.Parse(clutchConsumerType, "ActionPosition") }), "all eight mapped action positions can consume a primed Home clutch");
+        Equal(true, canConsumeClutch.Invoke(null, new[] { Enum.Parse(clutchConsumerType, "MouseButton") }), "L3/R3 mouse buttons can consume a primed Home clutch");
+        Equal(false, canConsumeClutch.Invoke(null, new[] { Enum.Parse(clutchConsumerType, "TouchpadClick") }), "touchpad Delete, Backspace, and Caps Lock cannot consume a primed Home clutch");
+
+        MethodInfo shouldDeactivateCapsFn = RequiredMethod(mapper, "ShouldDeactivateCapsFnAfterAction");
+        Equal(true, shouldDeactivateCapsFn.Invoke(null, new object[] { true }), "a translated letter or F1-F12 action exits Caps/Fn mode");
+        Equal(false, shouldDeactivateCapsFn.Invoke(null, new object[] { false }), "an untranslated action preserves Caps/Fn mode");
+
         VerifyPendingModifierRegistration(mapper, configType, keyType);
     }
 
@@ -140,6 +153,31 @@ static class Program {
         Equal(1 << 4, holdType.GetField("PendingModifierMask").GetValue(hold), "modifier after 45 ms is not captured by action pending");
         mouseHold = mapper.GetField("_leftMouseButton", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
         Equal(1 << 4, mouseHoldType.GetField("PendingModifierMask").GetValue(mouseHold), "modifier after 45 ms is not captured by mouse-button pending");
+    }
+
+    private static void VerifyCapsFnTranslation(Assembly assembly, Type mapper) {
+        Type keyType = RequiredType(assembly, "PhysicalKey");
+        Type strokeType = RequiredType(assembly, "KeyStroke");
+        object instance = RuntimeHelpers.GetUninitializedObject(mapper);
+        mapper.GetField("_capsFnLayerActive", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, true);
+        MethodInfo resolve = mapper.GetMethod("ResolveActionStroke", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "A", false, "A", true, true);
+        VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Num1", false, "F1", false, true);
+        VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Num0", false, "F10", false, true);
+        VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Minus", false, "F11", false, true);
+        VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Equals", false, "F12", false, true);
+        VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Space", false, "Space", false, false);
+        VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Num1", true, "Num1", true, false);
+    }
+
+    private static void VerifyCapsFnStroke(MethodInfo resolve, object instance, Type strokeType, Type keyType, string inputKey, bool inputShift, string expectedKey, bool expectedShift, bool expectedTranslated) {
+        object stroke = Activator.CreateInstance(strokeType, new[] { Enum.Parse(keyType, inputKey), (object)inputShift });
+        object result = resolve.Invoke(instance, new[] { stroke });
+        object resolvedStroke = result.GetType().GetField("Stroke").GetValue(result);
+        Equal(expectedKey, strokeType.GetField("Key").GetValue(resolvedStroke).ToString(), "Caps/Fn resolved key for " + inputKey);
+        Equal(expectedShift, strokeType.GetField("Shift").GetValue(resolvedStroke), "Caps/Fn resolved shift for " + inputKey);
+        Equal(expectedTranslated, result.GetType().GetField("FnTranslated").GetValue(result), "Caps/Fn translation flag for " + inputKey);
     }
 
     private static object configWithWindow(Type configType, int windowMs) {

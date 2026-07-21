@@ -509,7 +509,6 @@ internal sealed class MapperForm : Form {
             _touchClickRepeatStartedMs = now;
             _touchClickNextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
         }
-        CompleteAction(false);
     }
 
     private void ReleaseTouchpadClickKey() {
@@ -1993,7 +1992,7 @@ internal sealed class MapperForm : Form {
     private void PressStickyActionKey(int index, KeyStroke key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now, bool fnTranslated, int modifierMask) {
         if (ShouldPulseBoundRepeat(repeatable, modifierMask)) {
             EmitBoundActionPulse(index, key, reason + " bound pulse", modifierMask);
-            CompleteAction(fnTranslated);
+            CompleteAction(fnTranslated, ClutchConsumer.ActionPosition);
             hold.Key = key;
             hold.KeyLayer = keyLayer;
             hold.KeyIsDown = false;
@@ -2130,7 +2129,7 @@ internal sealed class MapperForm : Form {
         hold.KeyDownMs = now;
         hold.RepeatStartedMs = now;
         hold.NextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
-        CompleteAction(fnTranslated);
+        CompleteAction(fnTranslated, ClutchConsumer.ActionPosition);
     }
 
     private void TapActionKey(int index, KeyStroke key, string reason, bool fnTranslated) {
@@ -2140,17 +2139,26 @@ internal sealed class MapperForm : Form {
         _injector.CurrentReason = reason;
         DebugSources("Source=" + source + " Button=" + btn + " Mode=Tap -> " + MappingEngine.KeyName(key));
         _injector.KeyTap(key.Key, key.Shift, false, false, false);
-        CompleteAction(fnTranslated);
+        CompleteAction(fnTranslated, ClutchConsumer.ActionPosition);
     }
 
-    private void CompleteAction(bool fnTranslated) {
-        if (_capsFnLayerActive) {
-            DeactivateCapsFnLayer(fnTranslated ? "Caps/Fn translated action complete" : "Caps/Fn normal action complete");
+    private void CompleteAction(bool fnTranslated, ClutchConsumer clutchConsumer) {
+        if (_capsFnLayerActive && ShouldDeactivateCapsFnAfterAction(fnTranslated)) {
+            DeactivateCapsFnLayer("Caps/Fn translated action complete");
         }
-        ReleaseClutchAfterAction();
+        ReleaseClutchAfterAction(clutchConsumer);
     }
 
-    private void ReleaseClutchAfterAction() {
+    internal static bool ShouldDeactivateCapsFnAfterAction(bool fnTranslated) {
+        return fnTranslated;
+    }
+
+    internal static bool CanConsumeClutchToggle(ClutchConsumer consumer) {
+        return consumer == ClutchConsumer.ActionPosition || consumer == ClutchConsumer.MouseButton;
+    }
+
+    private void ReleaseClutchAfterAction(ClutchConsumer consumer) {
+        if (!CanConsumeClutchToggle(consumer)) return;
         if (_clutchButton.Toggled && _clutchToggleActionReleases) {
             _clutchButton.DeactivateToggle();
             _clutchToggleActionReleases = false;
@@ -2251,6 +2259,7 @@ internal sealed class MapperForm : Form {
         hold.OutputDown = true;
         hold.StickyModifierMask = modifierMask;
         if (button == 1) _mouseFreezeUntilMs = now + _config.R3FreezeMs;
+        ReleaseClutchAfterAction(ClutchConsumer.MouseButton);
 
         if (released) ReleaseMouseButton(button, name, ref hold);
     }
@@ -2467,6 +2476,12 @@ internal sealed class MapperForm : Form {
         None,
         Left,
         Right
+    }
+
+    internal enum ClutchConsumer {
+        ActionPosition,
+        MouseButton,
+        TouchpadClick
     }
 
     private enum TouchGestureShortcut {

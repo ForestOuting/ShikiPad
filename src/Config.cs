@@ -10,8 +10,8 @@ internal sealed class Config {
     public double RightStickSmoothingMs = 5.0;
     public double MouseScrollCurveExponent = 3.0;
     public double MouseScrollSmoothingMs = 5.0;
-    public double LeftStickEnterDeadzone = 0.15;
-    public double LeftStickModifierEnterDeadzone = 0.45;
+    public double LeftStickEnterDeadzone = 0.30;
+    public double LeftStickModifierEnterDeadzone = 0.50;
     public double TriggerPressThreshold = 0.25;
     public double TriggerReleaseThreshold = 0.15;
     public int RepeatDelayMs = 300;
