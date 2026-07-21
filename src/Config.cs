@@ -19,6 +19,7 @@ internal sealed class Config {
     public int BaseRepeatSlowIntervalMs = 120;
     public int BaseRepeatRampMs = 1500;
     public int ActionLayerGraceMs = 45;
+    public int ModifierBindingWindowMs = 45;
     public int ActionLayerPostGraceMs = 15;
     public int LayerTakeoverWindowMs = 30;
     public int LayerOccupancyCarryCutoffMs = 20;
@@ -26,7 +27,7 @@ internal sealed class Config {
     public bool UseScanCode = true;
     public int ScrollSlowIntervalMs = 1500;
     public int ScrollFastIntervalMs = 15;
-    public double TouchGestureHoldStillDistance = 50.0;
+    public double TouchGestureHoldStillDistance = 100.0;
     public double TouchGestureVerticalThreshold = 150.0;
     public double TouchGestureHorizontalThreshold = 180.0;
     public double TouchGestureVerticalRepeatDistance = 150.0;
@@ -35,7 +36,6 @@ internal sealed class Config {
     public int TouchGestureTimeRepeatIntervalMs = 450;
     public int TouchGestureDesktopRepeatIntervalMs = 550;
     public int TouchGestureSideConfirmedWidth = 550;
-    public int TouchGestureHoldMs = 450;
     public int R3FreezeMs = 60;
     public int ClutchLongPressMs = 250;
 }

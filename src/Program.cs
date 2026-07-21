@@ -81,7 +81,7 @@ internal static class Program {
         WriteManualGradientLine(width, panelWidth, pad + "左摇杆      ↖ Shift; ↑/↓ 滚轮; ↗ Win; ↙ Ctrl; ↘ Alt", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "蓄力        Home 短按锁定 / 长按保持; 锁定瞬间有修饰才被动作键消费", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "触控板中区  按压 -> 真实 CapsLock", blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + "触控板手势  直接滑 / 450ms 长按后滑 / 二指滑动", blockWidth);
+        WriteManualGradientLine(width, panelWidth, pad + "触控板手势  起点四段判区，最终左区 / 右区; 单指 / 二指", blockWidth);
         WriteManualGradientLine(width, panelWidth, pad + "静音键      短按 Caps/Fn 开/关; 长按禁用 / 启用", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "Caps/Fn     1..0/-/= -> F1..F12; 字母 -> 大写", blockWidth);

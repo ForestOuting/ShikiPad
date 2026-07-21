@@ -29,8 +29,8 @@ internal sealed class MapperForm : Form {
     private readonly LeftStickScrollIntegrator _leftStickScroll = new LeftStickScrollIntegrator();
     private readonly RightStickMouseIntegrator _rightStickMouse = new RightStickMouseIntegrator();
     private double _mouseFreezeUntilMs;
-    private bool _leftMouseDown;
-    private bool _rightMouseDown;
+    private MouseButtonHold _leftMouseButton;
+    private MouseButtonHold _rightMouseButton;
     private List<PhysicalKey> _accumulatedModifiers = new List<PhysicalKey>();
     private List<PhysicalKey> _heldLeftStickKeys = new List<PhysicalKey>();
     private readonly ClutchButtonStateMachine _clutchButton = new ClutchButtonStateMachine();
@@ -38,10 +38,8 @@ internal sealed class MapperForm : Form {
     private bool _touchAltTabAltDown;
     private bool _touchAltTabAltOwned;
     private bool _touchGestureBlockedUntilRelease;
-    private int _touch1ContactId = -1;
-    private int _touch2ContactId = -1;
-    private double _touch1ContactStartMs;
-    private double _touch2ContactStartMs;
+    private bool _touchGestureBlockOwnsTouchpad;
+    private bool _touchClickBlockedByGesture;
     private bool _prevTouchClick;
     private PhysicalKey _touchClickKey = PhysicalKey.None;
     private bool _touchClickKeyDown;
@@ -246,17 +244,17 @@ internal sealed class MapperForm : Form {
             _manualVisible = false;
             _printedConnectedGuide = true;
         }
-        UpdateSystemButtonPresses(s);
+        UpdateSystemButtonPresses(s, now);
         UpdateTriggers(s, now);
         MarkActiveLayerOverlap();
         UpdateClutchButton(s, now);
-        UpdateTouchContactTimes(s, now);
+        UpdateLeftStick(s, now, deltaSec);
         UpdateTouchpadClick(s, now);
         UpdateTouchGestures(s, now);
 
         UpdateMouseButtons(s, now);
+        FlushPendingMouseButtons(s, now);
         UpdateRightStick(s, now, deltaSec);
-        UpdateLeftStick(s, deltaSec);
         UpdateActionButtons(s, now);
         ClearInactiveLayerOverlapFlags(s);
         UpdateSystemButtonReleases(s);
@@ -336,7 +334,7 @@ internal sealed class MapperForm : Form {
             : Clamp(_config.LeftStickEnterDeadzone, 0.0, 1.0);
     }
 
-    private void UpdateLeftStick(ControllerState s, double deltaSec) {
+    private void UpdateLeftStick(ControllerState s, double now, double deltaSec) {
         double radius = Math.Sqrt(s.LX * s.LX + s.LY * s.LY);
         StickDirection previous = _leftDirection;
         StickDirection next = ResolveLeftStickDirection(s.LX, s.LY);
@@ -387,6 +385,7 @@ internal sealed class MapperForm : Form {
                 _injector.CurrentSource = "LeftStick";
                 _injector.CurrentReason = "ModifierDown " + key;
                 _injector.KeyDown(key);
+                RegisterModifierBinding(key, now);
             }
         }
 
@@ -476,28 +475,41 @@ internal sealed class MapperForm : Form {
 
     private void UpdateTouchpadClick(ControllerState s, double now) {
         if (s.TouchClick && !_prevTouchClick) {
+            if ((_touchGesture.Completed && _touchGesture.Shortcut != TouchGestureShortcut.None) ||
+                (_touchGestureBlockedUntilRelease && _touchGestureBlockOwnsTouchpad)) {
+                _touchClickBlockedByGesture = true;
+                _prevTouchClick = true;
+                return;
+            }
+
+            ResetTouchGesture();
             TouchpadClickResolution click = ResolveTouchpadClick(s, _config);
             if (click.Kind == TouchpadClickKind.Key && click.Key != PhysicalKey.None) {
-                _injector.CurrentSource = "TouchpadClick";
-                _injector.CurrentReason = "Touchpad click " + click.Key;
-                _injector.KeyDown(click.Key);
-                _touchClickKey = click.Key;
-                _touchClickKeyDown = true;
-                if (IsTouchpadClickRepeatKey(click.Key)) {
-                    _touchClickRepeatStartedMs = now;
-                    _touchClickNextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
-                }
-                CompleteAction(false);
-            } else if (click.Kind == TouchpadClickKind.CapsLock) {
-                TapCapsLock("TouchpadClick", "Touchpad middle CapsLock");
+                PressTouchpadClickKey(click.Key, now);
             }
         } else if (!s.TouchClick && _prevTouchClick) {
-            ReleaseTouchpadClickKey();
-        } else if (s.TouchClick) {
+            if (!_touchClickBlockedByGesture) {
+                ReleaseTouchpadClickKey();
+            }
+            _touchClickBlockedByGesture = false;
+        } else if (s.TouchClick && !_touchClickBlockedByGesture) {
             UpdateTouchpadClickRepeat(now);
         }
 
         _prevTouchClick = s.TouchClick;
+    }
+
+    private void PressTouchpadClickKey(PhysicalKey key, double now) {
+        _injector.CurrentSource = "TouchpadClick";
+        _injector.CurrentReason = "Touchpad click " + key;
+        _injector.KeyDown(key);
+        _touchClickKey = key;
+        _touchClickKeyDown = true;
+        if (IsTouchpadClickRepeatKey(key)) {
+            _touchClickRepeatStartedMs = now;
+            _touchClickNextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
+        }
+        CompleteAction(false);
     }
 
     private void ReleaseTouchpadClickKey() {
@@ -546,7 +558,7 @@ internal sealed class MapperForm : Form {
         if (leftConfirmed && rightConfirmed) return TouchpadClickResolution.ForKey(PhysicalKey.Backspace);
         if (leftConfirmed) return TouchpadClickResolution.ForKey(PhysicalKey.Delete);
         if (rightConfirmed) return TouchpadClickResolution.ForKey(PhysicalKey.Backspace);
-        return anyActive ? TouchpadClickResolution.CapsLock() : TouchpadClickResolution.None();
+        return anyActive ? TouchpadClickResolution.ForKey(PhysicalKey.CapsLock) : TouchpadClickResolution.None();
     }
 
     private static void AddTouchpadClickPoint(bool active, int x, double confirmedWidth, double touchpadWidth, ref bool anyActive, ref bool leftConfirmed, ref bool rightConfirmed) {
@@ -556,32 +568,10 @@ internal sealed class MapperForm : Form {
         else if (x >= touchpadWidth - confirmedWidth) rightConfirmed = true;
     }
 
-    private void UpdateTouchContactTimes(ControllerState s, double now) {
-        int previousTouch1Id = _touch1ContactId;
-        int previousTouch2Id = _touch2ContactId;
-        double previousTouch1StartMs = _touch1ContactStartMs;
-        double previousTouch2StartMs = _touch2ContactStartMs;
-
-        _touch1ContactStartMs = ResolveTouchContactStart(s.Touch1Active, s.Touch1Id, previousTouch1Id, previousTouch1StartMs, previousTouch2Id, previousTouch2StartMs, now);
-        _touch2ContactStartMs = ResolveTouchContactStart(s.Touch2Active, s.Touch2Id, previousTouch2Id, previousTouch2StartMs, previousTouch1Id, previousTouch1StartMs, now);
-        _touch1ContactId = s.Touch1Active ? s.Touch1Id : -1;
-        _touch2ContactId = s.Touch2Active ? s.Touch2Id : -1;
-    }
-
-    private static double ResolveTouchContactStart(bool active, int id, int sameSlotPreviousId, double sameSlotPreviousStartMs, int otherSlotPreviousId, double otherSlotPreviousStartMs, double now) {
-        if (!active) return 0.0;
-        if (id == sameSlotPreviousId && sameSlotPreviousStartMs > 0.0) return sameSlotPreviousStartMs;
-        if (id == otherSlotPreviousId && otherSlotPreviousStartMs > 0.0) return otherSlotPreviousStartMs;
-        return now;
-    }
-
-    private double TouchContactStartMs(int finger) {
-        return finger == 1 ? _touch1ContactStartMs : _touch2ContactStartMs;
-    }
-
     private void UpdateTouchGestures(ControllerState s, double now) {
-        if (s.TouchClick) {
+        if (s.TouchClick && !_touchClickBlockedByGesture) {
             _touchGestureBlockedUntilRelease = false;
+            _touchGestureBlockOwnsTouchpad = false;
             ResetTouchGesture();
             return;
         }
@@ -589,6 +579,7 @@ internal sealed class MapperForm : Form {
         int count = s.TouchCount;
         if (count <= 0) {
             _touchGestureBlockedUntilRelease = false;
+            _touchGestureBlockOwnsTouchpad = false;
             ResetTouchGesture();
             return;
         }
@@ -613,58 +604,33 @@ internal sealed class MapperForm : Form {
             if (!TryRecognizeTouchGesture(_touchGesture, s, _config, out recognition)) return;
 
             int fingers = _touchGesture.HadTwoFingers ? 2 : 1;
-            TouchGesturePressType pressType = now - recognition.StartMs >= Math.Max(1, _config.TouchGestureHoldMs)
-                ? TouchGesturePressType.Hold
-                : TouchGesturePressType.Direct;
             TouchGestureShortcut shortcut;
-            if (!TryResolveTouchGestureShortcut(fingers, pressType, recognition.Side, recognition.Direction, out shortcut)) {
+            if (!TryResolveTouchGestureShortcut(fingers, recognition.Side, recognition.Direction, out shortcut)) {
                 if (fingers == 2 && recognition.TwoFingerContinuation) {
-                    ArmIgnoredTwoFingerContinuationSegment(pressType, recognition.Side, recognition.Direction, recognition.Finger, recognition.CurrentX, recognition.CurrentY, recognition.StaticFinger, recognition.StaticFingerId, recognition.StaticStartX, recognition.StaticStartY, now);
+                    ArmIgnoredTwoFingerContinuationSegment(recognition.Side, recognition.Direction, recognition.Finger, recognition.CurrentX, recognition.CurrentY, recognition.StaticFinger, recognition.StaticFingerId, recognition.StaticStartX, recognition.StaticStartY, now);
                     return;
                 }
-                BlockTouchGestureUntilRelease();
+                BlockTouchGestureUntilRelease(false);
                 return;
             }
 
             TouchGestureRepeatMode repeatMode = TouchGestureRepeatModeFor(shortcut);
-            double firstDistance = TouchGestureThresholdFor(_config, recognition.Direction);
-            double repeatDistance = TouchGestureRepeatDistanceFor(_config, recognition.Direction);
-            int triggerCount = recognition.TwoFingerContinuation
-                ? 1
-                : TouchGestureTriggerCount(repeatMode, recognition.PrimaryDistance, firstDistance, repeatDistance);
-            if (IsAltTabShortcut(shortcut)) {
-                TriggerTouchGestureShortcut(shortcut);
-                if (triggerCount > 1) {
-                    TriggerTouchGestureAltTabNavigation(recognition.Direction, triggerCount - 1);
-                }
-            } else {
-                TriggerTouchGestureShortcut(shortcut, triggerCount);
-            }
+            TriggerTouchGestureShortcut(shortcut);
             if (repeatMode == TouchGestureRepeatMode.None && fingers != 2) {
-                BlockTouchGestureUntilRelease();
+                BlockTouchGestureUntilRelease(true);
                 return;
             }
 
-            double anchorX = recognition.CurrentX;
-            double anchorY = recognition.CurrentY;
-            if (recognition.TwoFingerContinuation) {
-                anchorX = recognition.CurrentX;
-                anchorY = recognition.CurrentY;
-            } else if (repeatMode == TouchGestureRepeatMode.Distance) {
-                double consumed = TouchGestureConsumedDistance(triggerCount, firstDistance, repeatDistance);
-                ComputeTouchGestureAnchorAfterPrimaryMove(recognition.StartX, recognition.StartY, recognition.CurrentX, recognition.CurrentY, recognition.Direction, consumed, out anchorX, out anchorY);
-            }
-
-            ArmTouchGestureRepeat(shortcut, repeatMode, fingers, pressType, recognition.Side, recognition.Direction, recognition.Finger, anchorX, anchorY, recognition.TwoFingerContinuation, recognition.StaticFinger, recognition.StaticFingerId, recognition.StaticStartX, recognition.StaticStartY, now);
+            ArmTouchGestureRepeat(shortcut, repeatMode, fingers, recognition.Side, recognition.Direction, recognition.Finger, recognition.CurrentX, recognition.CurrentY, recognition.TwoFingerContinuation, recognition.StaticFinger, recognition.StaticFingerId, recognition.StaticStartX, recognition.StaticStartY, now);
             return;
         }
 
         UpdateTouchGestureRepeat(s, now);
     }
 
-    private void ArmIgnoredTwoFingerContinuationSegment(TouchGesturePressType pressType, TouchGestureSide side, TouchGestureDirection direction, int finger, int currentX, int currentY, int staticFinger, int staticFingerId, double staticStartX, double staticStartY, double now) {
+    private void ArmIgnoredTwoFingerContinuationSegment(TouchGestureSide side, TouchGestureDirection direction, int finger, int currentX, int currentY, int staticFinger, int staticFingerId, double staticStartX, double staticStartY, double now) {
         ReleaseTouchGestureModifiers();
-        ArmTouchGestureRepeat(TouchGestureShortcut.None, TouchGestureRepeatMode.None, 2, pressType, side, direction, finger, currentX, currentY, true, staticFinger, staticFingerId, staticStartX, staticStartY, now);
+        ArmTouchGestureRepeat(TouchGestureShortcut.None, TouchGestureRepeatMode.None, 2, side, direction, finger, currentX, currentY, true, staticFinger, staticFingerId, staticStartX, staticStartY, now);
     }
 
     private void StartTouchGesture(ControllerState s, double now) {
@@ -673,9 +639,7 @@ internal sealed class MapperForm : Form {
         _touchGesture.FingerCount = s.TouchCount >= 2 ? 2 : 1;
         _touchGesture.HadTwoFingers = s.TouchCount >= 2;
         InitializeTouchGestureFingerStarts(ref _touchGesture, s, now);
-        _touchGesture.StartMs = EarliestActiveTouchStartMs(s, now);
         _touchGesture.Direction = TouchGestureDirection.None;
-        _touchGesture.PressType = TouchGesturePressType.Direct;
     }
 
     private void ResetTouchGesture() {
@@ -683,9 +647,10 @@ internal sealed class MapperForm : Form {
         _touchGesture.Reset();
     }
 
-    private void BlockTouchGestureUntilRelease() {
+    private void BlockTouchGestureUntilRelease(bool ownsTouchpad) {
         ResetTouchGesture();
         _touchGestureBlockedUntilRelease = true;
+        _touchGestureBlockOwnsTouchpad = ownsTouchpad;
     }
 
     private void UpdateTouchGestureRepeat(ControllerState s, double now) {
@@ -706,46 +671,29 @@ internal sealed class MapperForm : Form {
             return;
         }
 
-        double dx = currentX - _touchGesture.RepeatAnchorX;
+        double stepStartX = _touchGesture.RepeatAnchorX;
+        double dx = currentX - stepStartX;
         double dy = currentY - _touchGesture.RepeatAnchorY;
         TouchGestureDirection direction;
         double primary;
         double repeatDistance;
         if (TryResolveTouchGestureMovement(dx, dy, _config, true, out direction, out primary, out repeatDistance)) {
-            if (IsAltTabShortcut(_touchGesture.Shortcut)) {
-                int triggerCount = TouchGestureTriggerCount(TouchGestureRepeatMode.Distance, primary, repeatDistance, repeatDistance);
-                TriggerTouchGestureAltTabNavigation(direction, triggerCount);
+            SettleTouchGestureStep(ref _touchGesture, currentX, currentY);
 
-                double consumed = TouchGestureConsumedDistance(triggerCount, repeatDistance, repeatDistance);
-                double anchorX;
-                double anchorY;
-                ComputeTouchGestureAnchorAfterPrimaryMove(_touchGesture.RepeatAnchorX, _touchGesture.RepeatAnchorY, currentX, currentY, direction, consumed, out anchorX, out anchorY);
-                ArmTouchGestureRepeat(_touchGesture.Shortcut, _touchGesture.RepeatMode, _touchGesture.FingerCount, _touchGesture.PressType, _touchGesture.Side, direction, _touchGesture.ActiveFinger, anchorX, anchorY, _touchGesture.TwoFingerContinuation, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
+            if (IsAltTabShortcut(_touchGesture.Shortcut)) {
+                TriggerTouchGestureAltTabNavigation(direction, 1);
+                ArmTouchGestureRepeat(_touchGesture.Shortcut, _touchGesture.RepeatMode, _touchGesture.FingerCount, _touchGesture.Side, direction, _touchGesture.ActiveFinger, currentX, currentY, _touchGesture.TwoFingerContinuation, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
                 return;
             }
 
-            if (_touchGesture.RepeatMode == TouchGestureRepeatMode.Timed && direction == _touchGesture.Direction) {
-                _touchGesture.RepeatAnchorX = currentX;
-                _touchGesture.RepeatAnchorY = currentY;
-            } else {
+            if (_touchGesture.RepeatMode == TouchGestureRepeatMode.Timed &&
+                AreTouchGestureDirectionsOnSameAxis(direction, _touchGesture.Direction) &&
+                direction != _touchGesture.Direction) {
                 TouchGestureShortcut shortcut;
-                if (!TryResolveTouchGestureShortcut(_touchGesture.FingerCount, _touchGesture.PressType, _touchGesture.Side, direction, out shortcut)) {
-                    BlockTouchGestureUntilRelease();
-                    return;
-                }
-
-                TouchGestureRepeatMode repeatMode = TouchGestureRepeatModeFor(shortcut);
-                if (repeatMode != TouchGestureRepeatMode.None) {
-                    int triggerCount = TouchGestureTriggerCount(repeatMode, primary, repeatDistance, repeatDistance);
-                    TriggerTouchGestureShortcut(shortcut, triggerCount);
-
-                    double anchorX = currentX;
-                    double anchorY = currentY;
-                    double consumed = repeatMode == TouchGestureRepeatMode.Distance
-                        ? TouchGestureConsumedDistance(triggerCount, repeatDistance, repeatDistance)
-                        : repeatDistance;
-                    ComputeTouchGestureAnchorAfterPrimaryMove(_touchGesture.RepeatAnchorX, _touchGesture.RepeatAnchorY, currentX, currentY, direction, consumed, out anchorX, out anchorY);
-                    ArmTouchGestureRepeat(shortcut, repeatMode, _touchGesture.FingerCount, _touchGesture.PressType, _touchGesture.Side, direction, _touchGesture.ActiveFinger, anchorX, anchorY, _touchGesture.TwoFingerContinuation, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
+                if (TryResolveTouchGestureShortcut(_touchGesture.FingerCount, _touchGesture.Side, direction, out shortcut) &&
+                    TouchGestureRepeatModeFor(shortcut) == TouchGestureRepeatMode.Timed) {
+                    TriggerTouchGestureShortcut(shortcut);
+                    ArmTouchGestureRepeat(shortcut, TouchGestureRepeatMode.Timed, _touchGesture.FingerCount, _touchGesture.Side, direction, _touchGesture.ActiveFinger, currentX, currentY, _touchGesture.TwoFingerContinuation, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
                     return;
                 }
             }
@@ -762,22 +710,14 @@ internal sealed class MapperForm : Form {
         int staticY;
         int staticFinger;
         if (!TryGetTwoFingerContinuationStatic(s, out staticFinger, out staticX, out staticY)) {
+            BlockTouchGestureUntilRelease(true);
             return;
         }
         _touchGesture.StaticFinger = staticFinger;
 
-        if (!HasTwoFingerContinuationMoverCandidate(s)) {
-            RefreshTwoFingerContinuationStaticAnchor(staticFinger, TouchGestureCurrentId(staticFinger, s), staticX, staticY);
-        }
-
         double staticPrimary = PrimaryMovement(staticX - _touchGesture.StaticStartX, staticY - _touchGesture.StaticStartY);
         if (!IsTouchGestureStill(staticPrimary, _config)) {
-            if (_touchGesture.TwoFingerContinuationSingleFingerResume &&
-                _touchGesture.ResumeFingerId == _touchGesture.StaticFingerId) {
-                RestartTouchGestureFromSingleFingerResume(s, staticFinger, now);
-                return;
-            }
-            BlockTouchGestureUntilRelease();
+            BlockTouchGestureUntilRelease(true);
             return;
         }
 
@@ -795,32 +735,41 @@ internal sealed class MapperForm : Form {
 
         if (!TryGetActiveTwoFingerContinuationMover(s, now, out currentX, out currentY)) return;
 
-        double dx = currentX - _touchGesture.RepeatAnchorX;
+        double stepStartX = _touchGesture.RepeatAnchorX;
+        double dx = currentX - stepStartX;
         double dy = currentY - _touchGesture.RepeatAnchorY;
         TouchGestureDirection direction;
         double primary;
         double repeatDistance;
-        if (TryResolveTouchGestureMovement(dx, dy, _config, true, out direction, out primary, out repeatDistance)) {
-            if (_touchGesture.RepeatMode == TouchGestureRepeatMode.Timed && direction == _touchGesture.Direction) {
-                _touchGesture.RepeatAnchorX = currentX;
-                _touchGesture.RepeatAnchorY = currentY;
-            } else {
-                TouchGestureSide side;
-                if (!TryResolveTouchGestureSide(_touchGesture.RepeatAnchorX, currentX, direction, _config, out side)) return;
+        bool movementReady = TryResolveTouchGestureMovement(dx, dy, _config, true, out direction, out primary, out repeatDistance);
+        if (movementReady) {
+            SettleTouchGestureStep(ref _touchGesture, currentX, currentY);
+            RefreshTwoFingerContinuationStaticAnchor(staticFinger, _touchGesture.StaticFingerId, staticX, staticY);
 
-                TouchGesturePressType pressType = _touchGesture.Shortcut == TouchGestureShortcut.None || _touchGesture.Direction == TouchGestureDirection.None
-                    ? TouchGesturePressTypeForFinger(_touchGesture.ActiveFinger, now)
-                    : _touchGesture.PressType;
+            if (_touchGesture.Side == TouchGestureSide.None) {
+                TouchGestureSide side = ResolveTouchGestureSide(stepStartX, direction, _config);
                 TouchGestureShortcut shortcut;
-                if (!TryResolveTouchGestureShortcut(2, pressType, side, direction, out shortcut)) {
-                    ArmIgnoredTwoFingerContinuationSegment(pressType, side, direction, _touchGesture.ActiveFinger, currentX, currentY, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
+                if (!TryResolveTouchGestureShortcut(2, side, direction, out shortcut)) {
+                    ArmIgnoredTwoFingerContinuationSegment(side, direction, _touchGesture.ActiveFinger, currentX, currentY, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
                     return;
                 }
 
                 TouchGestureRepeatMode repeatMode = TouchGestureRepeatModeFor(shortcut);
                 TriggerTouchGestureShortcut(shortcut);
-                ArmTouchGestureRepeat(shortcut, repeatMode, 2, pressType, side, direction, _touchGesture.ActiveFinger, currentX, currentY, true, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
+                ArmTouchGestureRepeat(shortcut, repeatMode, 2, side, direction, _touchGesture.ActiveFinger, currentX, currentY, true, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
                 return;
+            }
+
+            if (_touchGesture.RepeatMode == TouchGestureRepeatMode.Timed &&
+                AreTouchGestureDirectionsOnSameAxis(direction, _touchGesture.Direction) &&
+                direction != _touchGesture.Direction) {
+                TouchGestureShortcut shortcut;
+                if (TryResolveTouchGestureShortcut(2, _touchGesture.Side, direction, out shortcut) &&
+                    TouchGestureRepeatModeFor(shortcut) == TouchGestureRepeatMode.Timed) {
+                    TriggerTouchGestureShortcut(shortcut);
+                    ArmTouchGestureRepeat(shortcut, TouchGestureRepeatMode.Timed, 2, _touchGesture.Side, direction, _touchGesture.ActiveFinger, currentX, currentY, true, _touchGesture.StaticFinger, _touchGesture.StaticFingerId, _touchGesture.StaticStartX, _touchGesture.StaticStartY, now);
+                    return;
+                }
             }
         }
 
@@ -855,14 +804,7 @@ internal sealed class MapperForm : Form {
             _touchGesture.RepeatAnchorX = currentX;
             _touchGesture.RepeatAnchorY = currentY;
         }
-        ClearTwoFingerContinuationSingleFingerResume();
         return true;
-    }
-
-    private bool HasTwoFingerContinuationMoverCandidate(ControllerState s) {
-        if (s.Touch1Active && s.Touch1Id != _touchGesture.StaticFingerId) return true;
-        if (s.Touch2Active && s.Touch2Id != _touchGesture.StaticFingerId) return true;
-        return false;
     }
 
     private void RefreshTwoFingerContinuationStaticAnchor(int finger, int id, int x, int y) {
@@ -878,8 +820,14 @@ internal sealed class MapperForm : Form {
         _touchGesture.Shortcut = TouchGestureShortcut.None;
         _touchGesture.RepeatMode = TouchGestureRepeatMode.None;
         _touchGesture.Direction = TouchGestureDirection.None;
+        _touchGesture.Side = TouchGestureSide.None;
         _touchGesture.TwoFingerContinuationAwaitingMoverRelease = false;
-        PrepareTwoFingerContinuationSingleFingerResume(s, now);
+        int staticFinger;
+        int staticX;
+        int staticY;
+        if (TryGetTwoFingerContinuationStatic(s, out staticFinger, out staticX, out staticY)) {
+            RefreshTwoFingerContinuationStaticAnchor(staticFinger, _touchGesture.StaticFingerId, staticX, staticY);
+        }
     }
 
     private int TouchGestureTrackedId(int finger) {
@@ -892,12 +840,6 @@ internal sealed class MapperForm : Form {
         if (finger == 1 && s.Touch1Active) return s.Touch1Id;
         if (finger == 2 && s.Touch2Active) return s.Touch2Id;
         return -1;
-    }
-
-    private double TouchGestureTrackedStartMs(int finger) {
-        if (finger == 1) return _touchGesture.Touch1Tracking ? _touchGesture.Touch1StartMs : 0.0;
-        if (finger == 2) return _touchGesture.Touch2Tracking ? _touchGesture.Touch2StartMs : 0.0;
-        return 0.0;
     }
 
     private bool TryGetTouchGestureTrackedStart(int finger, out double x, out double y) {
@@ -917,137 +859,15 @@ internal sealed class MapperForm : Form {
         return false;
     }
 
-    private TouchGesturePressType TouchGesturePressTypeForFinger(int finger, double now) {
-        double startMs = TouchGestureTrackedStartMs(finger);
-        if (startMs <= 0.0) startMs = now;
-        return now - startMs >= Math.Max(1, _config.TouchGestureHoldMs)
-            ? TouchGesturePressType.Hold
-            : TouchGesturePressType.Direct;
-    }
-
     private bool TryGetTwoFingerContinuationStatic(ControllerState s, out int finger, out int x, out int y) {
         if (TryGetTouchGestureFingerPositionById(_touchGesture.StaticFingerId, s, out finger, out x, out y)) {
             _touchGesture.StaticFinger = finger;
             return true;
         }
-
-        double bestPrimary = double.MaxValue;
-        int bestFinger = 0;
-        int bestX = 0;
-        int bestY = 0;
-        int bestId = -1;
-
-        if (s.Touch1Active) {
-            double primary = PrimaryMovement(s.Touch1X - _touchGesture.StaticStartX, s.Touch1Y - _touchGesture.StaticStartY);
-            if (IsTouchGestureStill(primary, _config) && primary < bestPrimary) {
-                bestPrimary = primary;
-                bestFinger = 1;
-                bestX = s.Touch1X;
-                bestY = s.Touch1Y;
-                bestId = s.Touch1Id;
-            }
-        }
-        if (s.Touch2Active) {
-            double primary = PrimaryMovement(s.Touch2X - _touchGesture.StaticStartX, s.Touch2Y - _touchGesture.StaticStartY);
-            if (IsTouchGestureStill(primary, _config) && primary < bestPrimary) {
-                bestPrimary = primary;
-                bestFinger = 2;
-                bestX = s.Touch2X;
-                bestY = s.Touch2Y;
-                bestId = s.Touch2Id;
-            }
-        }
-
-        if (bestFinger == 0) {
-            if (s.TouchCount == 1) {
-                if (s.Touch1Active && s.Touch1Id != _touchGesture.ActiveFingerId) {
-                    _touchGesture.StaticFinger = 1;
-                    _touchGesture.StaticFingerId = s.Touch1Id;
-                    finger = 1;
-                    x = s.Touch1X;
-                    y = s.Touch1Y;
-                    return true;
-                }
-                if (s.Touch2Active && s.Touch2Id != _touchGesture.ActiveFingerId) {
-                    _touchGesture.StaticFinger = 2;
-                    _touchGesture.StaticFingerId = s.Touch2Id;
-                    finger = 2;
-                    x = s.Touch2X;
-                    y = s.Touch2Y;
-                    return true;
-                }
-            }
-
-            finger = 0;
-            x = 0;
-            y = 0;
-            return false;
-        }
-
-        _touchGesture.StaticFinger = bestFinger;
-        _touchGesture.StaticFingerId = bestId;
-        finger = bestFinger;
-        x = bestX;
-        y = bestY;
-        return true;
-    }
-
-    private void PrepareTwoFingerContinuationSingleFingerResume(ControllerState s, double now) {
-        int finger;
-        int x;
-        int y;
-        if (!TryGetTwoFingerContinuationStatic(s, out finger, out x, out y)) {
-            ClearTwoFingerContinuationSingleFingerResume();
-            return;
-        }
-
-        _touchGesture.StaticFinger = finger;
-        _touchGesture.TwoFingerContinuationSingleFingerResume = true;
-        _touchGesture.ResumeFingerId = _touchGesture.StaticFingerId;
-        _touchGesture.ResumeStartX = x;
-        _touchGesture.ResumeStartY = y;
-        _touchGesture.ResumeStartMs = now;
-        RefreshTwoFingerContinuationStaticAnchor(finger, _touchGesture.StaticFingerId, x, y);
-    }
-
-    private void ClearTwoFingerContinuationSingleFingerResume() {
-        _touchGesture.TwoFingerContinuationSingleFingerResume = false;
-        _touchGesture.ResumeFingerId = -1;
-        _touchGesture.ResumeStartX = 0.0;
-        _touchGesture.ResumeStartY = 0.0;
-        _touchGesture.ResumeStartMs = 0.0;
-    }
-
-    private void RestartTouchGestureFromSingleFingerResume(ControllerState s, int finger, double now) {
-        double startMs = _touchGesture.ResumeStartMs > 0.0 ? _touchGesture.ResumeStartMs : now;
-        double startX = _touchGesture.ResumeStartX;
-        double startY = _touchGesture.ResumeStartY;
-        int fingerId = _touchGesture.ResumeFingerId;
-
-        ReleaseTouchGestureModifiers();
-        _touchGesture.Reset();
-        _touchGesture.Active = true;
-        _touchGesture.FingerCount = 1;
-        _touchGesture.HadTwoFingers = false;
-        _touchGesture.StartMs = startMs;
-        _touchGesture.PressType = TouchGesturePressType.Direct;
-        _touchGesture.Moving = true;
-
-        if (finger == 1 && s.Touch1Active && s.Touch1Id == fingerId) {
-            _touchGesture.Touch1Tracking = true;
-            _touchGesture.Touch1Id = s.Touch1Id;
-            _touchGesture.Touch1StartX = startX;
-            _touchGesture.Touch1StartY = startY;
-            _touchGesture.Touch1StartMs = startMs;
-        } else if (finger == 2 && s.Touch2Active && s.Touch2Id == fingerId) {
-            _touchGesture.Touch2Tracking = true;
-            _touchGesture.Touch2Id = s.Touch2Id;
-            _touchGesture.Touch2StartX = startX;
-            _touchGesture.Touch2StartY = startY;
-            _touchGesture.Touch2StartMs = startMs;
-        } else {
-            StartTouchGesture(s, now);
-        }
+        finger = 0;
+        x = 0;
+        y = 0;
+        return false;
     }
 
     private static bool TryGetTwoFingerContinuationMover(int staticFingerId, ControllerState s, out int finger, out int x, out int y) {
@@ -1075,17 +895,9 @@ internal sealed class MapperForm : Form {
         if (s.TouchCount > 0) StartTouchGesture(s, now);
     }
 
-    private double EarliestActiveTouchStartMs(ControllerState s, double now) {
-        double earliest = 0.0;
-        if (s.Touch1Active && _touch1ContactStartMs > 0.0) earliest = _touch1ContactStartMs;
-        if (s.Touch2Active && _touch2ContactStartMs > 0.0) earliest = earliest <= 0.0 ? _touch2ContactStartMs : Math.Min(earliest, _touch2ContactStartMs);
-        return earliest > 0.0 ? earliest : now;
-    }
-
-    private void ArmTouchGestureRepeat(TouchGestureShortcut shortcut, TouchGestureRepeatMode repeatMode, int fingers, TouchGesturePressType pressType, TouchGestureSide side, TouchGestureDirection direction, int finger, double anchorX, double anchorY, bool twoFingerContinuation, int staticFinger, int staticFingerId, double staticStartX, double staticStartY, double now) {
+    private void ArmTouchGestureRepeat(TouchGestureShortcut shortcut, TouchGestureRepeatMode repeatMode, int fingers, TouchGestureSide side, TouchGestureDirection direction, int finger, double anchorX, double anchorY, bool twoFingerContinuation, int staticFinger, int staticFingerId, double staticStartX, double staticStartY, double now) {
         _touchGesture.Completed = true;
         _touchGesture.FingerCount = fingers;
-        _touchGesture.PressType = pressType;
         _touchGesture.Shortcut = shortcut;
         _touchGesture.RepeatMode = repeatMode;
         _touchGesture.TwoFingerContinuation = twoFingerContinuation;
@@ -1127,21 +939,6 @@ internal sealed class MapperForm : Form {
                shortcut == TouchGestureShortcut.NextAltTabWindow;
     }
 
-    private static int TouchGestureTriggerCount(TouchGestureRepeatMode repeatMode, double primaryDistance, double firstDistance, double repeatDistance) {
-        if (repeatMode != TouchGestureRepeatMode.Distance) return 1;
-        double first = Math.Max(1.0, firstDistance);
-        double repeat = Math.Max(1.0, repeatDistance);
-        if (primaryDistance < first) return 0;
-        return 1 + (int)Math.Floor((primaryDistance - first) / repeat);
-    }
-
-    private static double TouchGestureConsumedDistance(int triggerCount, double firstDistance, double repeatDistance) {
-        if (triggerCount <= 0) return 0.0;
-        double first = Math.Max(1.0, firstDistance);
-        double repeat = Math.Max(1.0, repeatDistance);
-        return first + Math.Max(0, triggerCount - 1) * repeat;
-    }
-
     private static double TouchGestureThresholdFor(Config config, TouchGestureDirection direction) {
         return IsVerticalTouchGestureDirection(direction)
             ? Math.Max(1.0, config.TouchGestureVerticalThreshold)
@@ -1156,6 +953,16 @@ internal sealed class MapperForm : Form {
 
     private static bool IsVerticalTouchGestureDirection(TouchGestureDirection direction) {
         return direction == TouchGestureDirection.Up || direction == TouchGestureDirection.Down;
+    }
+
+    private static bool AreTouchGestureDirectionsOnSameAxis(TouchGestureDirection a, TouchGestureDirection b) {
+        if (a == TouchGestureDirection.None || b == TouchGestureDirection.None) return false;
+        return IsVerticalTouchGestureDirection(a) == IsVerticalTouchGestureDirection(b);
+    }
+
+    private static void SettleTouchGestureStep(ref TouchGestureState gesture, int currentX, int currentY) {
+        gesture.RepeatAnchorX = currentX;
+        gesture.RepeatAnchorY = currentY;
     }
 
     private static bool TryResolveTouchGestureMovement(double dx, double dy, Config config, bool repeat, out TouchGestureDirection direction, out double primary, out double requiredDistance) {
@@ -1188,57 +995,27 @@ internal sealed class MapperForm : Form {
         return true;
     }
 
-    private static void ComputeTouchGestureAnchorAfterPrimaryMove(double originX, double originY, int currentX, int currentY, TouchGestureDirection direction, double consumedDistance, out double anchorX, out double anchorY) {
-        double consumed = Math.Max(0.0, consumedDistance);
-        switch (direction) {
-            case TouchGestureDirection.Left:
-                anchorX = originX - consumed;
-                anchorY = currentY;
-                return;
-            case TouchGestureDirection.Right:
-                anchorX = originX + consumed;
-                anchorY = currentY;
-                return;
-            case TouchGestureDirection.Up:
-                anchorX = currentX;
-                anchorY = originY - consumed;
-                return;
-            case TouchGestureDirection.Down:
-                anchorX = currentX;
-                anchorY = originY + consumed;
-                return;
-            default:
-                anchorX = currentX;
-                anchorY = currentY;
-                return;
-        }
-    }
-
     private static bool TryRecognizeTouchGesture(TouchGestureState gesture, ControllerState s, Config config, out TouchGestureRecognition recognition) {
         recognition = new TouchGestureRecognition();
 
-        if (gesture.HadTwoFingers && TryRecognizeTwoFingerContinuationGesture(gesture, s, config, out recognition)) {
-            return true;
-        }
+        if (gesture.HadTwoFingers) return TryRecognizeTwoFingerContinuationGesture(gesture, s, config, out recognition);
 
         double bestDx = 0.0;
         double bestDy = 0.0;
         double bestPrimary = 0.0;
         double bestStartX = 0.0;
         double bestStartY = 0.0;
-        double bestStartMs = 0.0;
         int bestCurrentX = 0;
         int bestCurrentY = 0;
         int bestFinger = 0;
         TouchGestureDirection bestDirection = TouchGestureDirection.None;
-        ConsiderTouchGestureMovement(s.Touch1Active && gesture.Touch1Tracking, 1, gesture.Touch1StartX, gesture.Touch1StartY, gesture.Touch1StartMs, s.Touch1X, s.Touch1Y, config, ref bestDx, ref bestDy, ref bestPrimary, ref bestDirection, ref bestStartX, ref bestStartY, ref bestStartMs, ref bestCurrentX, ref bestCurrentY, ref bestFinger);
-        ConsiderTouchGestureMovement(s.Touch2Active && gesture.Touch2Tracking, 2, gesture.Touch2StartX, gesture.Touch2StartY, gesture.Touch2StartMs, s.Touch2X, s.Touch2Y, config, ref bestDx, ref bestDy, ref bestPrimary, ref bestDirection, ref bestStartX, ref bestStartY, ref bestStartMs, ref bestCurrentX, ref bestCurrentY, ref bestFinger);
+        ConsiderTouchGestureMovement(s.Touch1Active && gesture.Touch1Tracking, 1, gesture.Touch1StartX, gesture.Touch1StartY, s.Touch1X, s.Touch1Y, config, ref bestDx, ref bestDy, ref bestPrimary, ref bestDirection, ref bestStartX, ref bestStartY, ref bestCurrentX, ref bestCurrentY, ref bestFinger);
+        ConsiderTouchGestureMovement(s.Touch2Active && gesture.Touch2Tracking, 2, gesture.Touch2StartX, gesture.Touch2StartY, s.Touch2X, s.Touch2Y, config, ref bestDx, ref bestDy, ref bestPrimary, ref bestDirection, ref bestStartX, ref bestStartY, ref bestCurrentX, ref bestCurrentY, ref bestFinger);
         if (bestFinger == 0) return false;
 
         recognition.Direction = bestDirection;
-        if (!TryResolveTouchGestureSide(bestStartX, bestCurrentX, recognition.Direction, config, out recognition.Side)) return false;
+        recognition.Side = ResolveTouchGestureSide(bestStartX, bestDirection, config);
         recognition.Finger = bestFinger;
-        recognition.StartMs = bestStartMs;
         recognition.StartX = bestStartX;
         recognition.StartY = bestStartY;
         recognition.CurrentX = bestCurrentX;
@@ -1251,25 +1028,17 @@ internal sealed class MapperForm : Form {
         recognition = new TouchGestureRecognition();
         if (!(s.Touch1Active && s.Touch2Active && gesture.Touch1Tracking && gesture.Touch2Tracking)) return false;
 
-        double touch1Primary = PrimaryMovement(s.Touch1X - gesture.Touch1StartX, s.Touch1Y - gesture.Touch1StartY);
-        double touch2Primary = PrimaryMovement(s.Touch2X - gesture.Touch2StartX, s.Touch2Y - gesture.Touch2StartY);
-        bool found = false;
-        TouchGestureRecognition candidate;
-        if (IsTouchGestureStill(touch2Primary, config) && TryBuildTwoFingerContinuationRecognition(1, gesture.Touch1StartX, gesture.Touch1StartY, gesture.Touch1StartMs, s.Touch1X, s.Touch1Y, 2, gesture.Touch2Id, gesture.Touch2StartX, gesture.Touch2StartY, config, out candidate)) {
-            recognition = candidate;
-            found = true;
-        }
-        if (IsTouchGestureStill(touch1Primary, config) && TryBuildTwoFingerContinuationRecognition(2, gesture.Touch2StartX, gesture.Touch2StartY, gesture.Touch2StartMs, s.Touch2X, s.Touch2Y, 1, gesture.Touch1Id, gesture.Touch1StartX, gesture.Touch1StartY, config, out candidate)) {
-            if (!found || candidate.PrimaryDistance > recognition.PrimaryDistance) {
-                recognition = candidate;
-                found = true;
-            }
-        }
+        TouchGestureRecognition touch1Candidate;
+        TouchGestureRecognition touch2Candidate;
+        bool touch1Triggered = TryBuildTwoFingerContinuationRecognition(gesture, 1, gesture.Touch1StartX, gesture.Touch1StartY, s.Touch1X, s.Touch1Y, 2, gesture.Touch2Id, s.Touch2X, s.Touch2Y, config, out touch1Candidate);
+        bool touch2Triggered = TryBuildTwoFingerContinuationRecognition(gesture, 2, gesture.Touch2StartX, gesture.Touch2StartY, s.Touch2X, s.Touch2Y, 1, gesture.Touch1Id, s.Touch1X, s.Touch1Y, config, out touch2Candidate);
+        if (touch1Triggered == touch2Triggered) return false;
 
-        return found;
+        recognition = touch1Triggered ? touch1Candidate : touch2Candidate;
+        return true;
     }
 
-    private static bool TryBuildTwoFingerContinuationRecognition(int moverFinger, double moverStartX, double moverStartY, double moverStartMs, int moverCurrentX, int moverCurrentY, int staticFinger, int staticFingerId, double staticStartX, double staticStartY, Config config, out TouchGestureRecognition recognition) {
+    private static bool TryBuildTwoFingerContinuationRecognition(TouchGestureState gesture, int moverFinger, double moverStartX, double moverStartY, int moverCurrentX, int moverCurrentY, int staticFinger, int staticFingerId, double staticStartX, double staticStartY, Config config, out TouchGestureRecognition recognition) {
         recognition = new TouchGestureRecognition();
         double dx = moverCurrentX - moverStartX;
         double dy = moverCurrentY - moverStartY;
@@ -1278,8 +1047,7 @@ internal sealed class MapperForm : Form {
         double requiredDistance;
         if (!TryResolveTouchGestureMovement(dx, dy, config, false, out direction, out primary, out requiredDistance)) return false;
 
-        TouchGestureSide side;
-        if (!TryResolveTouchGestureSide(moverStartX, moverCurrentX, direction, config, out side)) return false;
+        TouchGestureSide side = ResolveTouchGestureSide(moverStartX, direction, config);
 
         recognition.TwoFingerContinuation = true;
         recognition.StaticFinger = staticFinger;
@@ -1289,7 +1057,6 @@ internal sealed class MapperForm : Form {
         recognition.Direction = direction;
         recognition.Side = side;
         recognition.Finger = moverFinger;
-        recognition.StartMs = moverStartMs;
         recognition.StartX = moverStartX;
         recognition.StartY = moverStartY;
         recognition.CurrentX = moverCurrentX;
@@ -1346,7 +1113,7 @@ internal sealed class MapperForm : Form {
         return false;
     }
 
-    private static void ConsiderTouchGestureMovement(bool active, int finger, double startX, double startY, double startMs, int currentX, int currentY, Config config, ref double bestDx, ref double bestDy, ref double bestPrimary, ref TouchGestureDirection bestDirection, ref double bestStartX, ref double bestStartY, ref double bestStartMs, ref int bestCurrentX, ref int bestCurrentY, ref int bestFinger) {
+    private static void ConsiderTouchGestureMovement(bool active, int finger, double startX, double startY, int currentX, int currentY, Config config, ref double bestDx, ref double bestDy, ref double bestPrimary, ref TouchGestureDirection bestDirection, ref double bestStartX, ref double bestStartY, ref int bestCurrentX, ref int bestCurrentY, ref int bestFinger) {
         if (!active) return;
         double dx = currentX - startX;
         double dy = currentY - startY;
@@ -1361,7 +1128,6 @@ internal sealed class MapperForm : Form {
         bestDirection = direction;
         bestStartX = startX;
         bestStartY = startY;
-        bestStartMs = startMs;
         bestCurrentX = currentX;
         bestCurrentY = currentY;
         bestFinger = finger;
@@ -1381,46 +1147,23 @@ internal sealed class MapperForm : Form {
         return Math.Max(1.0, config.TouchGestureHoldStillDistance);
     }
 
-    private static bool TryResolveTouchGestureSide(double startX, int currentX, TouchGestureDirection direction, Config config, out TouchGestureSide side) {
-        side = TouchGestureSide.None;
+    private static TouchGestureSide ResolveTouchGestureSide(double startX, TouchGestureDirection initialDirection, Config config) {
         const double touchpadWidth = 1920.0;
-        const double touchpadCenterX = touchpadWidth / 2.0;
+        const double centerX = touchpadWidth / 2.0;
         double confirmedWidth = Clamp(config.TouchGestureSideConfirmedWidth, 1.0, touchpadWidth / 2.0);
-        double rightConfirmedLeft = touchpadWidth - confirmedWidth;
+        double rightBoundary = touchpadWidth - confirmedWidth;
+        if (startX < confirmedWidth) return TouchGestureSide.Left;
+        if (startX >= rightBoundary) return TouchGestureSide.Right;
 
-        if (startX < confirmedWidth) {
-            side = TouchGestureSide.Left;
-            return true;
-        }
-        if (startX >= rightConfirmedLeft) {
-            side = TouchGestureSide.Right;
-            return true;
-        }
-        if (currentX < confirmedWidth) {
-            side = TouchGestureSide.Left;
-            return true;
-        }
-        if (currentX >= rightConfirmedLeft) {
-            side = TouchGestureSide.Right;
-            return true;
+        if (startX < centerX) {
+            return initialDirection == TouchGestureDirection.Right
+                ? TouchGestureSide.Right
+                : TouchGestureSide.Left;
         }
 
-        switch (direction) {
-            case TouchGestureDirection.Left:
-                if (currentX >= touchpadCenterX) return false;
-                side = TouchGestureSide.Left;
-                return true;
-            case TouchGestureDirection.Right:
-                if (currentX < touchpadCenterX) return false;
-                side = TouchGestureSide.Right;
-                return true;
-            case TouchGestureDirection.Up:
-            case TouchGestureDirection.Down:
-                side = startX < touchpadCenterX ? TouchGestureSide.Left : TouchGestureSide.Right;
-                return true;
-            default:
-                return false;
-        }
+        return initialDirection == TouchGestureDirection.Left
+            ? TouchGestureSide.Left
+            : TouchGestureSide.Right;
     }
 
     private void InitializeTouchGestureFingerStarts(ref TouchGestureState gesture, ControllerState s, double now) {
@@ -1429,14 +1172,12 @@ internal sealed class MapperForm : Form {
             gesture.Touch1Id = s.Touch1Id;
             gesture.Touch1StartX = s.Touch1X;
             gesture.Touch1StartY = s.Touch1Y;
-            gesture.Touch1StartMs = TouchContactStartMs(1) > 0.0 ? TouchContactStartMs(1) : now;
         }
         if (s.Touch2Active) {
             gesture.Touch2Tracking = true;
             gesture.Touch2Id = s.Touch2Id;
             gesture.Touch2StartX = s.Touch2X;
             gesture.Touch2StartY = s.Touch2Y;
-            gesture.Touch2StartMs = TouchContactStartMs(2) > 0.0 ? TouchContactStartMs(2) : now;
         }
     }
 
@@ -1449,12 +1190,10 @@ internal sealed class MapperForm : Form {
                 gesture.Touch1Id = s.Touch1Id;
                 gesture.Touch1StartX = s.Touch1X;
                 gesture.Touch1StartY = s.Touch1Y;
-                gesture.Touch1StartMs = TouchContactStartMs(1) > 0.0 ? TouchContactStartMs(1) : now;
             }
         } else {
             gesture.Touch1Tracking = false;
             gesture.Touch1Id = -1;
-            gesture.Touch1StartMs = 0.0;
         }
 
         if (s.Touch2Active) {
@@ -1463,32 +1202,23 @@ internal sealed class MapperForm : Form {
                 gesture.Touch2Id = s.Touch2Id;
                 gesture.Touch2StartX = s.Touch2X;
                 gesture.Touch2StartY = s.Touch2Y;
-                gesture.Touch2StartMs = TouchContactStartMs(2) > 0.0 ? TouchContactStartMs(2) : now;
             }
         } else {
             gesture.Touch2Tracking = false;
             gesture.Touch2Id = -1;
-            gesture.Touch2StartMs = 0.0;
         }
     }
 
-    private static bool TryResolveTouchGestureShortcut(int fingers, TouchGesturePressType pressType, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
-        shortcut = TouchGestureShortcut.None;
-        return pressType == TouchGesturePressType.Hold
-            ? TryResolveHoldTouchGestureShortcut(fingers, side, direction, out shortcut)
-            : TryResolveDirectTouchGestureShortcut(fingers, side, direction, out shortcut);
-    }
-
-    private static bool TryResolveDirectTouchGestureShortcut(int fingers, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
+    private static bool TryResolveTouchGestureShortcut(int fingers, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
         shortcut = TouchGestureShortcut.None;
         if (fingers == 1) {
             if (side == TouchGestureSide.Left) {
                 switch (direction) {
                     case TouchGestureDirection.Up:
-                        shortcut = TouchGestureShortcut.PreviousWindow;
+                        shortcut = TouchGestureShortcut.MaximizeWindow;
                         return true;
                     case TouchGestureDirection.Down:
-                        shortcut = TouchGestureShortcut.NextWindow;
+                        shortcut = TouchGestureShortcut.RestoreOrMinimizeWindow;
                         return true;
                     case TouchGestureDirection.Left:
                         shortcut = TouchGestureShortcut.PreviousAltTabWindow;
@@ -1506,10 +1236,10 @@ internal sealed class MapperForm : Form {
                         shortcut = TouchGestureShortcut.NextDesktop;
                         return true;
                     case TouchGestureDirection.Up:
-                        shortcut = TouchGestureShortcut.MaximizeWindow;
+                        shortcut = TouchGestureShortcut.PreviousWindow;
                         return true;
                     case TouchGestureDirection.Down:
-                        shortcut = TouchGestureShortcut.RestoreOrMinimizeWindow;
+                        shortcut = TouchGestureShortcut.NextWindow;
                         return true;
                 }
             }
@@ -1532,46 +1262,16 @@ internal sealed class MapperForm : Form {
             } else if (side == TouchGestureSide.Right) {
                 switch (direction) {
                     case TouchGestureDirection.Up:
-                        shortcut = TouchGestureShortcut.OpenTaskManager;
-                        return true;
-                    case TouchGestureDirection.Down:
                         shortcut = TouchGestureShortcut.Screenshot;
                         return true;
-                    case TouchGestureDirection.Left:
+                    case TouchGestureDirection.Down:
                         shortcut = TouchGestureShortcut.CloseWindow;
                         return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool TryResolveHoldTouchGestureShortcut(int fingers, TouchGestureSide side, TouchGestureDirection direction, out TouchGestureShortcut shortcut) {
-        shortcut = TouchGestureShortcut.None;
-        if (fingers == 1) {
-            if (side == TouchGestureSide.Left) {
-                switch (direction) {
-                    case TouchGestureDirection.Up:
-                        shortcut = TouchGestureShortcut.RestoreMinimizedWindows;
-                        return true;
-                    case TouchGestureDirection.Down:
-                        shortcut = TouchGestureShortcut.MinimizeAllWindows;
-                        return true;
-                }
-            } else if (side == TouchGestureSide.Right) {
-                switch (direction) {
-                    case TouchGestureDirection.Up:
-                        shortcut = TouchGestureShortcut.HomeKey;
-                        return true;
-                    case TouchGestureDirection.Down:
-                        shortcut = TouchGestureShortcut.EndKey;
-                        return true;
                     case TouchGestureDirection.Left:
-                        shortcut = TouchGestureShortcut.MoveWindowLeftMonitor;
+                        shortcut = TouchGestureShortcut.ClipboardHistory;
                         return true;
                     case TouchGestureDirection.Right:
-                        shortcut = TouchGestureShortcut.MoveWindowRightMonitor;
+                        shortcut = TouchGestureShortcut.OpenFileExplorer;
                         return true;
                 }
             }
@@ -1588,18 +1288,14 @@ internal sealed class MapperForm : Form {
             case TouchGestureShortcut.NextDesktop:
             case TouchGestureShortcut.PreviousTab:
             case TouchGestureShortcut.NextTab:
+            case TouchGestureShortcut.BackNavigation:
+            case TouchGestureShortcut.ForwardNavigation:
                 return TouchGestureRepeatMode.Timed;
             case TouchGestureShortcut.PreviousAltTabWindow:
             case TouchGestureShortcut.NextAltTabWindow:
                 return TouchGestureRepeatMode.Distance;
             default:
                 return TouchGestureRepeatMode.None;
-        }
-    }
-
-    private void TriggerTouchGestureShortcut(TouchGestureShortcut shortcut, int count) {
-        for (int i = 0; i < count; i++) {
-            TriggerTouchGestureShortcut(shortcut);
         }
     }
 
@@ -1638,41 +1334,21 @@ internal sealed class MapperForm : Form {
                 ReleaseTouchGestureModifiers();
                 _injector.KeyTap(PhysicalKey.ArrowDown, false, false, false, true);
                 break;
-            case TouchGestureShortcut.RestoreMinimizedWindows:
-                ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.M, true, false, false, true);
-                break;
-            case TouchGestureShortcut.MinimizeAllWindows:
-                ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.M, false, false, false, true);
-                break;
-            case TouchGestureShortcut.MoveWindowLeftMonitor:
-                ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowLeft, true, false, false, true);
-                break;
-            case TouchGestureShortcut.MoveWindowRightMonitor:
-                ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowRight, true, false, false, true);
-                break;
-            case TouchGestureShortcut.HomeKey:
-                ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.Home, false, false, false, false);
-                break;
-            case TouchGestureShortcut.EndKey:
-                ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.End, false, false, false, false);
-                break;
             case TouchGestureShortcut.Screenshot:
                 ReleaseTouchGestureModifiers();
                 _injector.KeyTap(PhysicalKey.S, true, false, false, true);
                 break;
-            case TouchGestureShortcut.OpenTaskManager:
+            case TouchGestureShortcut.ClipboardHistory:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.Escape, true, true, false, false);
+                _injector.KeyTap(PhysicalKey.V, false, false, false, true);
                 break;
             case TouchGestureShortcut.CloseWindow:
                 ReleaseTouchGestureModifiers();
                 _injector.KeyTap(PhysicalKey.F4, false, false, true, false);
+                break;
+            case TouchGestureShortcut.OpenFileExplorer:
+                ReleaseTouchGestureModifiers();
+                _injector.KeyTap(PhysicalKey.E, false, false, false, true);
                 break;
             case TouchGestureShortcut.PreviousTab:
                 ReleaseTouchGestureModifiers();
@@ -1779,7 +1455,7 @@ internal sealed class MapperForm : Form {
                 }
                 UpdatePendingLayer(ref hold, layer, layerMs, now);
 
-                bool shouldFlushPending = now - hold.PendingSinceMs >= _config.ActionLayerGraceMs &&
+                bool shouldFlushPending = now - hold.PendingSinceMs >= Math.Max(0, _config.ActionLayerGraceMs) &&
                     !ShouldWaitForPendingSingleLayerToSettle(hold, now);
                 if (!shouldFlushPending) {
                     _holds[i] = hold;
@@ -1795,7 +1471,7 @@ internal sealed class MapperForm : Form {
                 KeyStroke resolvedLayerKey = resolvedLayerAction.Stroke;
                 if (!resolvedLayerKey.IsNone) {
                     if (resolvedLayer != Layer.Base || IsFunctionKey(resolvedLayerKey)) {
-                        TapActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " virtual tap", resolvedLayerAction.FnTranslated);
+                        TapStickyActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " virtual tap", resolvedLayerAction.FnTranslated, hold.PendingModifierMask);
                         if (!releasedPending) {
                             hold.Pending = false;
                             hold.PendingReleased = false;
@@ -1813,8 +1489,9 @@ internal sealed class MapperForm : Form {
                     if (releasedPending) {
                         hold.Pending = false;
                         hold.PendingReleased = false;
-                        PressActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, false, now, resolvedLayerAction.FnTranslated);
+                        PressStickyActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, false, now, resolvedLayerAction.FnTranslated, hold.PendingModifierMask);
                         ReleaseActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " release after layer settle");
+                        ReleaseBoundModifiers(hold.StickyModifierMask, ActionSource(i));
                         _holds[i] = new ButtonHold();
                         _prevDown[i] = curr;
                         continue;
@@ -1822,7 +1499,7 @@ internal sealed class MapperForm : Form {
 
                     hold.Pending = false;
                     hold.PendingReleased = false;
-                    PressActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, IsBaseRepeatableAction(i, resolvedLayer), now, resolvedLayerAction.FnTranslated);
+                    PressStickyActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, IsBaseRepeatableAction(i, resolvedLayer), now, resolvedLayerAction.FnTranslated, hold.PendingModifierMask);
                     _holds[i] = hold;
                     _prevDown[i] = curr;
                     continue;
@@ -1844,6 +1521,7 @@ internal sealed class MapperForm : Form {
                     hold.PendingLayer = initialLayer;
                     hold.PendingLayerMs = initialLayer == layer ? layerMs : LayerTimestamp(initialLayer);
                     hold.PendingSinceMs = now;
+                    hold.PendingModifierMask = CaptureCurrentBindingModifiers();
                     InitializePendingTrace(ref hold, layer, layerMs, now);
                     _holds[i] = hold;
                     _prevDown[i] = curr;
@@ -1867,6 +1545,7 @@ internal sealed class MapperForm : Form {
                 // 1 -> 0: KeyUp edge
                 if (hold.KeyIsDown) {
                     ReleaseActionKey(i, hold.Key, "Button " + ActionButtonName(i) + " release");
+                    ReleaseBoundModifiers(hold.StickyModifierMask, ActionSource(i));
                 }
                 _holds[i] = new ButtonHold();
             } else if (prev && curr) {
@@ -1876,7 +1555,7 @@ internal sealed class MapperForm : Form {
                     continue;
                 }
 
-                if (hold.KeyIsDown) {
+                if (hold.KeyIsDown || hold.BoundRepeatPulse) {
                     UpdateBaseRepeat(i, ref hold, now);
                     _holds[i] = hold;
                     _prevDown[i] = curr;
@@ -1918,6 +1597,13 @@ internal sealed class MapperForm : Form {
 
     private bool ShouldDeferInitialAction(Layer initialLayer) {
         return _config.ActionLayerGraceMs > 0;
+    }
+
+    internal static bool IsWithinModifierBindingWindow(double actionDownMs, double modifierDownMs, Config config) {
+        double windowMs = Math.Max(0.0, (double)config.ModifierBindingWindowMs);
+        return windowMs > 0.0 &&
+            modifierDownMs >= actionDownMs &&
+            modifierDownMs - actionDownMs <= windowMs;
     }
 
     private bool ShouldWaitForPendingSingleLayerToSettle(ButtonHold hold, double now) {
@@ -2304,6 +1990,130 @@ internal sealed class MapperForm : Form {
         return layer == Layer.R1L1 || layer == Layer.R2L2 || layer == Layer.L1R2 || layer == Layer.R1L2;
     }
 
+    private void PressStickyActionKey(int index, KeyStroke key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now, bool fnTranslated, int modifierMask) {
+        if (ShouldPulseBoundRepeat(repeatable, modifierMask)) {
+            EmitBoundActionPulse(index, key, reason + " bound pulse", modifierMask);
+            CompleteAction(fnTranslated);
+            hold.Key = key;
+            hold.KeyLayer = keyLayer;
+            hold.KeyIsDown = false;
+            hold.StickyModifierMask = modifierMask;
+            hold.RepeatEnabled = true;
+            hold.BoundRepeatPulse = true;
+            hold.KeyDownMs = now;
+            hold.RepeatStartedMs = now;
+            hold.NextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
+            return;
+        }
+
+        AcquireBoundModifiers(modifierMask, ActionSource(index));
+        PressActionKey(index, key, reason, ref hold, keyLayer, repeatable, now, fnTranslated);
+        hold.StickyModifierMask = modifierMask;
+    }
+
+    internal static bool ShouldPulseBoundRepeat(bool repeatable, int modifierMask) {
+        return repeatable && modifierMask != 0;
+    }
+
+    private void EmitBoundActionPulse(int index, KeyStroke key, string reason, int modifierMask) {
+        string source = ActionSource(index);
+        string btn = ActionButtonName(index);
+        AcquireBoundModifiers(modifierMask, source);
+        _injector.CurrentSource = source;
+        _injector.CurrentReason = reason;
+        DebugSources("Source=" + source + " Button=" + btn + " Mode=BoundPulse -> " + MappingEngine.KeyName(key));
+        if (key.Shift) _injector.KeyDown(PhysicalKey.LShift);
+        _injector.KeyDown(key.Key);
+        _injector.KeyUp(key.Key);
+        if (key.Shift) _injector.KeyUp(PhysicalKey.LShift);
+        ReleaseBoundModifiers(modifierMask, source);
+    }
+
+    private void TapStickyActionKey(int index, KeyStroke key, string reason, bool fnTranslated, int modifierMask) {
+        AcquireBoundModifiers(modifierMask, ActionSource(index));
+        TapActionKey(index, key, reason, fnTranslated);
+        ReleaseBoundModifiers(modifierMask, ActionSource(index));
+    }
+
+    private void RegisterModifierBinding(PhysicalKey key, double now) {
+        int bit = ModifierBindingBit(key);
+        if (bit == 0) return;
+
+        for (int i = 0; i < _holds.Length; i++) {
+            ButtonHold hold = _holds[i];
+            if (!hold.Pending || !IsWithinModifierBindingWindow(hold.PendingSinceMs, now, _config)) continue;
+            hold.PendingModifierMask |= bit;
+            _holds[i] = hold;
+        }
+
+        RegisterPendingMouseModifier(bit, now, ref _leftMouseButton);
+        RegisterPendingMouseModifier(bit, now, ref _rightMouseButton);
+    }
+
+    private int CaptureCurrentBindingModifiers() {
+        int mask = 0;
+        foreach (PhysicalKey key in _heldLeftStickKeys) {
+            mask |= ModifierBindingBit(key);
+        }
+        if (_createKeyDown) mask |= ModifierBindingBit(PhysicalKey.RAlt);
+        if (_optionsKeyDown) mask |= ModifierBindingBit(PhysicalKey.RCtrl);
+        return mask;
+    }
+
+    private void RegisterPendingMouseModifier(int bit, double now, ref MouseButtonHold hold) {
+        if (!hold.Pending || !IsWithinModifierBindingWindow(hold.PendingSinceMs, now, _config)) return;
+        hold.PendingModifierMask |= bit;
+    }
+
+    private void AcquireBoundModifiers(int mask, string source) {
+        PhysicalKey[] keys = ModifierBindingKeys();
+        for (int i = 0; i < keys.Length; i++) {
+            PhysicalKey key = keys[i];
+            if ((mask & ModifierBindingBit(key)) == 0) continue;
+            _injector.CurrentSource = source;
+            _injector.CurrentReason = "Sticky modifier acquire " + key;
+            _injector.KeyDown(key);
+        }
+    }
+
+    private void ReleaseBoundModifiers(int mask, string source) {
+        PhysicalKey[] keys = ModifierBindingKeys();
+        for (int i = keys.Length - 1; i >= 0; i--) {
+            PhysicalKey key = keys[i];
+            if ((mask & ModifierBindingBit(key)) == 0) continue;
+            _injector.CurrentSource = source;
+            _injector.CurrentReason = "Sticky modifier release " + key;
+            _injector.KeyUp(key);
+        }
+    }
+
+    private static PhysicalKey[] ModifierBindingKeys() {
+        return new PhysicalKey[] {
+            PhysicalKey.LShift,
+            PhysicalKey.LCtrl,
+            PhysicalKey.LWin,
+            PhysicalKey.LAlt,
+            PhysicalKey.RAlt,
+            PhysicalKey.RCtrl
+        };
+    }
+
+    internal static bool IsModifierBindingKey(PhysicalKey key) {
+        return ModifierBindingBit(key) != 0;
+    }
+
+    private static int ModifierBindingBit(PhysicalKey key) {
+        switch (key) {
+            case PhysicalKey.LShift: return 1 << 0;
+            case PhysicalKey.LCtrl: return 1 << 1;
+            case PhysicalKey.LWin: return 1 << 2;
+            case PhysicalKey.LAlt: return 1 << 3;
+            case PhysicalKey.RAlt: return 1 << 4;
+            case PhysicalKey.RCtrl: return 1 << 5;
+            default: return 0;
+        }
+    }
+
     private void PressActionKey(int index, KeyStroke key, string reason, ref ButtonHold hold, Layer keyLayer, bool repeatable, double now, bool fnTranslated) {
         string source = ActionSource(index);
         string btn = ActionButtonName(index);
@@ -2316,6 +2126,7 @@ internal sealed class MapperForm : Form {
         hold.KeyLayer = keyLayer;
         hold.KeyIsDown = true;
         hold.RepeatEnabled = repeatable;
+        hold.BoundRepeatPulse = false;
         hold.KeyDownMs = now;
         hold.RepeatStartedMs = now;
         hold.NextRepeatMs = now + Math.Max(1, _config.RepeatDelayMs);
@@ -2357,15 +2168,19 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateBaseRepeat(int index, ref ButtonHold hold, double now) {
-        if (!hold.RepeatEnabled || !hold.KeyIsDown || hold.Key.IsNone) return;
+        if (!hold.RepeatEnabled || (!hold.KeyIsDown && !hold.BoundRepeatPulse) || hold.Key.IsNone) return;
         if (now < hold.NextRepeatMs) return;
 
-        string source = ActionSource(index);
-        string btn = ActionButtonName(index);
-        _injector.CurrentSource = source;
-        _injector.CurrentReason = "Button " + btn + " progressive repeat";
-        DebugSources("Source=" + source + " Button=" + btn + " Mode=Repeat -> " + MappingEngine.KeyName(hold.Key) + "Down");
-        _injector.KeyDown(hold.Key.Key);
+        if (hold.BoundRepeatPulse) {
+            EmitBoundActionPulse(index, hold.Key, "Button " + ActionButtonName(index) + " progressive bound repeat", hold.StickyModifierMask);
+        } else {
+            string source = ActionSource(index);
+            string btn = ActionButtonName(index);
+            _injector.CurrentSource = source;
+            _injector.CurrentReason = "Button " + btn + " progressive repeat";
+            DebugSources("Source=" + source + " Button=" + btn + " Mode=Repeat -> " + MappingEngine.KeyName(hold.Key) + "Down");
+            _injector.KeyDown(hold.Key.Key);
+        }
 
         double heldMs = Math.Max(0.0, now - hold.RepeatStartedMs);
         double interval = BaseRepeatIntervalMs(heldMs);
@@ -2394,29 +2209,59 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateMouseButtons(ControllerState s, double now) {
-        if (s.L3 && !_leftMouseDown) {
-            _injector.CurrentSource = "StickClick";
-            _injector.CurrentReason = "L3";
-            _injector.MouseButton(0, true);
-            _leftMouseDown = true;
-        } else if (!s.L3 && _leftMouseDown) {
-            _injector.CurrentSource = "StickClick";
-            _injector.CurrentReason = "L3 release";
-            _injector.MouseButton(0, false);
-            _leftMouseDown = false;
+        UpdateMouseButton(0, "L3", s.L3, now, ref _leftMouseButton);
+        UpdateMouseButton(1, "R3", s.R3, now, ref _rightMouseButton);
+    }
+
+    private void UpdateMouseButton(int button, string name, bool down, double now, ref MouseButtonHold hold) {
+        if (down && !hold.PreviousPhysicalDown) {
+            hold.Pending = true;
+            hold.PendingReleased = false;
+            hold.PendingSinceMs = now;
+            hold.PendingModifierMask = CaptureCurrentBindingModifiers();
+        } else if (!down && hold.PreviousPhysicalDown) {
+            if (hold.Pending) {
+                hold.PendingReleased = true;
+            } else if (hold.OutputDown) {
+                ReleaseMouseButton(button, name, ref hold);
+            }
         }
-        if (s.R3 && !_rightMouseDown) {
-            _injector.CurrentSource = "StickClick";
-            _injector.CurrentReason = "R3";
-            _injector.MouseButton(1, true);
-            _rightMouseDown = true;
-            _mouseFreezeUntilMs = now + _config.R3FreezeMs;
-        } else if (!s.R3 && _rightMouseDown) {
-            _injector.CurrentSource = "StickClick";
-            _injector.CurrentReason = "R3 release";
-            _injector.MouseButton(1, false);
-            _rightMouseDown = false;
-        }
+        hold.PreviousPhysicalDown = down;
+    }
+
+    private void FlushPendingMouseButtons(ControllerState s, double now) {
+        FlushPendingMouseButton(0, "L3", s.L3, now, ref _leftMouseButton);
+        FlushPendingMouseButton(1, "R3", s.R3, now, ref _rightMouseButton);
+    }
+
+    private void FlushPendingMouseButton(int button, string name, bool physicallyDown, double now, ref MouseButtonHold hold) {
+        if (!hold.Pending || now - hold.PendingSinceMs < Math.Max(0, _config.ModifierBindingWindowMs)) return;
+
+        bool released = hold.PendingReleased || !physicallyDown;
+        int modifierMask = hold.PendingModifierMask;
+        hold.Pending = false;
+        hold.PendingReleased = false;
+        hold.PendingSinceMs = 0.0;
+        hold.PendingModifierMask = 0;
+
+        AcquireBoundModifiers(modifierMask, "StickClick");
+        _injector.CurrentSource = "StickClick";
+        _injector.CurrentReason = name;
+        _injector.MouseButton(button, true);
+        hold.OutputDown = true;
+        hold.StickyModifierMask = modifierMask;
+        if (button == 1) _mouseFreezeUntilMs = now + _config.R3FreezeMs;
+
+        if (released) ReleaseMouseButton(button, name, ref hold);
+    }
+
+    private void ReleaseMouseButton(int button, string name, ref MouseButtonHold hold) {
+        _injector.CurrentSource = "StickClick";
+        _injector.CurrentReason = name + " release";
+        _injector.MouseButton(button, false);
+        ReleaseBoundModifiers(hold.StickyModifierMask, "StickClick");
+        hold.OutputDown = false;
+        hold.StickyModifierMask = 0;
     }
 
     private void UpdateRightStick(ControllerState s, double now, double deltaSec) {
@@ -2434,9 +2279,9 @@ internal sealed class MapperForm : Form {
         }
     }
 
-    private void UpdateSystemButtonPresses(ControllerState s) {
-        UpdateMappedSystemButtonPress("Share/Create", s.Create, PhysicalKey.RAlt, ref _prevCreate, ref _createKeyDown);
-        UpdateMappedSystemButtonPress("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
+    private void UpdateSystemButtonPresses(ControllerState s, double now) {
+        UpdateMappedSystemButtonPress("Share/Create", s.Create, PhysicalKey.RAlt, now, ref _prevCreate, ref _createKeyDown);
+        UpdateMappedSystemButtonPress("Options/Menu", s.Options, PhysicalKey.RCtrl, now, ref _prevOptions, ref _optionsKeyDown);
     }
 
     private void UpdateSystemButtonReleases(ControllerState s) {
@@ -2444,13 +2289,14 @@ internal sealed class MapperForm : Form {
         UpdateMappedSystemButtonRelease("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
     }
 
-    private void UpdateMappedSystemButtonPress(string source, bool down, PhysicalKey key, ref bool prevDown, ref bool keyDown) {
+    private void UpdateMappedSystemButtonPress(string source, bool down, PhysicalKey key, double now, ref bool prevDown, ref bool keyDown) {
         if (down && !prevDown) {
             _injector.CurrentSource = source;
             _injector.CurrentReason = source + " press";
             _injector.KeyDown(key);
             keyDown = true;
             prevDown = true;
+            RegisterModifierBinding(key, now);
         }
     }
 
@@ -2464,12 +2310,6 @@ internal sealed class MapperForm : Form {
             }
             prevDown = false;
         }
-    }
-
-    private void TapCapsLock(string source, string reason) {
-        _injector.CurrentSource = source;
-        _injector.CurrentReason = reason;
-        _injector.KeyTap(PhysicalKey.CapsLock, false, false, false, false);
     }
 
     private void ActivateCapsFnLayer(string source) {
@@ -2521,9 +2361,11 @@ internal sealed class MapperForm : Form {
         ReleaseHeldActionKeys();
         ReleaseTouchGestureModifiers();
         ReleaseTouchpadClickKey();
+        if (_leftMouseButton.OutputDown) ReleaseMouseButton(0, "L3 runtime", ref _leftMouseButton);
+        if (_rightMouseButton.OutputDown) ReleaseMouseButton(1, "R3 runtime", ref _rightMouseButton);
         _injector.ReleaseAll();
-        _leftMouseDown = false;
-        _rightMouseDown = false;
+        _leftMouseButton = new MouseButtonHold();
+        _rightMouseButton = new MouseButtonHold();
         _leftDirection = StickDirection.None;
         _leftStickScroll.Reset();
         _heldLeftStickKeys.Clear();
@@ -2560,6 +2402,8 @@ internal sealed class MapperForm : Form {
         _prevClutchActive = false;
         _touchGesture.Reset();
         _touchGestureBlockedUntilRelease = false;
+        _touchGestureBlockOwnsTouchpad = false;
+        _touchClickBlockedByGesture = false;
         _prevTouchClick = false;
         _prevCreate = false;
         _prevOptions = false;
@@ -2574,6 +2418,7 @@ internal sealed class MapperForm : Form {
         for (int i = 0; i < _holds.Length; i++) {
             if (_holds[i].KeyIsDown) {
                 ReleaseActionKey(i, _holds[i].Key, "Runtime release " + ActionButtonName(i));
+                ReleaseBoundModifiers(_holds[i].StickyModifierMask, ActionSource(i));
             }
             _holds[i] = new ButtonHold();
         }
@@ -2624,11 +2469,6 @@ internal sealed class MapperForm : Form {
         Right
     }
 
-    private enum TouchGesturePressType {
-        Direct,
-        Hold
-    }
-
     private enum TouchGestureShortcut {
         None,
         PreviousWindow,
@@ -2639,15 +2479,10 @@ internal sealed class MapperForm : Form {
         NextDesktop,
         MaximizeWindow,
         RestoreOrMinimizeWindow,
-        RestoreMinimizedWindows,
-        MinimizeAllWindows,
-        MoveWindowLeftMonitor,
-        MoveWindowRightMonitor,
-        HomeKey,
-        EndKey,
         Screenshot,
-        OpenTaskManager,
+        ClipboardHistory,
         CloseWindow,
+        OpenFileExplorer,
         PreviousTab,
         NextTab,
         BackNavigation,
@@ -2662,8 +2497,7 @@ internal sealed class MapperForm : Form {
 
     private enum TouchpadClickKind {
         None,
-        Key,
-        CapsLock
+        Key
     }
 
     private struct TouchpadClickResolution {
@@ -2683,9 +2517,6 @@ internal sealed class MapperForm : Form {
             return new TouchpadClickResolution(TouchpadClickKind.Key, key);
         }
 
-        public static TouchpadClickResolution CapsLock() {
-            return new TouchpadClickResolution(TouchpadClickKind.CapsLock, PhysicalKey.None);
-        }
     }
 
     private struct TouchGestureRecognition {
@@ -2697,7 +2528,6 @@ internal sealed class MapperForm : Form {
         public int StaticFingerId;
         public double StaticStartX;
         public double StaticStartY;
-        public double StartMs;
         public double StartX;
         public double StartY;
         public int CurrentX;
@@ -2717,12 +2547,8 @@ internal sealed class MapperForm : Form {
         public double Touch1StartY;
         public double Touch2StartX;
         public double Touch2StartY;
-        public double Touch1StartMs;
-        public double Touch2StartMs;
-        public double StartMs;
         public bool Moving;
         public bool Completed;
-        public TouchGesturePressType PressType;
         public TouchGestureShortcut Shortcut;
         public TouchGestureRepeatMode RepeatMode;
         public bool TwoFingerContinuation;
@@ -2735,11 +2561,6 @@ internal sealed class MapperForm : Form {
         public int ActiveFinger;
         public int ActiveFingerId;
         public bool TwoFingerContinuationAwaitingMoverRelease;
-        public bool TwoFingerContinuationSingleFingerResume;
-        public int ResumeFingerId;
-        public double ResumeStartX;
-        public double ResumeStartY;
-        public double ResumeStartMs;
         public double RepeatAnchorX;
         public double RepeatAnchorY;
         public double NextTimedRepeatMs;
@@ -2772,14 +2593,27 @@ internal sealed class MapperForm : Form {
         public double PendingLayerMs;
         public bool PendingLayerSettled;
         public double PendingLayerOccupancyMs;
+        public int PendingModifierMask;
         public List<PendingLayerOccupancySegment> PendingLayerOccupancySegments;
         public Layer PendingTraceLayer;
         public double PendingTraceLayerMs;
         public double PendingTraceStartMs;
         public double KeyDownMs;
+        public int StickyModifierMask;
         public bool RepeatEnabled;
+        public bool BoundRepeatPulse;
         public double RepeatStartedMs;
         public double NextRepeatMs;
+    }
+
+    private struct MouseButtonHold {
+        public bool PreviousPhysicalDown;
+        public bool Pending;
+        public bool PendingReleased;
+        public double PendingSinceMs;
+        public int PendingModifierMask;
+        public bool OutputDown;
+        public int StickyModifierMask;
     }
 
     private struct PendingLayerOccupancySegment {

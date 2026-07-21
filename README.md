@@ -1,226 +1,301 @@
 # ShikiPad
 
-ShikiPad is a native Windows controller-to-keyboard and mouse mapper focused on the wired PS5 DualSense controller.
+ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工具。当前版本仅支持 DualSense USB；键盘和鼠标输出依赖 Interception。
 
-Chinese documentation: [README.zh-CN.md](README.zh-CN.md)
+## 修改入口
 
-## Supported Controller
+- 默认参数集中在 `src/Config.cs`。当前程序直接 `new Config()`，没有读取 JSON 配置文件；修改参数后需要重新构建和发布。
+- 键层字符表位于 `src/MappingEngine.cs`。
+- 触控板手势识别、区域归属、连发、按压互斥和快捷键输出位于 `src/MapperForm.cs`。
+- 鼠标和滚轮积分分别位于 `src/RightStickMouseIntegrator.cs`、`src/LeftStickScrollIntegrator.cs`。
+- `Enabled = true` 是启动时默认启用状态；`UseScanCode = true` 表示 Interception 按扫描码输出。
 
-Use an official DualSense controller over USB. Bluetooth, Xbox, and DualShock 4 modes are intentionally not supported in the current build.
+## 支持范围
 
-ShikiPad now requires Interception for keyboard and mouse output.
+请使用官方 DualSense 手柄并通过 USB 连接。当前版本不支持蓝牙、Xbox、DualShock 4 或其他手柄模式。完整触控板报告、触点 ID、静音键等功能也依赖 DualSense USB HID 报告。
 
-Capability summary:
-
-| Mode | ShikiPad support | Limits |
+| 模式 | 支持情况 | 限制 |
 |---|---|---|
-| DualSense USB | Full PlayStation feature set: buttons, sticks, triggers, Home, touchpad click/gestures, Create/Options, DualSense Mute | Connect by USB before starting ShikiPad |
+| DualSense USB | 按键、摇杆、扳机、Home、触控板按压/手势、Create/Options、静音键 | 启动 ShikiPad 前先连接手柄 |
+| 其他模式 | 不支持 | 不提供兼容回退 |
 
-## Driver And Installation Order
+ShikiPad 必须通过 Interception 输出键盘和鼠标，不会回退到 `SendInput`。
 
-Recommended setup order:
+## 驱动与安装顺序
 
-1. Connect the controller once and confirm Windows can see it.
-2. Install Interception with `install_driver.bat` as administrator.
-3. Restart Windows.
-4. Run `ShikiPad.exe` as administrator and confirm it can send keyboard and mouse output.
-5. Configure HidHide for the DualSense controller to prevent system or game double input.
-6. Unplug and reconnect the controller after HidHide changes.
+1. 用 USB 连接 DualSense，并确认 Windows 能识别。
+2. 以管理员身份运行 `install_driver.bat` 安装 Interception，然后重启 Windows。
+3. 以管理员身份运行 `ShikiPad.exe`，确认能输出键盘和鼠标。
+4. 用 HidHide 隐藏 DualSense，避免系统或游戏产生双重输入。
+5. 修改 HidHide 后重新插拔手柄。
 
-HidHide setup for DualSense:
+HidHide 建议配置：
 
-1. In `Applications`, add the exact path to `ShikiPad.exe`.
-2. Uncheck `Inverse application cloak`.
-3. In `Devices`, check the target DualSense controller. A red lock icon should appear.
-4. If the target controller is unclear, connect the controller successfully first, then temporarily check all matching game controllers.
-5. Check `Filter-out disconnected`, `Gaming devices only`, and `Enable device hiding`.
-6. Close HidHide, then unplug and reconnect the controller.
+1. 在 `Applications` 中加入 `ShikiPad.exe` 的准确路径。
+2. 取消 `Inverse application cloak`。
+3. 在 `Devices` 中勾选对应 DualSense；正常会出现红色锁图标。
+4. 勾选 `Filter-out disconnected`、`Gaming devices only`、`Enable device hiding`。
+5. 关闭 HidHide 后重新插拔手柄。
 
-To let Windows and games see the controller normally again, re-check `Inverse application cloak` or disable `Enable device hiding`, then unplug and reconnect the controller.
+如果需要让 Windows 或游戏重新直接识别手柄，重新启用 `Inverse application cloak` 或关闭 `Enable device hiding`，然后重新插拔。
 
-## Release Package
+## 发布包
 
-A release archive follows the actual desktop `ShikiPad.zip` package. The current package contains:
+根目录 `ShikiPad.zip` 是实际发布包，包含：
 
-| File | Purpose |
+| 文件 | 用途 |
 |---|---|
-| `driver/install-interception.exe` | Interception driver installer |
-| `ShikiPad.exe` | Main program |
-| `interception.dll` | Interception runtime |
-| `install_driver.bat` | Interception driver installer helper |
-| `README.md` / `README.zh-CN.md` | Documentation |
-| `RELEASE_NOTES.md` | Release notes |
-| `shiki.ico` | Program icon |
-| `ShikiPad.manifest` | Windows application manifest |
+| `driver/install-interception.exe` | Interception 驱动安装器 |
+| `install_driver.bat` | 驱动安装脚本 |
+| `ShikiPad.exe` | 单文件主程序 |
+| `interception.dll` | Interception 运行库 |
+| `README.md` | 中文说明文档 |
+| `RELEASE_NOTES.md` | 版本记录 |
+| `shiki.ico` / `ShikiPad.manifest` | 图标和程序清单 |
+| `shikipad.default` | 默认标记文件 |
 
-## Startup
+## 开机自启动
 
-ShikiPad needs administrator privileges for Interception output, so the recommended startup method is a Windows scheduled task with highest privileges. Run an elevated PowerShell or Terminal in the ShikiPad folder and use:
+开机自启动需在管理员 PowerShell 中执行：
 
 ```powershell
 .\ShikiPad.exe --install-startup
 ```
 
-This creates a Task Scheduler entry named `ShikiPad` that starts the current `ShikiPad.exe` path when the user logs in. If you move the ShikiPad folder later, run the install command again from the new folder.
-
-To remove startup:
+取消自启动：
 
 ```powershell
 .\ShikiPad.exe --uninstall-startup
 ```
 
-Do not rely on the normal Startup folder unless you are willing to handle UAC manually, because Startup-folder shortcuts cannot reliably start ShikiPad elevated.
+安装命令会创建名为 `ShikiPad` 的最高权限计划任务，并使用当前目录中的程序路径。移动文件夹后需要重新执行安装命令。普通“启动”文件夹无法可靠地绕过 UAC，因此不推荐。
 
-## Console Pages
+## 控制台页面
 
-| Page | Enter | Esc |
+| 页面 | Enter | Esc |
 |---|---|---|
-| Home | Open mapping manual | Exit ShikiPad |
-| Mapping manual | Return home | Exit ShikiPad |
+| 主界面 | 打开映射说明 | 退出 ShikiPad |
+| 映射说明 | 返回主界面 | 退出 ShikiPad |
 
-Closing the console window also exits and releases held keyboard and mouse inputs.
+关闭控制台窗口也会退出，并释放程序保持中的键盘和鼠标输入。
 
-## Mouse And System Buttons
+## 基础控制
 
-| Controller input | Output |
+| 手柄输入 | 输出 |
 |---|---|
-| Right stick | Mouse movement |
-| L3 | Left mouse button |
-| R3 | Right mouse button with a short cursor freeze on press |
-| Left stick up / down | Mouse wheel |
-| Create | `Right Alt` |
-| Options | `Right Ctrl` |
-| Short-tap DualSense Mute | Toggle one-shot Caps/Fn layer for the next action key |
-| Long-press DualSense Mute | Enable / disable ShikiPad |
-| No active touch point during touchpad click | `Backspace` |
-| Two active touch points during touchpad click | `Backspace` |
-| One active touch point in the left confirmed zone during touchpad click | `Delete` |
-| One active touch point in the right confirmed zone during touchpad click | `Backspace` |
-| One active touch point in the middle buffer during touchpad click | Tap real `Caps Lock` |
+| 右摇杆 | 鼠标移动 |
+| L3 / R3 | 鼠标左键 / 右键；R3 按下时冻结光标 60 ms |
+| 左摇杆上 / 下扇区 | 鼠标滚轮 |
+| 左摇杆左上 / 左下 / 右上 / 右下 | `Left Shift` / `Ctrl` / `Win` / `Left Alt` |
+| Create / Options | `Right Alt` / `Right Ctrl` |
+| Home 短按 / 长按 | 开关蓄力锁定 / 按住期间保持蓄力 |
+| 静音键短按 / 长按 | 开关一次性 Caps/Fn / 启用或禁用 ShikiPad |
 
-### Mouse Parameters
+Home 蓄力可收集多个左摇杆修饰键。短按形成锁定时如果已经收集了修饰键，下一次动作键会消费该锁定；形成锁定时没有修饰键，则必须再短按 Home 取消。Caps/Fn 把未带 Shift 的 `1..0 - =` 转成 `F1..F12`，把小写字母转成带 Shift 的大写字母；任意动作键触发后都会关闭 Caps/Fn。
 
-| Parameter | Current | Purpose |
+### 模块身份与独立 45 ms 修饰绑定
+
+Base 只表示在没有按住任何 L1/R1 肩键或 L2/R2 扳机键时，方向键和四个图案键这八个位置对应的 `↑ → Tab Esc ← ↓ Space Enter`。肩键与扳机键只负责选择单层或组合层；触控板按压、Home、静音键、L3/R3 鼠标键都属于各自的独立模块，不属于 Base，也不参与键层选择。
+
+修饰键来源只有左摇杆四个斜向扇区的 `Left Shift`、`Left Ctrl`、`Left Win`、`Left Alt`，以及 Create/Options 的 `Right Alt`、`Right Ctrl`。独立的 45 ms 修饰绑定只覆盖两类输入：L3/R3 鼠标键，以及方向键/图案键这八个动作位置在 Base、单层和组合层中的全部输出。Home、触控板三个按压键、静音键、摇杆滚轮、右摇杆移动和触控板滑动都不进入该窗口。
+
+键层先完全按照自己的 45/15/35/20/30 ms 规则解析，修饰键不会获得键层优先级，也不会冻结、回退或改写动作所属键层。动作按下时已经存在的修饰键，或动作按下后 45 ms 内出现的修饰键，只与最终由纯键层逻辑解析出的输出绑定。
+
+绑定归属于动作本身：单次虚拟点按会由修饰键完整包住；非连发的真实保持输出和 L3/R3 会让绑定引用保持到对应动作释放。Base 方向键等连发输入采用完整组合脉冲：首发以及之后每个连发节拍都会依次按下绑定修饰键和动作键，再依次释放动作键和该次绑定修饰键；因此不会出现修饰键一直保持、期间只重复动作键的状态。物理修饰键即使提前松开，已经记录的绑定掩码仍会用于后续每个连发脉冲，直到动作键本身松开。Home 只运行原有蓄力状态机，不使用这套 45 ms 窗口。
+
+触控板三个按压键始终输出自己模块的 `Delete`、`Backspace` 或 `Caps Lock`，从不查询肩键/扳机键层，也不等待或捕获 45 ms 修饰绑定。
+
+程序退出、断开连接、禁用或发生映射异常时，都会统一清除尚未结算的动作并释放由 ShikiPad 保持的输入。
+
+### 右摇杆鼠标参数
+
+| 参数 | 当前值 | 作用 |
 |---|---:|---|
-| `MouseSensitivity` | 1.0 | Overall right-stick mouse sensitivity |
-| `MouseMaxSpeed` | 20.0 | Base maximum speed factor at full right-stick tilt |
-| `RightStickDeadzone` | 0.015 | Right-stick mouse deadzone |
-| `RightStickCurve` | power | Right-stick curve type; the current implementation uses a power curve |
-| `RightStickCurveExponent` | 3.0 | Right-stick radius curve exponent |
-| `RightStickSmoothingMs` | 5 ms | Short exponential smoothing on the right-stick X/Y input before the mouse curve |
-| Mouse frame multiplier | 120.0 | Internal multiplier in the right-stick velocity formula |
-| Mouse rounding threshold | 0.5 px | Fractional mouse movement is emitted once it reaches half a pixel |
-| `MaxMouseFrameSeconds` | 0.05 s | Per-frame mouse integration cap to prevent large jumps after a stalled frame |
-| `R3FreezeMs` | 60 ms | Cursor freeze duration when R3 starts a right click |
+| `MouseSensitivity` | 1.0 | 整体灵敏度 |
+| `MouseMaxSpeed` | 20.0 | 推满时的基础最高速度系数 |
+| `RightStickDeadzone` | 0.015 | 鼠标移动死区 |
+| `RightStickCurve` | `power` | 曲线类型 |
+| `RightStickCurveExponent` | 3.0 | 半径幂曲线指数 |
+| `RightStickSmoothingMs` | 5 ms | X/Y 输入的短指数平滑 |
+| 鼠标帧倍率 | 120.0 | 速度公式内部倍率 |
+| 鼠标取整阈值 | 0.5 px | 小数位移达到半像素后输出整数移动 |
+| `MaxMouseFrameSeconds` | 0.05 s | 单帧积分上限，避免卡顿后大跳 |
+| `R3FreezeMs` | 60 ms | R3 按下瞬间冻结光标的时间 |
 
-The right stick uses continuous velocity integration. It first applies the 5 ms input smoother to X/Y, then calculates `radius = sqrt(x*x + y*y)`, `normalized = (radius - RightStickDeadzone) / (1 - RightStickDeadzone)`, `power = normalized ^ RightStickCurveExponent`, and per-frame movement as `direction * power * MouseMaxSpeed * deltaSec * 120 * MouseSensitivity`. X/Y fractional pixels are accumulated separately, rounded to integer pixels once they reach 0.5px, and the remainder is kept.
+右摇杆按连续速度积分：先平滑 X/Y，再计算 `radius = sqrt(x*x + y*y)`、`normalized = (radius - deadzone) / (1 - deadzone)`、`power = normalized ^ exponent`。每帧位移为 `direction * power * MouseMaxSpeed * deltaSec * 120 * MouseSensitivity`。X/Y 小数像素分别累计，达到 0.5 px 后输出整数，余数留到下一帧。
 
-## Touchpad Gestures
+## 触控板手势
 
-Touchpad gestures are available on the wired DualSense USB HID report. One-finger and two-finger gestures both exist in direct-swipe and hold-then-swipe forms. Finger count is decided only before a gesture has been recognized: if two touch points appear before recognition, the gesture counts as two-finger; once a gesture has been recognized, later extra touch points are ignored so the locked gesture stays stable. `TouchGestureHoldStillDistance` is only the stillness test: movement below it is treated as still, but swipe distance is always counted from the touch point's real start, so reaching the 150/180 trigger distance fires the gesture without subtracting the stillness distance. During two-finger continuation, the direct/hold decision uses the moving finger's continuous touch time, so one finger can stay down while a newly placed second finger still performs a direct two-finger swipe. Direction no longer uses the center point. Instead, vertical gestures trigger at 150 distance and horizontal gestures trigger at 180 distance. Touchpad side is decided by the moving touch segment that triggers the gesture: the leftmost and rightmost `TouchGestureSideConfirmedWidth` pixels are confirmed zones, so a segment that starts in the left/right confirmed zone locks that side; if it starts in the middle buffer, entering a confirmed zone or crossing the center split locks the matching side. The still finger in two-finger continuation never decides the side. Distance moved inside the buffer before side lock still counts toward that direction's first trigger. For distance-repeat gestures, first recognition also consumes every complete direction-specific segment and then continues counting from the last consumed trigger point.
+只有直接滑动，不再区分或保留“长按后滑”。纵向移动 150、横向移动 180 后识别方向并触发手势。
 
-### Touchpad Mappings
+滑动手势最终只有左区和右区，不再存在缓冲区手势。触控板横坐标 `0..1919` 按起点分成四段：左确定段 `0..549`、左过渡段 `550..959`、右过渡段 `960..1369`、右确定段 `1370..1919`。
 
-| Gesture | Up | Down | Left | Right |
-|---|---|---|---|---|
-| Left-half one-finger direct swipe | `Alt + Shift + Esc` previous window | `Alt + Esc` next window | Enter Alt-Tab with `Alt + Shift + Tab`, then hold `Alt` | Enter Alt-Tab with `Alt + Tab`, then hold `Alt` |
-| Right-half one-finger direct swipe | `Win + ↑` maximize | `Win + ↓` restore/minimize | `Win + Ctrl + ←` previous desktop | `Win + Ctrl + →` next desktop |
-| Left-half one-finger hold-then-swipe | `Win + Shift + M` restore minimized windows | `Win + M` minimize all windows | Unmapped | Unmapped |
-| Right-half one-finger hold-then-swipe | `Home` | `End` | `Win + Shift + ←` move window to left monitor | `Win + Shift + →` move window to right monitor |
-| Left-half two-finger direct swipe | `Ctrl + Shift + Tab` previous tab | `Ctrl + Tab` next tab | `Alt + ←` back | `Alt + →` forward |
-| Right-half two-finger direct swipe | `Ctrl + Shift + Esc` | `Shift + Win + S` screenshot | `Alt + F4` | Unmapped |
-| Two-finger hold-then-swipe | Unmapped | Unmapped | Unmapped | Unmapped |
+最终区域同时取决于移动手指的起点和第一次达到 150/180 阈值的方向：
 
-Two-finger continuation: after a two-finger swipe has been recognized, ShikiPad keeps that two-finger state alive while the still finger remains effectively still. Between moving-finger segments, the still-finger baseline is refreshed, so tiny thumb drift does not accumulate across several swipes and silently kill continuation. During an active segment, moving the still finger by `TouchGestureHoldStillDistance` or more ends that segment's stillness. The moving finger can keep sliding or lift and touch again, and each later segment still uses the normal two-finger ownership rule: the moving finger's segment decides both direction and side, while the still finger only keeps the two-finger state alive. Continuation does not change each shortcut's mapping or repeat mode: left-side up/down remains timed-repeat `Ctrl + Shift + Tab` / `Ctrl + Tab`; left-side left/right remains single-shot `Alt + ←/→`; the right side still uses the right two-finger mapping, such as left swipe `Alt + F4`. Single-shot actions do not repeat until the moving finger lifts and swipes again. Each moving contact decides direct-vs-hold independently: the decision is made at that contact's first trigger, stays fixed while that finger remains down, and is recalculated only after it lifts and touches again. If the moving finger leaves while the still finger remains still, ShikiPad keeps the two-finger continuation alive and waits for the second finger to return. Edge samples that briefly make one touch point unreadable do not restart the gesture while another touch point remains down; the continuation waits for the still finger to become readable again. If the remaining still finger starts moving instead, it is reseeded as a one-finger gesture from the position and time when the other finger left, and direct-vs-hold is measured from that moment. If the still finger starts moving while the other finger is still down, no new two-finger gesture is fired; the current two-finger continuation ends until the touch points are released.
+| 起点 | 首次方向 | 最终手势区 |
+|---|---|---|
+| 左确定段 | 左 / 右 / 上 / 下 | 左区 |
+| 左过渡段 | 左 / 上 / 下 | 左区 |
+| 左过渡段 | 右 | 右区 |
+| 右过渡段 | 右 / 上 / 下 | 右区 |
+| 右过渡段 | 左 | 左区 |
+| 右确定段 | 左 / 右 / 上 / 下 | 右区 |
 
-Touchpad click is not the clutch key. It checks the active touch point state when the click begins. No active touch point sends `Backspace`, and any two active touch points also send `Backspace`. With exactly one active touch point, the left confirmed zone sends `Delete`, the right confirmed zone sends `Backspace`, and the middle buffer taps real `Caps Lock`; this is pure Caps Lock and does not enable Fn. Touchpad `Delete` and `Backspace` count as base-layer action keys. Whether a short-tap Home clutch lock can be consumed by an action key is decided once, when that Home short-tap lock is formed. If at least one modifier had already been collected at that moment, touchpad `Delete` or `Backspace` clears the lock after firing; modifiers collected later do not make that same lock consumable. Touchpad `Delete` and `Backspace` use the same progressive repeat timing as base-layer repeat. The middle-buffer Caps Lock click fires once on click-down and does not repeat.
+区域、已经触发的手势状态以及连发模式一旦确定，在当前移动手指抬起前都保持不变。手指移动到另一侧不会重新定区，也不会改成另一组初始映射。二指延续进入下一移动段时，才按新移动指的起点和首次方向重新定区。
 
-Every touchpad swipe first trigger requires movement from that touch point's start by the direction threshold: 150 for up/down and 180 for left/right. If the touch starts in the middle buffer, distance moved before side lock still counts toward the horizontal 180. After the side locks and the shortcut fires, that trigger point becomes the new origin for later repeat or reverse checks.
+方向按达到阈值的主轴确定：横向和纵向都达到阈值时，绝对位移更大的轴优先。100 的静止阈值只用于二指触发后的静止指约束，不会从 150/180 的手势距离中扣除。二指首次触发时必须同时存在两个有效触点：一指先达到 150/180，另一指尚未达到任何方向的触发阈值，后者就确立为静止指；即使它已经移动 100，也会把触发当帧的位置结算为静止基准。若两指同时达到触发阈值，则本段暂不识别手势。识别后再追加触点不会改变已经锁定的指数量和区域。普通时间连发只会在原轴反向时切换快捷键；垂直轴移动不切换快捷键，但达到自己的阈值后仍会完成一次无反馈结算并清空累计。
 
-Middle-buffer horizontal recognition is not a fixed decision based only on the start buffer. If the touch starts in the left buffer, `550..959`, moving left by 180 immediately locks left and fires the left-side shortcut. Moving right by 180 while still inside the left buffer does not lock right; it waits until the touch enters the right buffer, `960..1369`, then locks right and fires the right-side shortcut once. The right buffer is symmetric: moving right by 180 locks right immediately, while moving left must enter the left buffer before it locks left. In short, moving away from the center can lock within the current buffer, while moving toward the other side locks only after crossing the center split.
+### 单指直接滑
 
-Distance-based repeat applies to the left-half left/right Alt-Tab entry gesture after the first trigger. The first left/right trigger enters the Alt-Tab switcher once with `Alt + Shift + Tab` or `Alt + Tab`, then only `Alt` stays held while the finger remains on the touchpad. After the switcher is open, each additional movement segment sends the matching arrow key: 180 left/right sends `←`/`→`, and 150 up/down sends `↑`/`↓`. Reversing does not use Shift; it sends the reverse arrow. If one state update jumps across multiple complete segments, ShikiPad sends one arrow per extra segment after the initial Alt-Tab entry and keeps the leftover distance for the next arrow.
+#### 最终右区
 
-Time-based repeat applies to left-half one-finger direct up/down window switching, right-half one-finger direct left/right desktop switching, and left-half two-finger direct up/down tab switching. The first trigger uses the same direction thresholds: 150 for up/down and 180 for left/right. Left-half one-finger up/down and left-half two-finger up/down tab switching use `TouchGestureTimeRepeatIntervalMs`, currently 450 ms. Right-half one-finger left/right desktop switching uses `TouchGestureDesktopRepeatIntervalMs`, currently 550 ms. Continuing in the same direction by that direction's repeat distance does not fire an extra shortcut; it only refreshes the origin used for reverse detection. Reversing without lifting by 150 vertically or 180 horizontally from that latest origin immediately fires the reverse shortcut, then the reverse direction continues with the same fixed interval for that shortcut. Hold-then-swipe shortcuts, right-half one-finger up/down `Win + ↑/↓`, left-half two-finger horizontal `Alt + ←/→`, and right-half two-finger shortcuts do not repeat.
+| 方向 | 输出 | 连发 |
+|---|---|---|
+| 左 | `Win + Ctrl + ←` | 每 550 ms；不抬手反向滑动会改为右方向连发 |
+| 右 | `Win + Ctrl + →` | 每 550 ms；不抬手反向滑动会改为左方向连发 |
+| 下 | `Alt + Esc` | 每 450 ms；不抬手反向滑动会改为上方向连发 |
+| 上 | `Alt + Shift + Esc` | 每 450 ms；不抬手反向滑动会改为下方向连发 |
 
-### Touchpad Parameters
+#### 最终左区
 
-| Parameter | Current | Purpose |
-|---|---:|---|
-| `TouchGestureHoldStillDistance` | 50 | Stillness threshold only; swipe distance is counted from the real segment start |
-| `TouchGestureVerticalThreshold` | 150 | Distance required to recognize and trigger an up/down swipe |
-| `TouchGestureHorizontalThreshold` | 180 | Distance required to recognize and trigger a left/right swipe |
-| `TouchGestureVerticalRepeatDistance` | 150 | Movement distance required for each vertical repeat/reverse/navigation trigger |
-| `TouchGestureHorizontalRepeatDistance` | 180 | Movement distance required for each horizontal repeat/reverse/navigation trigger |
-| `TouchGestureTimeRepeatDelayMs` | 450 ms | Initial delay before left-half up/down time repeat starts |
-| `TouchGestureTimeRepeatIntervalMs` | 450 ms | Fixed interval for left-half up/down time repeat after either forward or reverse trigger |
-| `TouchGestureDesktopRepeatIntervalMs` | 550 ms | Initial delay and fixed interval for right-half left/right desktop switching repeat |
-| `TouchGestureSideConfirmedWidth` | 550 | Width of each left/right confirmed zone; the 550..959 and 960..1369 middle buffers lock by crossing the center split |
-| `TouchGestureHoldMs` | 450 ms | Touch duration required at the 150/180 trigger moment to count as hold-then-swipe |
+| 方向 | 输出 | 连发 |
+|---|---|---|
+| 左 | 首次 `Alt + Shift + Tab`，随后保持 `Alt` | 按距离 |
+| 右 | 首次 `Alt + Tab`，随后保持 `Alt` | 按距离 |
+| 上 | `Win + ↑` | 不连发 |
+| 下 | `Win + ↓` | 不连发 |
 
-## Voice Input
+左区的左/右手势进入 Alt-Tab 后，手指不抬起就持续保持 `Alt`。这是特殊的四向距离手势：向上或向下累计 150 发送一次 `↑/↓`，向左或向右累计 180 发送一次 `←/→`。反向、换向或移动到右侧都不会退出 Alt-Tab 状态。抬起移动手指时释放由手势持有的 `Alt`。
 
-If controller typing still feels difficult, pair ShikiPad with voice input software such as Typeless or Shandian Shuo. DualSense is especially convenient here: Create maps to `Right Alt`, Options maps to `Right Ctrl`, Home handles clutch, Mute short-tap toggles the one-shot Caps/Fn layer, and Mute long-press toggles ShikiPad enabled / disabled.
+首次横向达到 180 时只发送一次 Alt-Tab 进入动作，并把该时刻的横纵累计同时清零；不会根据同一报告里的超出距离补发方向键。进入窗口切换器后不再使用 Shift 反向选择，后续按每个独立的 150/180 距离段发送 `↑/↓/←/→`。
 
-## Left Stick
+旧的长按后滑映射，包括 `Win + Shift + M`、`Win + M`、显示器移动、`Home` 和 `End` 长按手势，均已删除。
 
-| Direction | Output |
+### 二指直接滑
+
+#### 最终左区
+
+| 方向 | 输出 | 连发 |
+|---|---|---|
+| 上 | `Ctrl + Shift + Tab` | 每 450 ms |
+| 下 | `Ctrl + Tab` | 每 450 ms |
+| 左 | `Alt + ←` | 每 450 ms |
+| 右 | `Alt + →` | 每 450 ms |
+
+不抬起移动手指时，纵向标签页手势反向移动 150、横向前进/后退手势反向移动 180 后，立即触发反向快捷键并继续按 450 ms 连发。垂直于原手势轴的移动不会切换映射或产生快捷键反馈，但达到 150/180 后仍结算该段并清空横纵累计。
+
+#### 最终右区
+
+| 方向 | 输出 | 连发 |
+|---|---|---|
+| 右 | `Win + E` | 不连发 |
+| 上 | `Win + Shift + S` | 不连发 |
+| 下 | `Alt + F4` | 不连发 |
+| 左 | `Win + V` | 不连发 |
+
+二指延续只解决“静止手指不用反复抬起”的问题：首次二指手势识别后，只要静止手指保持同一个 Touch ID 且相对当前基准移动不足 100，移动手指可以抬起再放下继续做二指手势。Touch ID 是手柄触控报告用于跟踪同一个持续接触点的编号；触点在 Touch1/Touch2 槽位之间交换但 ID 不变时仍视为同一指，抬起再落下导致 ID 改变时则视为原静止指已经离开。每个新移动段都按新移动指的落点和首次方向重新定区；静止手指不参与方向和区域判断。移动手指未抬起时，已确定区域保持不变。单次动作必须让移动手指抬起后再滑才会再次触发。
+
+运动指每次实际走满纵向 150 或横向 180 并结算一步时，横纵移动累计一起清零，同时以静止指当时的位置刷新静止基准；正向、反向以及没有快捷键反馈的结算都相同。纯时间到点产生的自动连发没有新的移动步，因此不会刷新静止基准。移动手指离开时也会以静止手指当时的位置刷新下一段基准，随后等待新的移动触点；静止手指本身不需要抬起。静止指一旦抬起、Touch ID 改变，或者在两次基准刷新之间移动达到 100，本轮触控序列立即结束并由原手势继续占用触控板，直到所有触点释放。期间运动指继续滑动、静止指保持在超限位置或重新落下其他手指，都不会识别为单指或二指手势，也不会把静止角色转交给其他触点。
+
+### 触控板按压与互斥
+
+| 按压瞬间的触点 | 真实按键输出 |
 |---|---|
-| Upper-left | `Left Shift` |
-| Lower-left | `Ctrl` |
-| Upper-right | `Win` |
-| Lower-right | `Left Alt` |
-| Up / Down center sectors | Mouse wheel |
+| 无触点 | `Backspace` |
+| 两个触点 | `Backspace` |
+| 单指在左确定区 | `Delete` |
+| 单指在中间按压区 `550..1369` | `Caps Lock` |
+| 单指在右确定区 | `Backspace` |
 
-The left stick is divided into six sectors: three in the upper half and three in the lower half. The pure left/right sectors are removed.
+三个按键都使用真实 KeyDown/KeyUp，并且属于独立触控板模块，所以无论当前是 Base、L1、R1、L2、R2 还是组合层，都只触发原键，绝不会被当前键层改成字母、数字或标点。`Delete`、`Backspace` 复用渐进连发的时间参数，`Caps Lock` 不连发；三者都在按压瞬间输出，不进入独立 45 ms 修饰绑定。Caps/Fn 已开启时，三个键仍输出原键，并在触发后正常关闭一次性 Caps/Fn。
 
-Left-stick wheel speed is continuous by radius while the current sector is Up/Down. Up/Down wheel sectors enter at `LeftStickEnterDeadzone`, currently 0.15. Moving into a modifier sector immediately stops wheel output; that modifier starts only after the stick reaches `LeftStickModifierEnterDeadzone`, currently 0.45. Moving back into Up/Down resumes wheel output from the current radius once the wheel threshold is met. Distance from center drives an exponent-3.0 speed curve from the 1500 ms slow floor to the 15 ms fast ceiling.
+手势和触控板按压严格按先后顺序互斥：手势先达到阈值，则本次按压不输出按键；按压先发生，则按压占用触控板，本次滑动不触发快捷键。两套逻辑不会同时输出。
 
-Left-stick modifier sectors are immediate, not locked. The 360 degrees are still divided into six equal 60-degree sectors, but the radial deadzone is sector-specific: wheel sectors enter at 0.15, and modifier sectors enter at 0.45. ShikiPad follows the current sector every frame: moving from `Left Shift` to `Win`, `Ctrl`, `Left Alt`, or wheel sectors releases the previous output and applies the current one only while that target sector reaches its own threshold. If the target sector is below its threshold, left-stick output is neutral.
+### 连发与反向规则
 
-### Left-Stick Parameters
+- 每步结算：触发后，以最近一次结算点为起点；任一方向达到纵向 150 或横向 180 时结算一次，并立即把横向和纵向累计一起清零，以当前位置作为下一段起点。无论这一步是否产生快捷键反馈都执行清零，不保留斜向余量。
+- 时间连发：首次必须先移动 150/180；触发后即使保持不动或移动到另一侧，也按固定时间继续发送。沿当前方向再移动一个阈值只完成无反馈结算，不额外立即触发。
+- 反向：普通时间连发只有在原轴反向达到对应阈值时才立即发送反向快捷键，并以反向快捷键的间隔继续连发；垂直轴达到阈值只做无反馈结算。
+- 虚拟桌面使用 550 ms；窗口、标签页和浏览前进/后退使用 450 ms。
+- 距离连发：只用于左区 Alt-Tab 特殊手势；上下每 150、左右每 180 触发一次对应方向键，不依赖时间，每次触发后横纵累计一起清零。
+- 不连发：当前移动触点不抬起时不会再次触发；二指延续中的单次动作要让移动指抬起再放下。
 
-| Parameter | Current | Purpose |
+### 手势参数
+
+| 参数 | 值 | 作用 |
 |---|---:|---|
-| `LeftStickEnterDeadzone` | 0.15 | Radius needed to enter an Up/Down wheel sector; the wheel accumulator resets below this same threshold |
-| `LeftStickModifierEnterDeadzone` | 0.45 | Radius needed to enter one of the four modifier sectors |
-| `MouseScrollCurveExponent` | 3.0 | Left-stick wheel radius curve exponent |
-| `MouseScrollSmoothingMs` | 5 ms | Short exponential smoothing on the normalized wheel radius before the scroll curve |
-| `ScrollSlowIntervalMs` | 1500 ms | Slowest wheel interval |
-| `ScrollFastIntervalMs` | 15 ms | Fastest wheel interval |
-| `WheelDelta` | 120 | One standard wheel detent |
-| `WheelRoundingThreshold` | 0.5 | Same idea as right-stick mouse rounding: fractional wheel amount rounds to an integer once it reaches half a unit |
-| `MaxWheelDeltaPerFrame` | 120 | Maximum wheel output per frame |
+| `TouchGestureVerticalThreshold` | 150 | 首次识别上/下所需距离 |
+| `TouchGestureHorizontalThreshold` | 180 | 首次识别左/右所需距离 |
+| `TouchGestureVerticalRepeatDistance` | 150 | 纵向反向或距离导航步长 |
+| `TouchGestureHorizontalRepeatDistance` | 180 | 横向反向或距离导航步长 |
+| `TouchGestureSideConfirmedWidth` | 550 | 左右确定起点段各自宽度；剩余中间范围在 `960` 处分成左右过渡段 |
+| `TouchGestureHoldStillDistance` | 100 | 二指触发后的静止指容差；达到该值立即结束本轮触控序列 |
+| `TouchGestureTimeRepeatDelayMs` | 450 ms | 普通时间连发首次等待 |
+| `TouchGestureTimeRepeatIntervalMs` | 450 ms | 普通时间连发固定间隔 |
+| `TouchGestureDesktopRepeatIntervalMs` | 550 ms | 虚拟桌面首次等待和固定间隔 |
 
-The left-stick wheel now follows the right-stick mouse integration idea more closely. Radius is normalized as `(radius - LeftStickEnterDeadzone) / (1 - LeftStickEnterDeadzone)`, the normalized radius receives the same short 5 ms style of smoothing, then `power = normalized ^ MouseScrollCurveExponent`. Maximum speed is `WheelDelta * 1000 / ScrollFastIntervalMs`; current speed is `maximum speed * power`, with a slow floor of `WheelDelta * 1000 / ScrollSlowIntervalMs`. Fractional wheel amount accumulates each frame and rounds to an integer after it reaches 0.5, just like right-stick pixel movement, capped at 120 per frame.
+## 语音输入
 
-## Clutch
+如果手柄打字仍然较慢，可以搭配 Typeless、闪电说等语音输入软件。Create 是 `Right Alt`，Options 是 `Right Ctrl`，适合绑定语音输入、确认或辅助快捷键。
 
-Normally, the left stick holds one modifier at a time. Clutch collects multiple modifiers and releases them together.
+## 左摇杆
 
-While clutch is active, the currently collected modifiers remain held even as the left stick moves elsewhere. To add another modifier, move directly into its sector; to use wheel input, move into the Up/Down sector. Home is only a clutch key and no longer becomes real `Left Shift` when no modifier is active. A short-tap clutch lock records whether it can be consumed at the moment the lock is formed: if at least one modifier has already been collected then, the next action key releases that short-tap lock after firing; if no modifier has been collected then, later modifier collection does not make that same lock action-consumable, and it must be cancelled with another short tap. Long-press clutch still holds while pressed and releases on button up. Action buttons keep their normal mappings while clutch modifiers are held. Pressing a normal mapped `1` still sends `1`, not `F1`.
+左摇杆按角度六等分，每个扇区 60 度；原来的纯左/纯右扇区已删除。
 
-Mute provides the controller Caps/Fn layer. Short-tap Mute toggles one-shot Caps/Fn on or off; pressing it again before an action key cancels the layer and restores normal output. While active, unshifted action mappings `1..0`, `-`, and `=` become `F1..F12`; unshifted letters are sent as shifted uppercase letters instead of their normal lowercase output. The next action key always clears Caps/Fn. Other keys keep their normal mapping. Long-press Mute uses the same timing as Home clutch, `ClutchLongPressMs`, and toggles ShikiPad enabled / disabled.
+| 扇区 | 输出 | 进入半径 |
+|---|---|---:|
+| 左上 | `Left Shift` | 0.45 |
+| 左下 | `Ctrl` | 0.45 |
+| 右上 | `Win` | 0.45 |
+| 右下 | `Left Alt` | 0.45 |
+| 上 / 下中间 | 鼠标滚轮 | 0.15 |
 
-Touchpad middle-buffer click taps real system `Caps Lock`, so the keyboard indicator follows it. It does not enable Fn and does not participate in clutch release.
+修饰键扇区即时跟随当前方向，不锁定第一次进入的扇区。从一个修饰键移到另一个修饰键、滚轮区或死区时会释放前一个输出；目标扇区未达到自己的半径门槛时输出为中立。蓄力开启后，已经收集的修饰键例外，会继续保持直到蓄力解除。
 
-| Controller | Activate / hold |
-|---|---|
-| DualSense | Short-tap Home to toggle clutch, or long-press Home to hold clutch until release; action keys consume a short-tap clutch only if at least one modifier was already collected when that short-tap lock formed |
+滚轮速度按摇杆半径连续变化。半径先按 `(radius - LeftStickEnterDeadzone) / (1 - LeftStickEnterDeadzone)` 归一化，经过 5 ms 平滑后使用指数 3.0 曲线。速度从 1500 ms 的慢速下限过渡到 15 ms 的最快间隔；小数滚轮量累计到 0.5 后输出，单帧最多输出 120。
 
-### Clutch Parameters
+### 左摇杆参数
 
-| Parameter | Current | Purpose |
+| 参数 | 当前值 | 作用 |
 |---|---:|---|
-| `ClutchLongPressMs` | 250 ms | Long-press time for holding clutch on Home and for Mute long-press enable / disable |
+| `LeftStickEnterDeadzone` | 0.15 | 上/下滚轮扇区门槛；低于此值清空滚轮累计量 |
+| `LeftStickModifierEnterDeadzone` | 0.45 | 四个修饰键扇区门槛 |
+| `MouseScrollCurveExponent` | 3.0 | 滚轮半径曲线指数 |
+| `MouseScrollSmoothingMs` | 5 ms | 归一化半径的短指数平滑 |
+| `ScrollSlowIntervalMs` | 1500 ms | 最慢滚轮间隔 |
+| `ScrollFastIntervalMs` | 15 ms | 最快滚轮间隔 |
+| `WheelDelta` | 120 | 一个标准滚轮格 |
+| `WheelRoundingThreshold` | 0.5 | 小数滚轮输出取整阈值 |
+| `MaxWheelDeltaPerFrame` | 120 | 单帧滚轮输出上限 |
 
-## Typing Layers
+## Home 蓄力与静音键 Caps/Fn
 
-The v3 release maps letters around familiar keyboard positions. This keeps layouts such as `WASD` and `IJKL` recognizable instead of sorting every letter purely by frequency.
+正常状态下左摇杆同一时刻只保持一个修饰键。Home 蓄力只收集左摇杆产生的多个修饰键，并在解除时统一释放；Create/Options 不归入 Home 蓄力：
 
-The columns in the following tables correspond to: `↑`, `→`, `□`, `△`, `←`, `↓`, `×`, `○`.
+- 短按 Home：切换蓄力锁定。锁定形成瞬间已经收集至少一个修饰键时，下一次真实动作键会消费并解除锁定。
+- 如果锁定形成时没有修饰键，之后再收集修饰键也不会改变这次锁定的“不可消费”属性，需要再次短按 Home 取消。
+- 长按 Home：只在按住期间保持蓄力，松开立即释放。
+- Home 本身不会在无修饰键时退化成真实 `Left Shift`。
+- 蓄力只影响收集到的修饰键，不改变动作键所属键层；普通映射里的 `1` 仍输出 `1`。
 
-| Layer | ↑ | → | □ | △ | ← | ↓ | × | ○ |
+静音键控制一次性 Caps/Fn：
+
+- 短按开关 Caps/Fn；在动作键触发前再次短按可取消。
+- 未带 Shift 的 `1..0`、`-`、`=` 转换为 `F1..F12`。
+- 未带 Shift 的字母转换为带 Shift 的大写字母。
+- 下一次动作键无论是否发生转换都会关闭 Caps/Fn。
+- 触控板 `Backspace`、`Delete`、`Caps Lock` 属于独立触控板模块，不会被转成其他键，但会正常消费 Caps/Fn。
+- 长按静音键达到 250 ms 后切换 ShikiPad 启用/禁用；长按动作不会再触发短按 Caps/Fn。
+
+| 参数 | 当前值 | 作用 |
+|---|---:|---|
+| `ClutchLongPressMs` | 250 ms | Home 长按保持蓄力、静音键长按启用/禁用的判定时间 |
+
+## 打字键层
+
+下表列顺序为 `↑ → □ △ ← ↓ × ○`。
+
+| 键层 | ↑ | → | □ | △ | ← | ↓ | × | ○ |
 |---|---|---|---|---|---|---|---|---|
 | Base | ↑ | → | Tab | Esc | ← | ↓ | Space | Enter |
 | R1 | o | p | j | i | n | m | k | l |
@@ -230,46 +305,53 @@ The columns in the following tables correspond to: `↑`, `→`, `□`, `△`, `
 | R1 + L1 | 4 | , | . | 7 | 5 | 6 | 9 | 8 |
 | L2 + R2 | + | / | & | * | _ | ^ | $ | % |
 | L1 + R2 | [ | ] | ! | ? | { | } | @ | # |
-| R1 + L2 | ( | ) | ; | ' | < | > | backtick | \ |
+| R1 + L2 | ( | ) | ; | ' | < | > | 反引号 | \ |
 
-The program sends physical keycodes. Characters requiring Shift (", :, |, ~) are shifted automatically by the corresponding layer entries.
+程序发送物理键码，需要 Shift 的符号由对应键层自动按下 Shift。Base 层方向键可连发，Base 层图案键不连发；字符层是虚拟点按，按住不会连发。动作键一旦解析到某个键层并进入保持状态，之后肩键或扳机变化不会重分配该键，必须松开动作键后重新按下。
 
-Base-layer D-pad keys repeat while held. Base-layer face buttons (`Square`, `Triangle`, `Cross`, `Circle`) do not repeat. Character layers are virtual taps: one press sends one key stroke, and holding does not repeat. Once an action key has resolved to a layer and is held, later shoulder/trigger changes do not reassign that held physical key until it is released.
+### 基础层渐进连发
 
-### Base Repeat Parameters
+Base 方向键以及独立触控板模块的 `Delete` / `Backspace` 复用同一套渐进连发参数。首发后等待 300 ms，从 120 ms 间隔开始，在 1500 ms 内按三次曲线逐渐加速到最快 12 ms。`Caps Lock`、Base 图案键和字符层不使用这套连发。
 
-| Parameter | Current | Purpose |
+| 参数 | 当前值 | 作用 |
 |---|---:|---|
-| `RepeatDelayMs` | 300 ms | Delay after the first repeatable base-layer or touchpad `Delete` / `Backspace` press before repeat starts |
-| `BaseRepeatSlowIntervalMs` | 120 ms | Starting repeat interval |
-| `BaseRepeatRampMs` | 1500 ms | Time to ramp from slow repeat to fastest repeat |
-| `RepeatIntervalMs` | 12 ms | Fastest repeat interval |
-| Repeat curve exponent | 3.0 | Cubic acceleration over frequency; the ramp segment is continuous |
+| `RepeatDelayMs` | 300 ms | 首发后开始连发的等待时间 |
+| `BaseRepeatSlowIntervalMs` | 120 ms | 连发起步间隔 |
+| `BaseRepeatRampMs` | 1500 ms | 加速到最快速度所需时间 |
+| `RepeatIntervalMs` | 12 ms | 最快连发间隔 |
+| 连发曲线指数 | 3.0 | 对频率做三次方加速 |
 
-If multiple layer buttons are pressed on the same polling timestamp, tie priority is `R1 > L1 > R2 > L2`. Combo formation still only considers the latest two active layer buttons after that priority sort.
+### 键层解析与时序
 
-### Layer Timing Parameters
+如果多个键层输入落在同一个轮询时间戳，单层优先级为 `R1 > L1 > R2 > L2`。组合层只检查按下时间最新的两个仍按住的键层输入，并且二者必须落在组合窗口内。
 
-ShikiPad uses short time windows to absorb human input errors when typing quickly.
+键层切换恢复为纯键层状态机。动作键按下后，键层前窗只观察肩键/扳机键，不读取任何修饰键状态。组合层作为独立键层处理：帮助形成组合的单层按压仍占用 35 ms 时间线，但不算作组合层自身的本体占用。修饰绑定另用独立 45 ms 窗口记录掩码，只包装最终输出，不参加以下键层归属计算。
 
-| Parameter | Current | Purpose |
+| 参数 | 当前值 | 作用 |
 |---|---:|---|
-| `ComboLayerWindowMs` | 35 ms | Maximum interval for two layer buttons to form a combo layer |
-| `ActionLayerGraceMs` | 45 ms | Grace window between action key and layer recognition |
-| `ActionLayerPostGraceMs` | 15 ms | Grace window after a layer is released before a new layer is pressed; releases from a layer input that overlapped another layer input do not get this post-grace window |
-| `LayerTakeoverWindowMs` | 30 ms | Cumulative body cap; after the 20 ms cutoff lands inside a boundary old layer body, backward tracing can continue only until cumulative body occupancy reaches 30 ms |
-| `LayerOccupancyCarryCutoffMs` | 20 ms | Cumulative body cutoff for backward layer tracing; total lookback is still `ActionLayerGraceMs`, but once cumulative body occupancy reaches this cutoff, tracing can continue only inside the current boundary body up to `LayerTakeoverWindowMs` and cannot cross into its pre-window or older layers |
+| `TriggerPressThreshold` | 0.25 | L2/R2 进入键层的按下阈值 |
+| `TriggerReleaseThreshold` | 0.15 | L2/R2 退出键层的释放阈值；低于按下阈值形成迟滞，减少边界抖动 |
+| `ComboLayerWindowMs` | 35 ms | 两个键层输入形成组合层的最大间隔 |
+| `ActionLayerGraceMs` | 45 ms | 动作键与肩键/扳机键之间的纯键层前置判定窗口 |
+| `ActionLayerPostGraceMs` | 15 ms | 释放旧键层后按下新键层的空窗归属；发生过键层重叠时不获得此后置窗口 |
+| `LayerOccupancyCarryCutoffMs` | 20 ms | 向前追溯键层本体占用的累计截点 |
+| `LayerTakeoverWindowMs` | 30 ms | 截点落在旧键层本体后允许继续追溯的累计上限 |
+| `ModifierBindingWindowMs` | 45 ms | 八个动作位置与 L3/R3 的独立修饰绑定窗口；边界计入，不影响键层归属 |
 
-Combo layers are treated as their own layers: the same physical single-key press that helps form a combo still occupies the 35 ms timeline, but it does not count as that combo layer's own body accumulation and cannot trigger that combo layer's 20 ms / 30 ms body limits.
+`ActionLayerGraceMs` 是键层向前观察范围；累计本体达到 20 ms 后，只能继续停留在当前边界键层本体内追到 30 ms，不能再跨入更早键层或其前置窗口。`ModifierBindingWindowMs` 与这条时间线相互独立。键层参数直接影响快速输入时的归属和延迟，修改时建议一次只调整一个值并进行连续快速输入测试。
 
-## Troubleshooting
+## 故障排查
 
-### No keyboard or mouse output
+### 没有键鼠输出
 
-Install Interception, restart Windows, and run `ShikiPad.exe` as administrator.
+确认已安装 Interception、重启过 Windows，并以管理员身份运行 `ShikiPad.exe`。当前版本不会在 Interception 不可用时回退到其他输出方式。
 
-### System or game double input
+### 系统或游戏双重输入
 
-If Windows still sees the physical controller while ShikiPad is running, the same stick movement can be handled twice: once by ShikiPad and once by Windows or the focused app. Typical symptoms include left-stick `Alt` plus `Tab` jumping unpredictably between windows, or the left-stick `Win` modifier failing because Windows treats controller input as Start menu, taskbar, or app icon navigation. Configure HidHide as described above so only ShikiPad can see the DualSense controller.
+如果 Windows 仍能看到物理手柄，同一输入会同时被 ShikiPad 和系统/游戏处理。典型表现是保持 `Alt` 再按 `Tab` 时乱跳、`Win` 修饰键不稳定、游戏同时收到手柄导航。按安装章节配置 HidHide，并在修改后重新插拔手柄。
 
-If HidHide is already configured as described above but double input or Windows input stealing still happens, try placing the whole ShikiPad folder at the root of the C drive, for example `C:\ShikiPad`. This is the location currently used by the author.
+若配置正确仍有系统抢输入，可尝试把整个文件夹放到 `C:\ShikiPad` 运行，并确认 HidHide Applications 中记录的是当前 `ShikiPad.exe` 的准确路径。
+
+### 按键卡住或异常退出
+
+正常退出、关闭控制台、手柄断开、禁用 ShikiPad 或映射循环异常都会调用统一释放逻辑。若进程被操作系统强制终止而来不及清理，可重新启动再正常退出，或用实体键盘按下并释放对应修饰键恢复系统状态。

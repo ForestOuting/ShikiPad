@@ -1,0 +1,534 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
+
+static class Program {
+    private const BindingFlags PrivateStatic = BindingFlags.NonPublic | BindingFlags.Static;
+
+    public static void Main() {
+        Assembly assembly = Assembly.Load("ShikiPad");
+        Type mapper = RequiredType(assembly, "MapperForm");
+        Type sideType = RequiredType(assembly, "MapperForm+TouchGestureSide");
+        Type directionType = RequiredType(assembly, "MapperForm+TouchGestureDirection");
+
+        VerifyMappings(mapper, sideType, directionType);
+        VerifyStartZoneResolution(assembly, mapper, sideType, directionType);
+        VerifyRepeatStepSettlement(assembly, mapper, directionType);
+        VerifyTwoFingerContinuationKeepsStaticFinger(assembly, mapper);
+        VerifyTouchpadClicks(assembly, mapper);
+        VerifyModifierActionWindow(assembly, mapper);
+        VerifyPureBaseAndLayerSelection(assembly, mapper);
+        NotNull(mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance), "two-finger continuation update remains available");
+        NotNull(mapper.GetMethod("TryRecognizeTwoFingerContinuationGesture", PrivateStatic), "two-finger continuation recognition remains available");
+        Equal(null, assembly.GetType("MapperForm+TouchGesturePressType"), "hold gesture enum removed");
+        Equal(null, RequiredType(assembly, "Config").GetField("TouchGestureHoldMs"), "hold gesture timer removed");
+        Console.WriteLine("ShikiPad logic checks passed.");
+    }
+
+    private static void VerifyPureBaseAndLayerSelection(Assembly assembly, Type mapper) {
+        Type mappingType = RequiredType(assembly, "MappingEngine");
+        Type layerType = RequiredType(assembly, "Layer");
+        Type actionType = RequiredType(assembly, "ActionButton");
+        object mapping = Activator.CreateInstance(mappingType);
+        MethodInfo resolve = mappingType.GetMethod("Resolve");
+        object Base = Enum.Parse(layerType, "Base");
+        object L1 = Enum.Parse(layerType, "L1");
+        object R1 = Enum.Parse(layerType, "R1");
+        object R1L1 = Enum.Parse(layerType, "R1L1");
+        Equal(Base, resolve.Invoke(mapping, new object[] { false, false, false, false, 0.0, 0.0, 0.0, 0.0, 35.0 }), "no shoulder or trigger resolves to Base");
+        Equal(L1, resolve.Invoke(mapping, new object[] { true, false, false, false, 100.0, 0.0, 0.0, 0.0, 35.0 }), "one held shoulder resolves its own layer");
+        Equal(R1L1, resolve.Invoke(mapping, new object[] { true, true, false, false, 100.0, 130.0, 0.0, 0.0, 35.0 }), "two compatible shoulders inside 35 ms resolve a combo");
+        Equal(R1, resolve.Invoke(mapping, new object[] { true, true, false, false, 100.0, 136.0, 0.0, 0.0, 35.0 }), "combo outside 35 ms resolves the latest single layer");
+
+        string[] expected = { "ArrowUp", "ArrowRight", "Tab", "Escape", "ArrowLeft", "ArrowDown", "Space", "Enter" };
+        MethodInfo lookup = mappingType.GetMethod("Lookup");
+        for (int i = 0; i < expected.Length; i++) {
+            object stroke = lookup.Invoke(mapping, new[] { Base, Enum.ToObject(actionType, i) });
+            Equal(expected[i], stroke.GetType().GetField("Key").GetValue(stroke).ToString(), "Base contains only the eight documented action mappings " + i);
+        }
+
+        MethodInfo initialLayer = RequiredMethod(mapper, "ResolveInitialActionLayer");
+        Equal(R1, initialLayer.Invoke(null, new[] { Base, (object)0.0, R1, (object)80.0, (object)115.0, (object)100.0, (object)15.0 }), "15 ms released-layer post-grace boundary is included");
+        Equal(Base, initialLayer.Invoke(null, new[] { Base, (object)0.0, R1, (object)80.0, (object)115.01, (object)100.0, (object)15.0 }), "released layer no longer owns an action after 15 ms");
+    }
+
+    private static void VerifyModifierActionWindow(Assembly assembly, Type mapper) {
+        Type configType = RequiredType(assembly, "Config");
+        Type keyType = RequiredType(assembly, "PhysicalKey");
+        Type layerType = RequiredType(assembly, "Layer");
+        object config = Activator.CreateInstance(configType);
+        Equal(45, configType.GetField("ActionLayerGraceMs").GetValue(config), "pure layer grace window default");
+        Equal(15, configType.GetField("ActionLayerPostGraceMs").GetValue(config), "pure layer post-grace default");
+        Equal(35, configType.GetField("ComboLayerWindowMs").GetValue(config), "combo-layer window default");
+        Equal(20, configType.GetField("LayerOccupancyCarryCutoffMs").GetValue(config), "layer body carry cutoff default");
+        Equal(30, configType.GetField("LayerTakeoverWindowMs").GetValue(config), "layer body takeover cap default");
+        Equal(45, configType.GetField("ModifierBindingWindowMs").GetValue(config), "independent modifier binding window default");
+        Equal(null, configType.GetField("ActionDecisionWindowMs"), "coupled action decision window removed");
+        NotNull(mapper.GetMethod("ShouldWaitForPendingSingleLayerToSettle", BindingFlags.NonPublic | BindingFlags.Instance), "pure layer settle wait restored");
+
+        MethodInfo withinWindow = RequiredMethod(mapper, "IsWithinModifierBindingWindow");
+        Equal(true, withinWindow.Invoke(null, new[] { (object)100.0, 145.0, configWithWindow(configType, 45) }), "45 ms boundary is included");
+        Equal(false, withinWindow.Invoke(null, new[] { (object)100.0, 145.01, configWithWindow(configType, 45) }), "later modifier is excluded");
+        Equal(false, withinWindow.Invoke(null, new[] { (object)100.0, 99.0, configWithWindow(configType, 45) }), "modifier before action is not a late-window arrival");
+
+        MethodInfo isModifier = RequiredMethod(mapper, "IsModifierBindingKey");
+        string[] included = { "LShift", "LCtrl", "LWin", "LAlt", "RAlt", "RCtrl" };
+        foreach (string name in included) {
+            Equal(true, isModifier.Invoke(null, new[] { Enum.Parse(keyType, name) }), name + " belongs to modifier class");
+        }
+        string[] excluded = { "Home", "CapsLock", "Delete", "Backspace", "A", "Num1", "ArrowUp" };
+        foreach (string name in excluded) {
+            Equal(false, isModifier.Invoke(null, new[] { Enum.Parse(keyType, name) }), name + " stays outside modifier class");
+        }
+
+        Equal(null, mapper.GetMethod("IsModifierWindowEligibleAction", PrivateStatic), "old modifier eligibility classification removed");
+        Equal(null, mapper.GetMethod("ResolvePendingActionLayer", PrivateStatic), "modifier cannot override resolved layer");
+        MethodInfo resolveLayer = RequiredMethod(mapper, "ResolvePendingLayer");
+        Equal("R1", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "Base"), Enum.Parse(layerType, "Base"), (object)100.0, Enum.Parse(layerType, "R1"), (object)120.0, true, (object)45.0 }).ToString(), "layer pressed inside 45 ms takes over without consulting modifiers");
+        Equal("Base", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "Base"), Enum.Parse(layerType, "Base"), (object)100.0, Enum.Parse(layerType, "R1"), (object)146.0, true, (object)45.0 }).ToString(), "layer pressed after 45 ms cannot take over");
+
+        MethodInfo touchRepeat = RequiredMethod(mapper, "IsTouchpadClickRepeatKey");
+        Equal(true, touchRepeat.Invoke(null, new[] { Enum.Parse(keyType, "Delete") }), "Delete is immediate repeat input");
+        Equal(true, touchRepeat.Invoke(null, new[] { Enum.Parse(keyType, "Backspace") }), "Backspace is immediate repeat input");
+        Equal(false, touchRepeat.Invoke(null, new[] { Enum.Parse(keyType, "CapsLock") }), "CapsLock remains a non-repeat action");
+        Equal(null, mapper.GetMethod("ArmTouchpadClickPending", BindingFlags.NonPublic | BindingFlags.Instance), "touchpad clicks do not enter modifier binding");
+        Equal(null, mapper.GetField("_touchClickPendingModifierMask", BindingFlags.NonPublic | BindingFlags.Instance), "touchpad has no modifier pending state");
+        Equal(null, mapper.GetMethod("RegisterHomeModifier", BindingFlags.NonPublic | BindingFlags.Instance), "Home does not enter modifier binding");
+        Equal(null, mapper.GetField("_homeModifierBindingWindowActive", BindingFlags.NonPublic | BindingFlags.Instance), "Home has no modifier pending state");
+
+        MethodInfo pulseBoundRepeat = RequiredMethod(mapper, "ShouldPulseBoundRepeat");
+        Equal(true, pulseBoundRepeat.Invoke(null, new object[] { true, 1 }), "a modifier-bound repeat action emits complete chord pulses");
+        Equal(false, pulseBoundRepeat.Invoke(null, new object[] { true, 0 }), "an unbound repeat action retains normal held repeat");
+        Equal(false, pulseBoundRepeat.Invoke(null, new object[] { false, 1 }), "a non-repeat action retains normal sticky hold semantics");
+        Type holdType = RequiredType(mapper.Assembly, "MapperForm+ButtonHold");
+        NotNull(holdType.GetField("BoundRepeatPulse"), "action hold records bound repeat pulse mode");
+
+        VerifyPendingModifierRegistration(mapper, configType, keyType);
+    }
+
+    private static void VerifyPendingModifierRegistration(Type mapper, Type configType, Type keyType) {
+        Type holdType = RequiredType(mapper.Assembly, "MapperForm+ButtonHold");
+        object instance = RuntimeHelpers.GetUninitializedObject(mapper);
+        object config = configWithWindow(configType, 45);
+        mapper.GetField("_config", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, config);
+        mapper.GetField("_heldLeftStickKeys", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, Activator.CreateInstance(typeof(List<>).MakeGenericType(keyType)));
+
+        Type layerType = RequiredType(mapper.Assembly, "Layer");
+        MethodInfo shouldDefer = mapper.GetMethod("ShouldDeferInitialAction", BindingFlags.NonPublic | BindingFlags.Instance);
+        Equal(true, shouldDefer.Invoke(instance, new[] { Enum.Parse(layerType, "Base") }), "base actions use the pure layer window");
+        Equal(true, shouldDefer.Invoke(instance, new[] { Enum.Parse(layerType, "R1") }), "character actions use the same pure layer window");
+
+        Array holds = Array.CreateInstance(holdType, 8);
+        object hold = Activator.CreateInstance(holdType);
+        SetField(holdType, hold, "Pending", true);
+        SetField(holdType, hold, "PendingSinceMs", 100.0);
+        holds.SetValue(hold, 0);
+        mapper.GetField("_holds", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, holds);
+
+        Type mouseHoldType = RequiredType(mapper.Assembly, "MapperForm+MouseButtonHold");
+        object mouseHold = Activator.CreateInstance(mouseHoldType);
+        SetField(mouseHoldType, mouseHold, "Pending", true);
+        SetField(mouseHoldType, mouseHold, "PendingSinceMs", 100.0);
+        mapper.GetField("_leftMouseButton", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, mouseHold);
+        MethodInfo register = mapper.GetMethod("RegisterModifierBinding", BindingFlags.NonPublic | BindingFlags.Instance);
+        register.Invoke(instance, new[] { Enum.Parse(keyType, "RAlt"), (object)145.0 });
+        hold = holds.GetValue(0);
+        Equal(1 << 4, holdType.GetField("PendingModifierMask").GetValue(hold), "late Create modifier is captured by action pending at 45 ms");
+        mouseHold = mapper.GetField("_leftMouseButton", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(1 << 4, mouseHoldType.GetField("PendingModifierMask").GetValue(mouseHold), "late Create modifier is captured by mouse-button pending");
+        register.Invoke(instance, new[] { Enum.Parse(keyType, "RCtrl"), (object)145.01 });
+        hold = holds.GetValue(0);
+        Equal(1 << 4, holdType.GetField("PendingModifierMask").GetValue(hold), "modifier after 45 ms is not captured by action pending");
+        mouseHold = mapper.GetField("_leftMouseButton", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(1 << 4, mouseHoldType.GetField("PendingModifierMask").GetValue(mouseHold), "modifier after 45 ms is not captured by mouse-button pending");
+    }
+
+    private static object configWithWindow(Type configType, int windowMs) {
+        object config = Activator.CreateInstance(configType);
+        configType.GetField("ModifierBindingWindowMs").SetValue(config, windowMs);
+        return config;
+    }
+
+    private static void VerifyMappings(Type mapper, Type sideType, Type directionType) {
+        MethodInfo resolve = RequiredMethod(mapper, "TryResolveTouchGestureShortcut");
+        MethodInfo repeatFor = RequiredMethod(mapper, "TouchGestureRepeatModeFor");
+        (int Fingers, string Side, string Direction, string Shortcut, string Repeat)[] cases = {
+            (1, "Right", "Left", "PreviousDesktop", "Timed"),
+            (1, "Right", "Right", "NextDesktop", "Timed"),
+            (1, "Right", "Up", "PreviousWindow", "Timed"),
+            (1, "Right", "Down", "NextWindow", "Timed"),
+            (1, "Left", "Right", "NextAltTabWindow", "Distance"),
+            (1, "Left", "Left", "PreviousAltTabWindow", "Distance"),
+            (1, "Left", "Up", "MaximizeWindow", "None"),
+            (1, "Left", "Down", "RestoreOrMinimizeWindow", "None"),
+            (2, "Left", "Up", "PreviousTab", "Timed"),
+            (2, "Left", "Down", "NextTab", "Timed"),
+            (2, "Left", "Left", "BackNavigation", "Timed"),
+            (2, "Left", "Right", "ForwardNavigation", "Timed"),
+            (2, "Right", "Right", "OpenFileExplorer", "None"),
+            (2, "Right", "Left", "ClipboardHistory", "None"),
+            (2, "Right", "Up", "Screenshot", "None"),
+            (2, "Right", "Down", "CloseWindow", "None")
+        };
+
+        foreach (var test in cases) {
+            object[] args = {
+                test.Fingers,
+                Enum.Parse(sideType, test.Side),
+                Enum.Parse(directionType, test.Direction),
+                null
+            };
+            bool mapped = (bool)resolve.Invoke(null, args);
+            Equal(true, mapped, $"map {test.Fingers}/{test.Side}/{test.Direction}");
+            Equal(test.Shortcut, args[3].ToString(), $"shortcut {test.Fingers}/{test.Side}/{test.Direction}");
+            Equal(test.Repeat, repeatFor.Invoke(null, new[] { args[3] }).ToString(), $"repeat {test.Shortcut}");
+        }
+    }
+
+    private static void VerifyStartZoneResolution(Assembly assembly, Type mapper, Type sideType, Type directionType) {
+        Type configType = RequiredType(assembly, "Config");
+        MethodInfo resolve = RequiredMethod(mapper, "ResolveTouchGestureSide");
+        object config = Activator.CreateInstance(configType);
+
+        Equal(-1, Array.IndexOf(Enum.GetNames(sideType), "Buffer"), "gesture buffer side removed");
+        Equal("Left", ResolveZone(resolve, directionType, config, 100.0, "Right"), "left confirmed ignores direction");
+        Equal("Left", ResolveZone(resolve, directionType, config, 700.0, "Left"), "left buffer moving left resolves left");
+        Equal("Left", ResolveZone(resolve, directionType, config, 700.0, "Up"), "left buffer moving up resolves left");
+        Equal("Left", ResolveZone(resolve, directionType, config, 700.0, "Down"), "left buffer moving down resolves left");
+        Equal("Right", ResolveZone(resolve, directionType, config, 700.0, "Right"), "left buffer moving right resolves right");
+        Equal("Right", ResolveZone(resolve, directionType, config, 1100.0, "Right"), "right buffer moving right resolves right");
+        Equal("Right", ResolveZone(resolve, directionType, config, 1100.0, "Up"), "right buffer moving up resolves right");
+        Equal("Right", ResolveZone(resolve, directionType, config, 1100.0, "Down"), "right buffer moving down resolves right");
+        Equal("Left", ResolveZone(resolve, directionType, config, 1100.0, "Left"), "right buffer moving left resolves left");
+        Equal("Right", ResolveZone(resolve, directionType, config, 1800.0, "Left"), "right confirmed ignores direction");
+        Equal("Left", ResolveZone(resolve, directionType, config, 549.0, "Right"), "left confirmed edge");
+        Equal("Right", ResolveZone(resolve, directionType, config, 550.0, "Right"), "left buffer edge");
+        Equal("Left", ResolveZone(resolve, directionType, config, 960.0, "Left"), "right buffer center edge");
+        Equal("Right", ResolveZone(resolve, directionType, config, 1370.0, "Left"), "right confirmed edge");
+    }
+
+    private static string ResolveZone(MethodInfo resolve, Type directionType, object config, double startX, string direction) {
+        return resolve.Invoke(null, new[] { (object)startX, Enum.Parse(directionType, direction), config }).ToString();
+    }
+
+    private static void VerifyRepeatStepSettlement(Assembly assembly, Type mapper, Type directionType) {
+        object config = Activator.CreateInstance(RequiredType(assembly, "Config"));
+        MethodInfo resolve = RequiredMethod(mapper, "TryResolveTouchGestureMovement");
+        MethodInfo sameAxis = RequiredMethod(mapper, "AreTouchGestureDirectionsOnSameAxis");
+
+        var vertical = ResolveMovement(resolve, directionType, config, 0.0, -150.0);
+        Equal(true, vertical.Ready, "vertical repeat step reaches 150");
+        Equal("Up", vertical.Direction, "vertical repeat direction");
+        Equal(150.0, vertical.RequiredDistance, "vertical repeat threshold");
+
+        var horizontal = ResolveMovement(resolve, directionType, config, 180.0, 149.0);
+        Equal(true, horizontal.Ready, "horizontal repeat step reaches 180");
+        Equal("Right", horizontal.Direction, "horizontal repeat direction");
+        Equal(180.0, horizontal.RequiredDistance, "horizontal repeat threshold");
+
+        Equal(true, sameAxis.Invoke(null, new[] { Enum.Parse(directionType, "Up"), Enum.Parse(directionType, "Down") }), "vertical reverse shares axis");
+        Equal(true, sameAxis.Invoke(null, new[] { Enum.Parse(directionType, "Left"), Enum.Parse(directionType, "Right") }), "horizontal reverse shares axis");
+        Equal(false, sameAxis.Invoke(null, new[] { Enum.Parse(directionType, "Up"), Enum.Parse(directionType, "Left") }), "perpendicular step has no timed shortcut feedback");
+
+        Type stateType = RequiredType(assembly, "MapperForm+TouchGestureState");
+        object state = Activator.CreateInstance(stateType);
+        SetField(stateType, state, "RepeatAnchorX", 10.0);
+        SetField(stateType, state, "RepeatAnchorY", 20.0);
+        object[] settleArgs = { state, 700, 800 };
+        RequiredMethod(mapper, "SettleTouchGestureStep").Invoke(null, settleArgs);
+        state = settleArgs[0];
+        Equal(700.0, stateType.GetField("RepeatAnchorX").GetValue(state), "settlement clears horizontal accumulation");
+        Equal(800.0, stateType.GetField("RepeatAnchorY").GetValue(state), "settlement clears vertical accumulation");
+    }
+
+    private static (bool Ready, string Direction, double RequiredDistance) ResolveMovement(MethodInfo resolve, Type directionType, object config, double dx, double dy) {
+        object[] args = { dx, dy, config, true, null, 0.0, 0.0 };
+        bool ready = (bool)resolve.Invoke(null, args);
+        return (ready, args[4].ToString(), (double)args[6]);
+    }
+
+    private static void VerifyTwoFingerContinuationKeepsStaticFinger(Assembly assembly, Type mapper) {
+        Type configType = RequiredType(assembly, "Config");
+        Type controllerType = RequiredType(assembly, "ControllerState");
+        Type stateType = RequiredType(assembly, "MapperForm+TouchGestureState");
+        object instance = RuntimeHelpers.GetUninitializedObject(mapper);
+        object config = Activator.CreateInstance(configType);
+        mapper.GetField("_config", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, config);
+        Equal(100.0, configType.GetField("TouchGestureHoldStillDistance").GetValue(config), "two-finger static tolerance default");
+        MethodInfo isStill = RequiredMethod(mapper, "IsTouchGestureStill");
+        Equal(true, isStill.Invoke(null, new[] { (object)99.0, config }), "static movement below 100 remains still");
+        Equal(false, isStill.Invoke(null, new[] { (object)100.0, config }), "static movement at 100 is outside tolerance");
+        VerifyInitialTwoFingerSettlesNonTriggeredFinger(mapper, configType, controllerType, stateType);
+
+        object gesture = Activator.CreateInstance(stateType);
+        SetField(stateType, gesture, "TwoFingerContinuation", true);
+        SetField(stateType, gesture, "StaticFinger", 1);
+        SetField(stateType, gesture, "StaticFingerId", 10);
+        SetField(stateType, gesture, "StaticStartX", 100.0);
+        SetField(stateType, gesture, "StaticStartY", 100.0);
+        SetField(stateType, gesture, "ActiveFinger", 2);
+        SetField(stateType, gesture, "ActiveFingerId", 20);
+        mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, gesture);
+
+        object controller = Activator.CreateInstance(controllerType);
+        SetField(controllerType, controller, "TouchCount", 1);
+        SetField(controllerType, controller, "Touch1Active", true);
+        SetField(controllerType, controller, "Touch1Id", 10);
+        SetField(controllerType, controller, "Touch1X", 100);
+        SetField(controllerType, controller, "Touch1Y", 100);
+        mapper.GetMethod("StopTwoFingerContinuationMover", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(instance, new[] { controller, (object)100.0 });
+
+        gesture = mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(true, stateType.GetField("TwoFingerContinuation").GetValue(gesture), "two-finger continuation stays active after mover lifts");
+        Equal(10, stateType.GetField("StaticFingerId").GetValue(gesture), "held static finger remains continuation anchor");
+        Equal(100.0, stateType.GetField("StaticStartX").GetValue(gesture), "mover release refreshes the static baseline");
+
+        SetField(stateType, gesture, "Touch2Tracking", true);
+        SetField(stateType, gesture, "Touch2Id", 30);
+        SetField(stateType, gesture, "Touch2StartX", 700.0);
+        SetField(stateType, gesture, "Touch2StartY", 500.0);
+        mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, gesture);
+        SetField(controllerType, controller, "TouchCount", 2);
+        SetField(controllerType, controller, "Touch2Active", true);
+        SetField(controllerType, controller, "Touch2Id", 30);
+        SetField(controllerType, controller, "Touch2X", 710);
+        SetField(controllerType, controller, "Touch2Y", 500);
+
+        object[] moverArgs = { controller, 110.0, 0, 0 };
+        bool accepted = (bool)mapper.GetMethod("TryGetActiveTwoFingerContinuationMover", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(instance, moverArgs);
+        Equal(true, accepted, "new mover is accepted while static finger stays held");
+        gesture = mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(10, stateType.GetField("StaticFingerId").GetValue(gesture), "static finger did not need a new touch-down");
+        Equal(30, stateType.GetField("ActiveFingerId").GetValue(gesture), "new moving finger starts next two-finger segment");
+        Equal(700.0, stateType.GetField("RepeatAnchorX").GetValue(gesture), "new segment starts at returning mover touch-down");
+
+        VerifyTwoFingerStaticIdentityIsStrict(mapper, configType, controllerType, stateType);
+        VerifyTwoFingerStaticInvalidation(mapper, configType, controllerType, stateType);
+    }
+
+    private static void VerifyInitialTwoFingerSettlesNonTriggeredFinger(Type mapper, Type configType, Type controllerType, Type stateType) {
+        object config = Activator.CreateInstance(configType);
+        object gesture = Activator.CreateInstance(stateType);
+        SetField(stateType, gesture, "HadTwoFingers", true);
+        SetField(stateType, gesture, "Touch1Tracking", true);
+        SetField(stateType, gesture, "Touch1Id", 10);
+        SetField(stateType, gesture, "Touch1StartX", 700.0);
+        SetField(stateType, gesture, "Touch1StartY", 500.0);
+        SetField(stateType, gesture, "Touch2Tracking", true);
+        SetField(stateType, gesture, "Touch2Id", 20);
+        SetField(stateType, gesture, "Touch2StartX", 1700.0);
+        SetField(stateType, gesture, "Touch2StartY", 500.0);
+
+        object controller = Activator.CreateInstance(controllerType);
+        SetField(controllerType, controller, "TouchCount", 2);
+        SetField(controllerType, controller, "Touch1Active", true);
+        SetField(controllerType, controller, "Touch1Id", 10);
+        SetField(controllerType, controller, "Touch1X", 880);
+        SetField(controllerType, controller, "Touch1Y", 500);
+        SetField(controllerType, controller, "Touch2Active", true);
+        SetField(controllerType, controller, "Touch2Id", 20);
+        SetField(controllerType, controller, "Touch2X", 1800);
+        SetField(controllerType, controller, "Touch2Y", 500);
+
+        MethodInfo recognize = RequiredMethod(mapper, "TryRecognizeTouchGesture");
+        object[] args = { gesture, controller, config, null };
+        Equal(true, recognize.Invoke(null, args), "180 mover plus 100 non-triggered finger is a valid two-finger gesture");
+        object recognition = args[3];
+        Type recognitionType = recognition.GetType();
+        Equal(true, recognitionType.GetField("TwoFingerContinuation").GetValue(recognition), "valid first trigger arms two-finger continuation");
+        Equal(1, recognitionType.GetField("Finger").GetValue(recognition), "180-distance finger becomes mover");
+        Equal(2, recognitionType.GetField("StaticFinger").GetValue(recognition), "non-triggered finger becomes static");
+        Equal(1800.0, recognitionType.GetField("StaticStartX").GetValue(recognition), "static movement is settled at its current position");
+
+        SetField(controllerType, controller, "Touch2X", 1880);
+        args = new object[] { gesture, controller, config, null };
+        Equal(false, recognize.Invoke(null, args), "two simultaneously triggered fingers do not create a two-finger gesture");
+    }
+
+    private static void VerifyTwoFingerStaticIdentityIsStrict(Type mapper, Type configType, Type controllerType, Type stateType) {
+        object instance = RuntimeHelpers.GetUninitializedObject(mapper);
+        mapper.GetField("_config", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, Activator.CreateInstance(configType));
+
+        object gesture = Activator.CreateInstance(stateType);
+        SetField(stateType, gesture, "TwoFingerContinuation", true);
+        SetField(stateType, gesture, "StaticFinger", 1);
+        SetField(stateType, gesture, "StaticFingerId", 10);
+        SetField(stateType, gesture, "StaticStartX", 1800.0);
+        SetField(stateType, gesture, "StaticStartY", 500.0);
+        SetField(stateType, gesture, "ActiveFinger", 2);
+        SetField(stateType, gesture, "ActiveFingerId", 20);
+        mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, gesture);
+
+        object controller = Activator.CreateInstance(controllerType);
+        SetField(controllerType, controller, "TouchCount", 1);
+        SetField(controllerType, controller, "Touch1Active", true);
+        SetField(controllerType, controller, "Touch1Id", 30);
+        SetField(controllerType, controller, "Touch1X", 700);
+        SetField(controllerType, controller, "Touch1Y", 500);
+
+        object[] staticArgs = { controller, 0, 0, 0 };
+        bool found = (bool)mapper.GetMethod("TryGetTwoFingerContinuationStatic", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(instance, staticArgs);
+        Equal(false, found, "far returning mover is never adopted as the static finger");
+        gesture = mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(10, stateType.GetField("StaticFingerId").GetValue(gesture), "missing static finger identity is preserved while waiting");
+
+        SetField(controllerType, controller, "Touch1Id", 11);
+        SetField(controllerType, controller, "Touch1X", 1750);
+        staticArgs = new object[] { controller, 0, 0, 0 };
+        found = (bool)mapper.GetMethod("TryGetTwoFingerContinuationStatic", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(instance, staticArgs);
+        Equal(false, found, "nearby replacement contact cannot replace a released static finger");
+        gesture = mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(10, stateType.GetField("StaticFingerId").GetValue(gesture), "static identity is never transferred");
+    }
+
+    private static void VerifyTwoFingerStaticInvalidation(Type mapper, Type configType, Type controllerType, Type stateType) {
+        object instance = RuntimeHelpers.GetUninitializedObject(mapper);
+        mapper.GetField("_config", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, Activator.CreateInstance(configType));
+
+        object gesture = Activator.CreateInstance(stateType);
+        SetField(stateType, gesture, "Active", true);
+        SetField(stateType, gesture, "Completed", true);
+        SetField(stateType, gesture, "FingerCount", 2);
+        SetField(stateType, gesture, "HadTwoFingers", true);
+        SetField(stateType, gesture, "TwoFingerContinuation", true);
+        SetField(stateType, gesture, "StaticFinger", 1);
+        SetField(stateType, gesture, "StaticFingerId", 10);
+        SetField(stateType, gesture, "StaticStartX", 1800.0);
+        SetField(stateType, gesture, "StaticStartY", 500.0);
+        SetField(stateType, gesture, "ActiveFinger", 2);
+        SetField(stateType, gesture, "ActiveFingerId", 20);
+        SetField(stateType, gesture, "RepeatAnchorX", 700.0);
+        SetField(stateType, gesture, "RepeatAnchorY", 500.0);
+        mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, gesture);
+
+        object controller = Activator.CreateInstance(controllerType);
+        SetField(controllerType, controller, "TouchCount", 2);
+        SetField(controllerType, controller, "Touch1Active", true);
+        SetField(controllerType, controller, "Touch1Id", 10);
+        SetField(controllerType, controller, "Touch1X", 1900);
+        SetField(controllerType, controller, "Touch1Y", 500);
+        SetField(controllerType, controller, "Touch2Active", true);
+        SetField(controllerType, controller, "Touch2Id", 20);
+        SetField(controllerType, controller, "Touch2X", 700);
+        SetField(controllerType, controller, "Touch2Y", 500);
+
+        MethodInfo update = mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance);
+        update.Invoke(instance, new[] { controller, (object)100.0 });
+        gesture = mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(false, stateType.GetField("Active").GetValue(gesture), "static movement at the tolerance ends the gesture");
+        Equal(true, mapper.GetField("_touchGestureBlockedUntilRelease", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance), "static drift blocks every later gesture until release");
+        Equal(true, mapper.GetField("_touchGestureBlockOwnsTouchpad", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance), "invalidated two-finger gesture retains touchpad ownership");
+
+        instance = RuntimeHelpers.GetUninitializedObject(mapper);
+        mapper.GetField("_config", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, Activator.CreateInstance(configType));
+        gesture = Activator.CreateInstance(stateType);
+        SetField(stateType, gesture, "Active", true);
+        SetField(stateType, gesture, "Completed", true);
+        SetField(stateType, gesture, "FingerCount", 2);
+        SetField(stateType, gesture, "HadTwoFingers", true);
+        SetField(stateType, gesture, "TwoFingerContinuation", true);
+        SetField(stateType, gesture, "StaticFinger", 1);
+        SetField(stateType, gesture, "StaticFingerId", 10);
+        SetField(stateType, gesture, "StaticStartX", 1800.0);
+        SetField(stateType, gesture, "StaticStartY", 500.0);
+        SetField(stateType, gesture, "ActiveFinger", 2);
+        SetField(stateType, gesture, "ActiveFingerId", 20);
+        SetField(stateType, gesture, "RepeatAnchorX", 700.0);
+        SetField(stateType, gesture, "RepeatAnchorY", 500.0);
+        SetField(stateType, gesture, "Side", Enum.Parse(stateType.GetField("Side").FieldType, "Left"));
+        SetField(stateType, gesture, "Direction", Enum.Parse(stateType.GetField("Direction").FieldType, "Right"));
+        mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, gesture);
+        controller = Activator.CreateInstance(controllerType);
+        SetField(controllerType, controller, "TouchCount", 2);
+        SetField(controllerType, controller, "Touch1Active", true);
+        SetField(controllerType, controller, "Touch1Id", 10);
+        SetField(controllerType, controller, "Touch1X", 1899);
+        SetField(controllerType, controller, "Touch1Y", 500);
+        SetField(controllerType, controller, "Touch2Active", true);
+        SetField(controllerType, controller, "Touch2Id", 20);
+        SetField(controllerType, controller, "Touch2X", 880);
+        SetField(controllerType, controller, "Touch2Y", 500);
+        update.Invoke(instance, new[] { controller, (object)100.5 });
+        gesture = mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance);
+        Equal(1899.0, stateType.GetField("StaticStartX").GetValue(gesture), "each physical mover step refreshes the static baseline");
+        Equal(880.0, stateType.GetField("RepeatAnchorX").GetValue(gesture), "the same step settles the mover axis anchor");
+        Equal(false, mapper.GetField("_touchGestureBlockedUntilRelease", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance), "static movement below 100 is accepted before the mover settles");
+        SetField(controllerType, controller, "Touch1X", 1998);
+        update.Invoke(instance, new[] { controller, (object)100.6 });
+        Equal(false, mapper.GetField("_touchGestureBlockedUntilRelease", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance), "static tolerance is measured from the refreshed baseline");
+        SetField(controllerType, controller, "Touch1X", 1999);
+        update.Invoke(instance, new[] { controller, (object)100.7 });
+        Equal(true, mapper.GetField("_touchGestureBlockedUntilRelease", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance), "100 movement from the refreshed static baseline ends the gesture");
+
+        instance = RuntimeHelpers.GetUninitializedObject(mapper);
+        mapper.GetField("_config", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, Activator.CreateInstance(configType));
+        gesture = Activator.CreateInstance(stateType);
+        SetField(stateType, gesture, "Active", true);
+        SetField(stateType, gesture, "Completed", true);
+        SetField(stateType, gesture, "FingerCount", 2);
+        SetField(stateType, gesture, "HadTwoFingers", true);
+        SetField(stateType, gesture, "TwoFingerContinuation", true);
+        SetField(stateType, gesture, "StaticFinger", 1);
+        SetField(stateType, gesture, "StaticFingerId", 10);
+        SetField(stateType, gesture, "StaticStartX", 1800.0);
+        SetField(stateType, gesture, "StaticStartY", 500.0);
+        SetField(stateType, gesture, "ActiveFinger", 2);
+        SetField(stateType, gesture, "ActiveFingerId", 20);
+        mapper.GetField("_touchGesture", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, gesture);
+        controller = Activator.CreateInstance(controllerType);
+        SetField(controllerType, controller, "TouchCount", 1);
+        SetField(controllerType, controller, "Touch2Active", true);
+        SetField(controllerType, controller, "Touch2Id", 20);
+        SetField(controllerType, controller, "Touch2X", 880);
+        SetField(controllerType, controller, "Touch2Y", 500);
+        update.Invoke(instance, new[] { controller, (object)101.0 });
+        Equal(true, mapper.GetField("_touchGestureBlockedUntilRelease", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instance), "released static finger blocks the moving finger from becoming another gesture");
+    }
+
+    private static void VerifyTouchpadClicks(Assembly assembly, Type mapper) {
+        Type configType = RequiredType(assembly, "Config");
+        Type controllerType = RequiredType(assembly, "ControllerState");
+        MethodInfo resolve = RequiredMethod(mapper, "ResolveTouchpadClick");
+        object config = Activator.CreateInstance(configType);
+
+        Equal("Backspace", ResolveClick(controllerType, resolve, config, 0, 0, false), "click without touch");
+        Equal("Delete", ResolveClick(controllerType, resolve, config, 1, 100, true), "left click");
+        Equal("CapsLock", ResolveClick(controllerType, resolve, config, 1, 960, true), "buffer click");
+        Equal("Backspace", ResolveClick(controllerType, resolve, config, 1, 1800, true), "right click");
+
+        object twoTouches = Activator.CreateInstance(controllerType);
+        SetField(controllerType, twoTouches, "TouchCount", 2);
+        SetField(controllerType, twoTouches, "Touch1Active", true);
+        SetField(controllerType, twoTouches, "Touch2Active", true);
+        object result = resolve.Invoke(null, new[] { twoTouches, config });
+        Equal("Backspace", result.GetType().GetField("Key").GetValue(result).ToString(), "two-finger click");
+    }
+
+    private static string ResolveClick(Type controllerType, MethodInfo resolve, object config, int count, int x, bool active) {
+        object state = Activator.CreateInstance(controllerType);
+        SetField(controllerType, state, "TouchCount", count);
+        SetField(controllerType, state, "Touch1Active", active);
+        SetField(controllerType, state, "Touch1X", x);
+        object result = resolve.Invoke(null, new[] { state, config });
+        return result.GetType().GetField("Key").GetValue(result).ToString();
+    }
+
+    private static Type RequiredType(Assembly assembly, string name) {
+        return assembly.GetType(name, true);
+    }
+
+    private static MethodInfo RequiredMethod(Type type, string name) {
+        return type.GetMethod(name, PrivateStatic) ?? throw new InvalidOperationException($"Missing method {name}");
+    }
+
+    private static void SetField(Type type, object target, string name, object value) {
+        (type.GetField(name) ?? throw new InvalidOperationException($"Missing field {name}")).SetValue(target, value);
+    }
+
+    private static void Equal(object expected, object actual, string name) {
+        if (!Equals(expected, actual)) throw new InvalidOperationException($"{name}: expected {expected}, got {actual}");
+    }
+
+    private static void NotNull(object value, string name) {
+        if (value == null) throw new InvalidOperationException($"{name}: expected non-null value");
+    }
+}
