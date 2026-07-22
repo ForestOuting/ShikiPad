@@ -95,14 +95,32 @@ internal sealed class InputInjector {
     }
 
     public void KeyTap(PhysicalKey key, bool shift, bool ctrl, bool alt, bool win) {
+        KeyTapCore(key, shift, ctrl, alt, win, false);
+    }
+
+    public void KeyTapExact(PhysicalKey key, bool shift, bool ctrl, bool alt, bool win) {
+        KeyTapCore(key, shift, ctrl, alt, win, true);
+    }
+
+    private void KeyTapCore(PhysicalKey key, bool shift, bool ctrl, bool alt, bool win, bool isolateUnrequestedModifiers) {
         if (key == PhysicalKey.None || !_keys.ContainsKey(key)) return;
         lock (_heldLock) {
-            bool pressShift = shift && !_heldKeys.Contains(PhysicalKey.LShift);
-            bool pressCtrl = ctrl && !_heldKeys.Contains(PhysicalKey.LCtrl);
-            bool pressAlt = alt && !_heldKeys.Contains(PhysicalKey.LAlt);
-            bool pressWin = win && !_heldKeys.Contains(PhysicalKey.LWin);
+            bool restoreHeldKey = ShouldRestoreHeldKeyForTap(_heldKeys.Contains(key), key);
+            bool pressShift = shift && !IsModifierGroupHeld(PhysicalKey.LShift, PhysicalKey.RShift);
+            bool pressCtrl = ctrl && !IsModifierGroupHeld(PhysicalKey.LCtrl, PhysicalKey.RCtrl);
+            bool pressAlt = alt && !IsModifierGroupHeld(PhysicalKey.LAlt, PhysicalKey.RAlt);
+            bool pressWin = win && !IsModifierGroupHeld(PhysicalKey.LWin, PhysicalKey.RWin);
+            List<PhysicalKey> suspendedModifiers = new List<PhysicalKey>();
 
             List<INPUT> inputs = new List<INPUT>();
+            if (restoreHeldKey) AddKey(inputs, _keys[key], true);
+            if (isolateUnrequestedModifiers) {
+                foreach (PhysicalKey heldKey in _heldKeys) {
+                    if (!IsReferenceCountedModifier(heldKey) || !ShouldSuspendModifierForExactTap(heldKey, shift, ctrl, alt, win)) continue;
+                    AddKey(inputs, _keys[heldKey], true);
+                    suspendedModifiers.Add(heldKey);
+                }
+            }
             if (pressShift) AddKey(inputs, _shift, false);
             if (pressCtrl) AddKey(inputs, _ctrl, false);
             if (pressAlt) AddKey(inputs, _alt, false);
@@ -113,8 +131,14 @@ internal sealed class InputInjector {
             if (pressAlt) AddKey(inputs, _alt, true);
             if (pressCtrl) AddKey(inputs, _ctrl, true);
             if (pressShift) AddKey(inputs, _shift, true);
-            Send(inputs, "KeyTap(" + key + ")");
+            for (int i = suspendedModifiers.Count - 1; i >= 0; i--) AddKey(inputs, _keys[suspendedModifiers[i]], false);
+            if (restoreHeldKey) AddKey(inputs, _keys[key], false);
+            Send(inputs, (isolateUnrequestedModifiers ? "KeyTapExact(" : "KeyTap(") + key + ")");
         }
+    }
+
+    private bool IsModifierGroupHeld(PhysicalKey left, PhysicalKey right) {
+        return _heldKeys.Contains(left) || _heldKeys.Contains(right);
     }
 
     private bool IsHeld(PhysicalKey key) {
@@ -207,6 +231,18 @@ internal sealed class InputInjector {
                key == PhysicalKey.RAlt ||
                key == PhysicalKey.LWin ||
                key == PhysicalKey.RWin;
+    }
+
+    internal static bool ShouldRestoreHeldKeyForTap(bool keyHeld, PhysicalKey key) {
+        return keyHeld && !IsReferenceCountedModifier(key);
+    }
+
+    internal static bool ShouldSuspendModifierForExactTap(PhysicalKey modifier, bool shift, bool ctrl, bool alt, bool win) {
+        if (modifier == PhysicalKey.LShift || modifier == PhysicalKey.RShift) return !shift;
+        if (modifier == PhysicalKey.LCtrl || modifier == PhysicalKey.RCtrl) return !ctrl;
+        if (modifier == PhysicalKey.LAlt || modifier == PhysicalKey.RAlt) return !alt;
+        if (modifier == PhysicalKey.LWin || modifier == PhysicalKey.RWin) return !win;
+        return false;
     }
 
     private void InitKeys() {

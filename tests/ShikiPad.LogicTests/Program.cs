@@ -18,6 +18,7 @@ static class Program {
         VerifyModifierActionWindow(assembly, mapper);
         VerifyCapsFnTranslation(assembly, mapper);
         VerifyLeftStickSectors(mapper);
+        VerifyOutputModulePriority(assembly, mapper);
         VerifyPureBaseAndLayerSelection(assembly, mapper);
         NotNull(mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance), "two-finger continuation update remains available");
         NotNull(mapper.GetMethod("TryRecognizeTwoFingerContinuationGesture", PrivateStatic), "two-finger continuation recognition remains available");
@@ -192,6 +193,47 @@ static class Program {
     private static string SectorAtDegrees(MethodInfo sector, double degrees) {
         double radians = degrees * Math.PI / 180.0;
         return sector.Invoke(null, new object[] { Math.Cos(radians), -Math.Sin(radians) }).ToString();
+    }
+
+    private static void VerifyOutputModulePriority(Assembly assembly, Type mapper) {
+        Type moduleType = RequiredType(assembly, "MapperForm+OutputModule");
+        MethodInfo priority = RequiredMethod(mapper, "OutputModulePriority");
+        MethodInfo canUseLane = RequiredMethod(mapper, "CanUseTickOutputLane");
+        string[] ordered = { "TouchpadClick", "TouchGesture", "StickClicks", "ActionButtons", "LeftStickScroll", "RightStickPointer" };
+        int previous = int.MaxValue;
+        foreach (string name in ordered) {
+            object module = Enum.Parse(moduleType, name);
+            int current = (int)priority.Invoke(null, new[] { module });
+            Equal(true, current < previous, name + " follows the documented descending output priority");
+            previous = current;
+        }
+
+        object none = Enum.Parse(moduleType, "None");
+        object actions = Enum.Parse(moduleType, "ActionButtons");
+        object scroll = Enum.Parse(moduleType, "LeftStickScroll");
+        Equal(true, canUseLane.Invoke(null, new[] { none, actions }), "an unclaimed frame accepts an action output owner");
+        Equal(true, canUseLane.Invoke(null, new[] { actions, actions }), "one module can emit an atomic multi-event output in its owned frame");
+        Equal(false, canUseLane.Invoke(null, new[] { actions, scroll }), "a second module is deferred after the frame is claimed");
+
+        object mapperInstance = RuntimeHelpers.GetUninitializedObject(mapper);
+        mapper.GetField("_tickOutputOwner", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(mapperInstance, none);
+        MethodInfo claimLane = mapper.GetMethod("TryClaimTickOutput", BindingFlags.NonPublic | BindingFlags.Instance);
+        Equal(true, claimLane.Invoke(mapperInstance, new[] { actions }), "the first output module claims the polling frame");
+        Equal(false, claimLane.Invoke(mapperInstance, new[] { scroll }), "a different lower-priority module is deferred in the claimed frame");
+        Equal(true, claimLane.Invoke(mapperInstance, new[] { actions }), "the owning module can finish its atomic sequence");
+
+        Type injector = RequiredType(assembly, "InputInjector");
+        MethodInfo restoreTap = RequiredMethod(injector, "ShouldRestoreHeldKeyForTap");
+        Type keyType = RequiredType(assembly, "PhysicalKey");
+        Equal(true, restoreTap.Invoke(null, new[] { (object)true, Enum.Parse(keyType, "M") }), "a tap restores an already-held ordinary key after its pulse");
+        Equal(false, restoreTap.Invoke(null, new[] { (object)false, Enum.Parse(keyType, "M") }), "an unheld ordinary key needs no restoration");
+        Equal(false, restoreTap.Invoke(null, new[] { (object)true, Enum.Parse(keyType, "LShift") }), "reference-counted modifiers keep their existing ownership path");
+
+        MethodInfo suspendModifier = RequiredMethod(injector, "ShouldSuspendModifierForExactTap");
+        Equal(true, suspendModifier.Invoke(null, new[] { Enum.Parse(keyType, "LShift"), (object)false, false, false, false }), "an unrelated held Shift is suspended around an exact shortcut");
+        Equal(false, suspendModifier.Invoke(null, new[] { Enum.Parse(keyType, "RShift"), (object)true, false, false, false }), "a requested Shift group stays held for an exact shortcut");
+        Equal(false, suspendModifier.Invoke(null, new[] { Enum.Parse(keyType, "RAlt"), (object)false, false, true, false }), "either Alt side can satisfy an exact Alt shortcut");
+        Equal(true, suspendModifier.Invoke(null, new[] { Enum.Parse(keyType, "LWin"), (object)false, false, false, false }), "an unrelated held Win key is suspended around an exact shortcut");
     }
 
     private static void VerifyCapsFnStroke(MethodInfo resolve, object instance, Type strokeType, Type keyType, string inputKey, bool inputShift, string expectedKey, bool expectedShift, bool expectedTranslated) {

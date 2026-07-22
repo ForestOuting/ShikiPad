@@ -58,6 +58,7 @@ internal sealed class MapperForm : Form {
     private volatile bool _manualVisible;
     private double _lastTickMs;
     private double _lastTickExceptionLogMs = -10000.0;
+    private OutputModule _tickOutputOwner = OutputModule.None;
 
     public MapperForm(Config config) {
         _config = config;
@@ -217,6 +218,7 @@ internal sealed class MapperForm : Form {
         double now = NowMs();
         double deltaSec = Clamp((now - _lastTickMs) / 1000.0, 0.0, MaxMouseFrameSeconds);
         _lastTickMs = now;
+        _tickOutputOwner = OutputModule.None;
 
         bool preL1 = _prevL1;
         bool preR1 = _prevR1;
@@ -248,16 +250,32 @@ internal sealed class MapperForm : Form {
         UpdateTriggers(s, now);
         MarkActiveLayerOverlap();
         UpdateClutchButton(s, now);
-        UpdateLeftStick(s, now, deltaSec);
+        UpdateLeftStick(s, now);
         UpdateTouchpadClick(s, now);
         UpdateTouchGestures(s, now);
 
         UpdateMouseButtons(s, now);
         FlushPendingMouseButtons(s, now);
-        UpdateRightStick(s, now, deltaSec);
         UpdateActionButtons(s, now);
+        UpdateLeftStickScroll(s, deltaSec);
+        UpdateRightStick(s, now, deltaSec);
         ClearInactiveLayerOverlapFlags(s);
         UpdateSystemButtonReleases(s);
+    }
+
+    private bool TryClaimTickOutput(OutputModule module) {
+        if (!CanUseTickOutputLane(_tickOutputOwner, module)) return false;
+        if (_tickOutputOwner == OutputModule.None) _tickOutputOwner = module;
+        return true;
+    }
+
+    internal static bool CanUseTickOutputLane(OutputModule currentOwner, OutputModule requestedOwner) {
+        return requestedOwner != OutputModule.None &&
+            (currentOwner == OutputModule.None || currentOwner == requestedOwner);
+    }
+
+    internal static int OutputModulePriority(OutputModule module) {
+        return (int)module;
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
@@ -334,8 +352,7 @@ internal sealed class MapperForm : Form {
             : Clamp(_config.LeftStickEnterDeadzone, 0.0, 1.0);
     }
 
-    private void UpdateLeftStick(ControllerState s, double now, double deltaSec) {
-        double radius = Math.Sqrt(s.LX * s.LX + s.LY * s.LY);
+    private void UpdateLeftStick(ControllerState s, double now) {
         StickDirection previous = _leftDirection;
         StickDirection next = ResolveLeftStickDirection(s.LX, s.LY);
 
@@ -391,7 +408,9 @@ internal sealed class MapperForm : Form {
 
         _heldLeftStickKeys.Clear();
         _heldLeftStickKeys.AddRange(desiredKeys);
+    }
 
+    private void UpdateLeftStickScroll(ControllerState s, double deltaSec) {
         if (_leftDirection != StickDirection.Up && _leftDirection != StickDirection.Down) {
             _leftStickScroll.Reset();
             return;
@@ -403,9 +422,13 @@ internal sealed class MapperForm : Form {
             return;
         }
 
+        if (!CanUseTickOutputLane(_tickOutputOwner, OutputModule.LeftStickScroll)) return;
+
         int wheelDelta;
+        double radius = Math.Sqrt(s.LX * s.LX + s.LY * s.LY);
         int scrollSign = scrollDirection == StickDirection.Up ? 1 : -1;
         if (_leftStickScroll.TryUpdate(radius, deltaSec, _config, scrollSign, out wheelDelta)) {
+            if (!TryClaimTickOutput(OutputModule.LeftStickScroll)) return;
             _injector.CurrentSource = "LeftStick";
             _injector.CurrentReason = "AnalogScroll " + scrollDirection;
             _injector.MouseWheelDelta(wheelDelta);
@@ -500,6 +523,7 @@ internal sealed class MapperForm : Form {
     }
 
     private void PressTouchpadClickKey(PhysicalKey key, double now) {
+        if (!TryClaimTickOutput(OutputModule.TouchpadClick)) return;
         _injector.CurrentSource = "TouchpadClick";
         _injector.CurrentReason = "Touchpad click " + key;
         _injector.KeyDown(key);
@@ -525,6 +549,7 @@ internal sealed class MapperForm : Form {
     private void UpdateTouchpadClickRepeat(double now) {
         if (!_touchClickKeyDown || !IsTouchpadClickRepeatKey(_touchClickKey)) return;
         if (now < _touchClickNextRepeatMs) return;
+        if (!TryClaimTickOutput(OutputModule.TouchpadClick)) return;
 
         _injector.CurrentSource = "TouchpadClick";
         _injector.CurrentReason = "Touchpad click progressive repeat " + _touchClickKey;
@@ -1299,17 +1324,18 @@ internal sealed class MapperForm : Form {
     }
 
     private void TriggerTouchGestureShortcut(TouchGestureShortcut shortcut) {
+        if (!TryClaimTickOutput(OutputModule.TouchGesture)) return;
         _injector.CurrentSource = "TouchGesture";
         _injector.CurrentReason = "Touch " + shortcut;
 
         switch (shortcut) {
             case TouchGestureShortcut.PreviousWindow:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.Escape, true, false, true, false);
+                _injector.KeyTapExact(PhysicalKey.Escape, true, false, true, false);
                 break;
             case TouchGestureShortcut.NextWindow:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.Escape, false, false, true, false);
+                _injector.KeyTapExact(PhysicalKey.Escape, false, false, true, false);
                 break;
             case TouchGestureShortcut.PreviousAltTabWindow:
                 EnterTouchGestureAltTabSwitcher(true);
@@ -1319,51 +1345,51 @@ internal sealed class MapperForm : Form {
                 break;
             case TouchGestureShortcut.PreviousDesktop:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowLeft, false, true, false, true);
+                _injector.KeyTapExact(PhysicalKey.ArrowLeft, false, true, false, true);
                 break;
             case TouchGestureShortcut.NextDesktop:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowRight, false, true, false, true);
+                _injector.KeyTapExact(PhysicalKey.ArrowRight, false, true, false, true);
                 break;
             case TouchGestureShortcut.MaximizeWindow:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowUp, false, false, false, true);
+                _injector.KeyTapExact(PhysicalKey.ArrowUp, false, false, false, true);
                 break;
             case TouchGestureShortcut.RestoreOrMinimizeWindow:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowDown, false, false, false, true);
+                _injector.KeyTapExact(PhysicalKey.ArrowDown, false, false, false, true);
                 break;
             case TouchGestureShortcut.Screenshot:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.S, true, false, false, true);
+                _injector.KeyTapExact(PhysicalKey.S, true, false, false, true);
                 break;
             case TouchGestureShortcut.RestoreMinimizedWindows:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.M, true, false, false, true);
+                _injector.KeyTapExact(PhysicalKey.M, true, false, false, true);
                 break;
             case TouchGestureShortcut.CloseWindow:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.F4, false, false, true, false);
+                _injector.KeyTapExact(PhysicalKey.F4, false, false, true, false);
                 break;
             case TouchGestureShortcut.MinimizeAllWindows:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.M, false, false, false, true);
+                _injector.KeyTapExact(PhysicalKey.M, false, false, false, true);
                 break;
             case TouchGestureShortcut.PreviousTab:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.Tab, true, true, false, false);
+                _injector.KeyTapExact(PhysicalKey.Tab, true, true, false, false);
                 break;
             case TouchGestureShortcut.NextTab:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.Tab, false, true, false, false);
+                _injector.KeyTapExact(PhysicalKey.Tab, false, true, false, false);
                 break;
             case TouchGestureShortcut.BackNavigation:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowLeft, false, false, true, false);
+                _injector.KeyTapExact(PhysicalKey.ArrowLeft, false, false, true, false);
                 break;
             case TouchGestureShortcut.ForwardNavigation:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.ArrowRight, false, false, true, false);
+                _injector.KeyTapExact(PhysicalKey.ArrowRight, false, false, true, false);
                 break;
         }
     }
@@ -1382,7 +1408,7 @@ internal sealed class MapperForm : Form {
             _touchAltTabAltDown = true;
         }
 
-        _injector.KeyTap(PhysicalKey.Tab, previous, false, false, false);
+        _injector.KeyTapExact(PhysicalKey.Tab, previous, false, true, false);
     }
 
     private void TriggerTouchGestureAltTabNavigation(TouchGestureDirection direction, int count) {
@@ -1390,6 +1416,7 @@ internal sealed class MapperForm : Form {
 
         PhysicalKey key = TouchGestureArrowKey(direction);
         if (key == PhysicalKey.None) return;
+        if (!TryClaimTickOutput(OutputModule.TouchGesture)) return;
 
         if (!_touchAltTabAltDown) {
             _injector.CurrentSource = "TouchGesture";
@@ -1406,7 +1433,7 @@ internal sealed class MapperForm : Form {
         for (int i = 0; i < count; i++) {
             _injector.CurrentSource = "TouchGesture";
             _injector.CurrentReason = "Touch Alt-Tab navigation " + direction;
-            _injector.KeyTap(key, false, false, false, false);
+            _injector.KeyTapExact(key, false, false, true, false);
         }
     }
 
@@ -1469,6 +1496,11 @@ internal sealed class MapperForm : Form {
                 ResolvedActionStroke resolvedLayerAction = ResolveActionStroke(_mapping.Lookup(resolvedLayer, (ActionButton)i));
                 KeyStroke resolvedLayerKey = resolvedLayerAction.Stroke;
                 if (!resolvedLayerKey.IsNone) {
+                    if (!TryClaimTickOutput(OutputModule.ActionButtons)) {
+                        _holds[i] = hold;
+                        _prevDown[i] = curr;
+                        continue;
+                    }
                     if (resolvedLayer != Layer.Base || IsFunctionKey(resolvedLayerKey)) {
                         TapStickyActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " virtual tap", resolvedLayerAction.FnTranslated, hold.PendingModifierMask);
                         if (!releasedPending) {
@@ -1531,6 +1563,10 @@ internal sealed class MapperForm : Form {
                 hold.KeyIsDown = false;
 
                 if (!key.IsNone) {
+                    if (!TryClaimTickOutput(OutputModule.ActionButtons)) {
+                        _holds[i] = hold;
+                        continue;
+                    }
                     if (layer != Layer.Base || IsFunctionKey(key)) {
                         TapActionKey(i, key, "Button " + ActionButtonName(i) + " virtual tap", initialAction.FnTranslated);
                         hold.SuppressUntilRelease = true;
@@ -1566,6 +1602,11 @@ internal sealed class MapperForm : Form {
                 if (hold.Key != currentLayerKey) {
                     if (layer != Layer.Base || IsFunctionKey(currentLayerKey)) {
                         if (!currentLayerKey.IsNone) {
+                            if (!TryClaimTickOutput(OutputModule.ActionButtons)) {
+                                _holds[i] = hold;
+                                _prevDown[i] = curr;
+                                continue;
+                            }
                             TapActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change virtual tap", layerAction.FnTranslated);
                             hold.Key = currentLayerKey;
                             hold.KeyLayer = layer;
@@ -1579,6 +1620,11 @@ internal sealed class MapperForm : Form {
                     }
 
                     if (!currentLayerKey.IsNone) {
+                        if (!TryClaimTickOutput(OutputModule.ActionButtons)) {
+                            _holds[i] = hold;
+                            _prevDown[i] = curr;
+                            continue;
+                        }
                         PressActionKey(i, currentLayerKey, "Button " + ActionButtonName(i) + " layer change press", ref hold, layer, IsBaseRepeatableAction(i, layer), now, layerAction.FnTranslated);
                     }
 
@@ -2178,6 +2224,7 @@ internal sealed class MapperForm : Form {
     private void UpdateBaseRepeat(int index, ref ButtonHold hold, double now) {
         if (!hold.RepeatEnabled || (!hold.KeyIsDown && !hold.BoundRepeatPulse) || hold.Key.IsNone) return;
         if (now < hold.NextRepeatMs) return;
+        if (!TryClaimTickOutput(OutputModule.ActionButtons)) return;
 
         if (hold.BoundRepeatPulse) {
             EmitBoundActionPulse(index, hold.Key, "Button " + ActionButtonName(index) + " progressive bound repeat", hold.StickyModifierMask);
@@ -2244,6 +2291,7 @@ internal sealed class MapperForm : Form {
 
     private void FlushPendingMouseButton(int button, string name, bool physicallyDown, double now, ref MouseButtonHold hold) {
         if (!hold.Pending || now - hold.PendingSinceMs < Math.Max(0, _config.ModifierBindingWindowMs)) return;
+        if (!TryClaimTickOutput(OutputModule.StickClicks)) return;
 
         bool released = hold.PendingReleased || !physicallyDown;
         int modifierMask = hold.PendingModifierMask;
@@ -2278,10 +2326,12 @@ internal sealed class MapperForm : Form {
             _rightStickMouse.Reset();
             return;
         }
+        if (!CanUseTickOutputLane(_tickOutputOwner, OutputModule.RightStickPointer)) return;
 
         int ix;
         int iy;
         if (_rightStickMouse.TryUpdate(s.RX, s.RY, deltaSec, _config, out ix, out iy)) {
+            if (!TryClaimTickOutput(OutputModule.RightStickPointer)) return;
             _injector.CurrentSource = "RightStick";
             _injector.CurrentReason = "Mouse Move";
             _injector.MouseMove(ix, iy);
@@ -2482,6 +2532,16 @@ internal sealed class MapperForm : Form {
         ActionPosition,
         MouseButton,
         TouchpadClick
+    }
+
+    internal enum OutputModule {
+        None = 0,
+        RightStickPointer = 100,
+        LeftStickScroll = 200,
+        ActionButtons = 300,
+        StickClicks = 400,
+        TouchGesture = 500,
+        TouchpadClick = 600
     }
 
     private enum TouchGestureShortcut {
