@@ -2440,11 +2440,11 @@ internal sealed class MapperForm : Form {
         if (angle < 0.0) angle += Math.PI * 2.0;
 
         double degrees = angle * 180.0 / Math.PI;
-        if (degrees < 70.0) return StickDirection.UpRight;
-        if (degrees < 110.0) return StickDirection.Up;
+        if (degrees < 65.0) return StickDirection.UpRight;
+        if (degrees < 115.0) return StickDirection.Up;
         if (angle < Math.PI) return StickDirection.UpLeft;
-        if (degrees < 250.0) return StickDirection.DownLeft;
-        if (degrees < 290.0) return StickDirection.Down;
+        if (degrees < 245.0) return StickDirection.DownLeft;
+        if (degrees < 295.0) return StickDirection.Down;
         return StickDirection.DownRight;
     }
 

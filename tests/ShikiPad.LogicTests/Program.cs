@@ -177,16 +177,16 @@ static class Program {
         NotNull(sector, "left-stick sector resolver");
 
         Equal("Up", SectorAtDegrees(sector, 90.0), "wheel-up sector remains centered on straight up");
-        Equal("Up", SectorAtDegrees(sector, 71.0), "wheel-up sector includes its clockwise interior edge");
-        Equal("Up", SectorAtDegrees(sector, 109.0), "wheel-up sector includes its counterclockwise interior edge");
-        Equal("UpRight", SectorAtDegrees(sector, 69.0), "upper-right modifier receives the area below the wheel-up boundary");
-        Equal("UpLeft", SectorAtDegrees(sector, 111.0), "upper-left modifier receives the area above the wheel-up boundary");
+        Equal("Up", SectorAtDegrees(sector, 66.0), "wheel-up sector includes its clockwise interior edge");
+        Equal("Up", SectorAtDegrees(sector, 114.0), "wheel-up sector includes its counterclockwise interior edge");
+        Equal("UpRight", SectorAtDegrees(sector, 64.0), "upper-right modifier receives the area below the wheel-up boundary");
+        Equal("UpLeft", SectorAtDegrees(sector, 116.0), "upper-left modifier receives the area above the wheel-up boundary");
 
         Equal("Down", SectorAtDegrees(sector, 270.0), "wheel-down sector remains centered on straight down");
-        Equal("Down", SectorAtDegrees(sector, 251.0), "wheel-down sector includes its clockwise interior edge");
-        Equal("Down", SectorAtDegrees(sector, 289.0), "wheel-down sector includes its counterclockwise interior edge");
-        Equal("DownLeft", SectorAtDegrees(sector, 249.0), "lower-left modifier receives the area before the wheel-down boundary");
-        Equal("DownRight", SectorAtDegrees(sector, 291.0), "lower-right modifier receives the area after the wheel-down boundary");
+        Equal("Down", SectorAtDegrees(sector, 246.0), "wheel-down sector includes its clockwise interior edge");
+        Equal("Down", SectorAtDegrees(sector, 294.0), "wheel-down sector includes its counterclockwise interior edge");
+        Equal("DownLeft", SectorAtDegrees(sector, 244.0), "lower-left modifier receives the area before the wheel-down boundary");
+        Equal("DownRight", SectorAtDegrees(sector, 296.0), "lower-right modifier receives the area after the wheel-down boundary");
     }
 
     private static string SectorAtDegrees(MethodInfo sector, double degrees) {

@@ -3,7 +3,7 @@
 ## 2026-07-22
 
 - Changed two-finger right-side direct swipes to left `Win+Shift+S`, up `Win+Shift+M`, right `Alt+F4`, and down `Win+M`; all four remain one-shot gestures.
-- Narrowed the straight-up and straight-down left-stick wheel sectors from ±30° to ±20° without moving either vertical centerline; each of the four modifier sectors expands from ±30° to a total 70° sector (equivalent to ±35°).
+- Set the straight-up and straight-down left-stick wheel sectors to ±25° without moving either vertical centerline, for 50° per wheel sector; each of the four modifier sectors now occupies exactly 65°.
 
 ## 2026-07-21
 
