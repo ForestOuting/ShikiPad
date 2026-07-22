@@ -17,6 +17,7 @@ static class Program {
         VerifyTouchpadClicks(assembly, mapper);
         VerifyModifierActionWindow(assembly, mapper);
         VerifyCapsFnTranslation(assembly, mapper);
+        VerifyLeftStickSectors(mapper);
         VerifyPureBaseAndLayerSelection(assembly, mapper);
         NotNull(mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance), "two-finger continuation update remains available");
         NotNull(mapper.GetMethod("TryRecognizeTwoFingerContinuationGesture", PrivateStatic), "two-finger continuation recognition remains available");
@@ -169,6 +170,28 @@ static class Program {
         VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Equals", false, "F12", false, true);
         VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Space", false, "Space", false, false);
         VerifyCapsFnStroke(resolve, instance, strokeType, keyType, "Num1", true, "Num1", true, false);
+    }
+
+    private static void VerifyLeftStickSectors(Type mapper) {
+        MethodInfo sector = mapper.GetMethod("Sector", BindingFlags.Public | BindingFlags.Static);
+        NotNull(sector, "left-stick sector resolver");
+
+        Equal("Up", SectorAtDegrees(sector, 90.0), "wheel-up sector remains centered on straight up");
+        Equal("Up", SectorAtDegrees(sector, 71.0), "wheel-up sector includes its clockwise interior edge");
+        Equal("Up", SectorAtDegrees(sector, 109.0), "wheel-up sector includes its counterclockwise interior edge");
+        Equal("UpRight", SectorAtDegrees(sector, 69.0), "upper-right modifier receives the area below the wheel-up boundary");
+        Equal("UpLeft", SectorAtDegrees(sector, 111.0), "upper-left modifier receives the area above the wheel-up boundary");
+
+        Equal("Down", SectorAtDegrees(sector, 270.0), "wheel-down sector remains centered on straight down");
+        Equal("Down", SectorAtDegrees(sector, 251.0), "wheel-down sector includes its clockwise interior edge");
+        Equal("Down", SectorAtDegrees(sector, 289.0), "wheel-down sector includes its counterclockwise interior edge");
+        Equal("DownLeft", SectorAtDegrees(sector, 249.0), "lower-left modifier receives the area before the wheel-down boundary");
+        Equal("DownRight", SectorAtDegrees(sector, 291.0), "lower-right modifier receives the area after the wheel-down boundary");
+    }
+
+    private static string SectorAtDegrees(MethodInfo sector, double degrees) {
+        double radians = degrees * Math.PI / 180.0;
+        return sector.Invoke(null, new object[] { Math.Cos(radians), -Math.Sin(radians) }).ToString();
     }
 
     private static void VerifyCapsFnStroke(MethodInfo resolve, object instance, Type strokeType, Type keyType, string inputKey, bool inputShift, string expectedKey, bool expectedShift, bool expectedTranslated) {
