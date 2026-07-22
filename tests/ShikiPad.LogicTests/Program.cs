@@ -202,10 +202,10 @@ static class Program {
             (2, "Left", "Down", "NextTab", "Timed"),
             (2, "Left", "Left", "BackNavigation", "Timed"),
             (2, "Left", "Right", "ForwardNavigation", "Timed"),
-            (2, "Right", "Right", "OpenFileExplorer", "None"),
-            (2, "Right", "Left", "ClipboardHistory", "None"),
-            (2, "Right", "Up", "Screenshot", "None"),
-            (2, "Right", "Down", "CloseWindow", "None")
+            (2, "Right", "Right", "CloseWindow", "None"),
+            (2, "Right", "Left", "Screenshot", "None"),
+            (2, "Right", "Up", "RestoreMinimizedWindows", "None"),
+            (2, "Right", "Down", "MinimizeAllWindows", "None")
         };
 
         foreach (var test in cases) {

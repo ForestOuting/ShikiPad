@@ -1,5 +1,9 @@
 # Release Notes
 
+## 2026-07-22
+
+- Changed two-finger right-side direct swipes to left `Win+Shift+S`, up `Win+Shift+M`, right `Alt+F4`, and down `Win+M`; all four remain one-shot gestures.
+
 ## 2026-07-21
 
 - Caps/Fn is now a persistent toggle: only a letter capitalization or an actual `1..0 - =` to `F1..F12` translation automatically exits the mode. Touchpad clicks and every untranslated action leave it active.

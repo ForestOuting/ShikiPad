@@ -1261,16 +1261,16 @@ internal sealed class MapperForm : Form {
             } else if (side == TouchGestureSide.Right) {
                 switch (direction) {
                     case TouchGestureDirection.Up:
-                        shortcut = TouchGestureShortcut.Screenshot;
+                        shortcut = TouchGestureShortcut.RestoreMinimizedWindows;
                         return true;
                     case TouchGestureDirection.Down:
-                        shortcut = TouchGestureShortcut.CloseWindow;
+                        shortcut = TouchGestureShortcut.MinimizeAllWindows;
                         return true;
                     case TouchGestureDirection.Left:
-                        shortcut = TouchGestureShortcut.ClipboardHistory;
+                        shortcut = TouchGestureShortcut.Screenshot;
                         return true;
                     case TouchGestureDirection.Right:
-                        shortcut = TouchGestureShortcut.OpenFileExplorer;
+                        shortcut = TouchGestureShortcut.CloseWindow;
                         return true;
                 }
             }
@@ -1337,17 +1337,17 @@ internal sealed class MapperForm : Form {
                 ReleaseTouchGestureModifiers();
                 _injector.KeyTap(PhysicalKey.S, true, false, false, true);
                 break;
-            case TouchGestureShortcut.ClipboardHistory:
+            case TouchGestureShortcut.RestoreMinimizedWindows:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.V, false, false, false, true);
+                _injector.KeyTap(PhysicalKey.M, true, false, false, true);
                 break;
             case TouchGestureShortcut.CloseWindow:
                 ReleaseTouchGestureModifiers();
                 _injector.KeyTap(PhysicalKey.F4, false, false, true, false);
                 break;
-            case TouchGestureShortcut.OpenFileExplorer:
+            case TouchGestureShortcut.MinimizeAllWindows:
                 ReleaseTouchGestureModifiers();
-                _injector.KeyTap(PhysicalKey.E, false, false, false, true);
+                _injector.KeyTap(PhysicalKey.M, false, false, false, true);
                 break;
             case TouchGestureShortcut.PreviousTab:
                 ReleaseTouchGestureModifiers();
@@ -2495,9 +2495,9 @@ internal sealed class MapperForm : Form {
         MaximizeWindow,
         RestoreOrMinimizeWindow,
         Screenshot,
-        ClipboardHistory,
+        RestoreMinimizedWindows,
         CloseWindow,
-        OpenFileExplorer,
+        MinimizeAllWindows,
         PreviousTab,
         NextTab,
         BackNavigation,
