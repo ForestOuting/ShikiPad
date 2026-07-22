@@ -2,8 +2,9 @@
 
 ## V5.2 - 2026-07-22
 
-- Added a per-poll output arbiter so simultaneous modules cannot interleave independent output sequences. Priority is touchpad click, touch gesture, L3/R3, eight action positions, left-stick wheel, then right-stick pointer movement.
-- Release events and control state updates never enter the arbiter: KeyUp/mouse-up/gesture-modifier cleanup always runs, while modifiers, Home, Mute, and shoulder/trigger layer state remain available to the selected output.
+- Added a per-poll output arbiter so simultaneous modules cannot interleave independent output sequences. Priority is touchpad click, touch gesture, modifier transitions, L3/R3, eight action positions, left-stick wheel, then right-stick pointer movement.
+- Fixed left-stick and Create/Options modifier presses bypassing arbitration: their logical state and 45 ms binding are registered immediately, while physical KeyDown output is serialized after touchpad outputs and before bindable mouse/action output.
+- Release events never enter the arbiter: KeyUp/mouse-up/gesture-modifier cleanup always runs. Logical modifier registration plus Home, Mute, and shoulder/trigger state also update before arbitration; only physical modifier KeyDown is serialized.
 - Deferred mouse-button and action outputs keep their pending state for the next poll, and blocked repeats keep their due time instead of being silently settled.
 - `KeyTap` now temporarily releases and restores an already-held ordinary target key, preventing an atomic shortcut from stealing another module's held-key ownership.
 - Touch-gesture shortcuts now use exact modifier isolation: unrelated held modifiers are suspended for the atomic shortcut and restored afterward, while action-layer taps retain their intentional 45 ms bound modifiers.

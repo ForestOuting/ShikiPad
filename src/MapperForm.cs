@@ -32,7 +32,8 @@ internal sealed class MapperForm : Form {
     private MouseButtonHold _leftMouseButton;
     private MouseButtonHold _rightMouseButton;
     private List<PhysicalKey> _accumulatedModifiers = new List<PhysicalKey>();
-    private List<PhysicalKey> _heldLeftStickKeys = new List<PhysicalKey>();
+    private List<PhysicalKey> _desiredLeftStickKeys = new List<PhysicalKey>();
+    private List<PhysicalKey> _pressedLeftStickKeys = new List<PhysicalKey>();
     private readonly ClutchButtonStateMachine _clutchButton = new ClutchButtonStateMachine();
     private TouchGestureState _touchGesture = new TouchGestureState();
     private bool _touchAltTabAltDown;
@@ -247,12 +248,14 @@ internal sealed class MapperForm : Form {
             _printedConnectedGuide = true;
         }
         UpdateSystemButtonPresses(s, now);
+        UpdateSystemButtonReleases(s);
         UpdateTriggers(s, now);
         MarkActiveLayerOverlap();
         UpdateClutchButton(s, now);
         UpdateLeftStick(s, now);
         UpdateTouchpadClick(s, now);
         UpdateTouchGestures(s, now);
+        FlushPendingModifierKeys();
 
         UpdateMouseButtons(s, now);
         FlushPendingMouseButtons(s, now);
@@ -260,7 +263,6 @@ internal sealed class MapperForm : Form {
         UpdateLeftStickScroll(s, deltaSec);
         UpdateRightStick(s, now, deltaSec);
         ClearInactiveLayerOverlapFlags(s);
-        UpdateSystemButtonReleases(s);
     }
 
     private bool TryClaimTickOutput(OutputModule module) {
@@ -368,7 +370,7 @@ internal sealed class MapperForm : Form {
         List<PhysicalKey> desiredKeys = new List<PhysicalKey>();
 
         if (clutchJustPressed) {
-            foreach (var key in _heldLeftStickKeys) {
+            foreach (var key in _desiredLeftStickKeys) {
                 AccumulateLeftStickKey(key);
             }
         }
@@ -390,24 +392,55 @@ internal sealed class MapperForm : Form {
             }
         }
 
-        foreach (var key in _heldLeftStickKeys) {
+        for (int i = _pressedLeftStickKeys.Count - 1; i >= 0; i--) {
+            PhysicalKey key = _pressedLeftStickKeys[i];
             if (!desiredKeys.Contains(key)) {
                 _injector.CurrentSource = "LeftStick";
                 _injector.CurrentReason = "ModifierUp " + key;
                 _injector.KeyUp(key);
+                _pressedLeftStickKeys.RemoveAt(i);
             }
         }
         foreach (var key in desiredKeys) {
-            if (!_heldLeftStickKeys.Contains(key)) {
-                _injector.CurrentSource = "LeftStick";
-                _injector.CurrentReason = "ModifierDown " + key;
-                _injector.KeyDown(key);
+            if (!_desiredLeftStickKeys.Contains(key)) {
                 RegisterModifierBinding(key, now);
             }
         }
 
-        _heldLeftStickKeys.Clear();
-        _heldLeftStickKeys.AddRange(desiredKeys);
+        _desiredLeftStickKeys.Clear();
+        _desiredLeftStickKeys.AddRange(desiredKeys);
+    }
+
+    private void FlushPendingModifierKeys() {
+        bool hasPendingOutput = false;
+        foreach (PhysicalKey key in _desiredLeftStickKeys) {
+            if (!_pressedLeftStickKeys.Contains(key)) {
+                hasPendingOutput = true;
+                break;
+            }
+        }
+        hasPendingOutput |= _prevCreate && !_createKeyDown;
+        hasPendingOutput |= _prevOptions && !_optionsKeyDown;
+        if (!hasPendingOutput || !TryClaimTickOutput(OutputModule.ModifierKeys)) return;
+
+        foreach (PhysicalKey key in _desiredLeftStickKeys) {
+            if (_pressedLeftStickKeys.Contains(key)) continue;
+            _injector.CurrentSource = "LeftStick";
+            _injector.CurrentReason = "ModifierDown " + key;
+            _injector.KeyDown(key);
+            _pressedLeftStickKeys.Add(key);
+        }
+
+        FlushPendingSystemModifier("Share/Create", PhysicalKey.RAlt, _prevCreate, ref _createKeyDown);
+        FlushPendingSystemModifier("Options/Menu", PhysicalKey.RCtrl, _prevOptions, ref _optionsKeyDown);
+    }
+
+    private void FlushPendingSystemModifier(string source, PhysicalKey key, bool logicallyDown, ref bool outputDown) {
+        if (!logicallyDown || outputDown) return;
+        _injector.CurrentSource = source;
+        _injector.CurrentReason = source + " press";
+        _injector.KeyDown(key);
+        outputDown = true;
     }
 
     private void UpdateLeftStickScroll(ControllerState s, double deltaSec) {
@@ -2097,11 +2130,11 @@ internal sealed class MapperForm : Form {
 
     private int CaptureCurrentBindingModifiers() {
         int mask = 0;
-        foreach (PhysicalKey key in _heldLeftStickKeys) {
+        foreach (PhysicalKey key in _desiredLeftStickKeys) {
             mask |= ModifierBindingBit(key);
         }
-        if (_createKeyDown) mask |= ModifierBindingBit(PhysicalKey.RAlt);
-        if (_optionsKeyDown) mask |= ModifierBindingBit(PhysicalKey.RCtrl);
+        if (_prevCreate) mask |= ModifierBindingBit(PhysicalKey.RAlt);
+        if (_prevOptions) mask |= ModifierBindingBit(PhysicalKey.RCtrl);
         return mask;
     }
 
@@ -2339,8 +2372,8 @@ internal sealed class MapperForm : Form {
     }
 
     private void UpdateSystemButtonPresses(ControllerState s, double now) {
-        UpdateMappedSystemButtonPress("Share/Create", s.Create, PhysicalKey.RAlt, now, ref _prevCreate, ref _createKeyDown);
-        UpdateMappedSystemButtonPress("Options/Menu", s.Options, PhysicalKey.RCtrl, now, ref _prevOptions, ref _optionsKeyDown);
+        UpdateMappedSystemButtonPress(s.Create, PhysicalKey.RAlt, now, ref _prevCreate);
+        UpdateMappedSystemButtonPress(s.Options, PhysicalKey.RCtrl, now, ref _prevOptions);
     }
 
     private void UpdateSystemButtonReleases(ControllerState s) {
@@ -2348,12 +2381,8 @@ internal sealed class MapperForm : Form {
         UpdateMappedSystemButtonRelease("Options/Menu", s.Options, PhysicalKey.RCtrl, ref _prevOptions, ref _optionsKeyDown);
     }
 
-    private void UpdateMappedSystemButtonPress(string source, bool down, PhysicalKey key, double now, ref bool prevDown, ref bool keyDown) {
+    private void UpdateMappedSystemButtonPress(bool down, PhysicalKey key, double now, ref bool prevDown) {
         if (down && !prevDown) {
-            _injector.CurrentSource = source;
-            _injector.CurrentReason = source + " press";
-            _injector.KeyDown(key);
-            keyDown = true;
             prevDown = true;
             RegisterModifierBinding(key, now);
         }
@@ -2427,7 +2456,8 @@ internal sealed class MapperForm : Form {
         _rightMouseButton = new MouseButtonHold();
         _leftDirection = StickDirection.None;
         _leftStickScroll.Reset();
-        _heldLeftStickKeys.Clear();
+        _desiredLeftStickKeys.Clear();
+        _pressedLeftStickKeys.Clear();
         _accumulatedModifiers.Clear();
         DeactivateCapsFnLayer("Runtime release Caps/Fn layer");
         for (int i = 0; i < _holds.Length; i++) _holds[i] = new ButtonHold();
@@ -2540,6 +2570,7 @@ internal sealed class MapperForm : Form {
         LeftStickScroll = 200,
         ActionButtons = 300,
         StickClicks = 400,
+        ModifierKeys = 450,
         TouchGesture = 500,
         TouchpadClick = 600
     }

@@ -125,7 +125,19 @@ static class Program {
         object instance = RuntimeHelpers.GetUninitializedObject(mapper);
         object config = configWithWindow(configType, 45);
         mapper.GetField("_config", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, config);
-        mapper.GetField("_heldLeftStickKeys", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, Activator.CreateInstance(typeof(List<>).MakeGenericType(keyType)));
+        object desiredModifiers = Activator.CreateInstance(typeof(List<>).MakeGenericType(keyType));
+        mapper.GetField("_desiredLeftStickKeys", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, desiredModifiers);
+
+        MethodInfo capture = mapper.GetMethod("CaptureCurrentBindingModifiers", BindingFlags.NonPublic | BindingFlags.Instance);
+        ((System.Collections.IList)desiredModifiers).Add(Enum.Parse(keyType, "LShift"));
+        Equal(1 << 0, capture.Invoke(instance, null), "logical left-stick modifier is capturable before its deferred physical KeyDown");
+        mapper.GetField("_prevCreate", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, true);
+        Equal((1 << 0) | (1 << 4), capture.Invoke(instance, null), "logical Create state is capturable before its deferred physical KeyDown");
+        mapper.GetField("_prevOptions", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, true);
+        Equal((1 << 0) | (1 << 4) | (1 << 5), capture.Invoke(instance, null), "logical Options state is capturable before its deferred physical KeyDown");
+        ((System.Collections.IList)desiredModifiers).Clear();
+        mapper.GetField("_prevCreate", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, false);
+        mapper.GetField("_prevOptions", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(instance, false);
 
         Type layerType = RequiredType(mapper.Assembly, "Layer");
         MethodInfo shouldDefer = mapper.GetMethod("ShouldDeferInitialAction", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -199,7 +211,7 @@ static class Program {
         Type moduleType = RequiredType(assembly, "MapperForm+OutputModule");
         MethodInfo priority = RequiredMethod(mapper, "OutputModulePriority");
         MethodInfo canUseLane = RequiredMethod(mapper, "CanUseTickOutputLane");
-        string[] ordered = { "TouchpadClick", "TouchGesture", "StickClicks", "ActionButtons", "LeftStickScroll", "RightStickPointer" };
+        string[] ordered = { "TouchpadClick", "TouchGesture", "ModifierKeys", "StickClicks", "ActionButtons", "LeftStickScroll", "RightStickPointer" };
         int previous = int.MaxValue;
         foreach (string name in ordered) {
             object module = Enum.Parse(moduleType, name);
@@ -209,11 +221,16 @@ static class Program {
         }
 
         object none = Enum.Parse(moduleType, "None");
+        object modifiers = Enum.Parse(moduleType, "ModifierKeys");
         object actions = Enum.Parse(moduleType, "ActionButtons");
         object scroll = Enum.Parse(moduleType, "LeftStickScroll");
         Equal(true, canUseLane.Invoke(null, new[] { none, actions }), "an unclaimed frame accepts an action output owner");
         Equal(true, canUseLane.Invoke(null, new[] { actions, actions }), "one module can emit an atomic multi-event output in its owned frame");
         Equal(false, canUseLane.Invoke(null, new[] { actions, scroll }), "a second module is deferred after the frame is claimed");
+        Equal(false, canUseLane.Invoke(null, new[] { modifiers, actions }), "a modifier transition is serialized before action output");
+        Equal(true, canUseLane.Invoke(null, new[] { modifiers, modifiers }), "all modifier transitions can finish atomically in their owned frame");
+
+        Equal(true, mapper.GetMethod("FlushPendingModifierKeys", BindingFlags.NonPublic | BindingFlags.Instance) != null, "logical modifier registration is separated from physical modifier output");
 
         object mapperInstance = RuntimeHelpers.GetUninitializedObject(mapper);
         mapper.GetField("_tickOutputOwner", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(mapperInstance, none);
