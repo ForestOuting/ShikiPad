@@ -234,7 +234,7 @@ internal static class Program {
         WritePanelTitle(width, panelWidth, "启动失败", new Rgb(255, 215, 92));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
         WritePanelWrappedLine(width, panelWidth, "  原因", message, SeasonAutumn(), new Rgb(245, 250, 255));
-        WritePanelWrappedLine(width, panelWidth, "  处理", "请根据上方原因处理。需要安装 Interception 时，请双击同目录的“安装驱动.cmd”，完成后重启 Windows。", SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelWrappedLine(width, panelWidth, "  处理", "请根据上方原因处理，并确认已安装 x64 .NET 8 Desktop Runtime、以管理员身份运行 ShikiPad。", SeasonGold(), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(255, 148, 82));
         Console.WriteLine("\x1b[0m");
     }
@@ -603,6 +603,7 @@ internal static class Program {
 
             Console.WriteLine("Does this exact process read DualSense through Direct HID? YES");
             Console.WriteLine("Is any helper process used? NO");
+            Console.WriteLine("Keyboard/mouse output: Windows SendInput (no Interception dependency)");
             Console.WriteLine("\nAdd THIS EXACT path to HidHide Applications:");
             Console.WriteLine(Process.GetCurrentProcess().MainModule.FileName);
             return 0;
@@ -677,7 +678,6 @@ internal static class Program {
     private static void ReleaseAllRuntimeInput() {
         if (Interlocked.Exchange(ref _shutdownReleaseStarted, 1) != 0) return;
         InputInjector.ReleaseAllRegistered();
-        InterceptionDriver.Cleanup();
     }
 
     private static bool HasArg(string[] args, string value) {

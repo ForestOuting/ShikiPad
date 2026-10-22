@@ -11,6 +11,7 @@ internal sealed class InputInjector {
 
     private static readonly object s_instancesLock = new object();
     private static readonly List<InputInjector> s_instances = new List<InputInjector>();
+    private static readonly int s_inputSize = Marshal.SizeOf<INPUT>();
 
     private readonly Dictionary<PhysicalKey, KeyDef> _keys = new Dictionary<PhysicalKey, KeyDef>();
     private readonly Dictionary<PhysicalKey, int> _modifierHoldCounts = new Dictionary<PhysicalKey, int>();
@@ -33,9 +34,6 @@ internal sealed class InputInjector {
     public InputInjector() : this(null) { }
 
     internal InputInjector(Func<INPUT, bool> sendInput) {
-        if (sendInput == null && !InterceptionDriver.Initialize()) {
-            throw new InvalidOperationException("Interception 驱动不可用。请安装驱动、重启 Windows，并以管理员权限运行 ShikiPad。");
-        }
         _sendInput = sendInput ?? SendNativeInput;
         InitKeys();
         _shift = Resolve(0xA0, false);
@@ -350,7 +348,7 @@ internal sealed class InputInjector {
         input.type = INPUT_KEYBOARD;
         KEYBDINPUT keyboard = new KEYBDINPUT();
 
-        // Interception consumes scan codes directly.
+        // Preserve physical-key output through SendInput's scan-code mode.
         keyboard.wScan = key.Scan;
         keyboard.wVk = 0;
         keyboard.dwFlags = KEYEVENTF_SCANCODE;
@@ -397,23 +395,13 @@ internal sealed class InputInjector {
     }
 
     private static bool SendNativeInput(INPUT input) {
-        if (input.type == INPUT_KEYBOARD) {
-            InterceptionDriver.KeyState state = (input.ki.dwFlags & KEYEVENTF_KEYUP) != 0 ? InterceptionDriver.KeyState.Up : InterceptionDriver.KeyState.Down;
-            if ((input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0) state |= InterceptionDriver.KeyState.E0;
-            return InterceptionDriver.SendKey(input.ki.wScan, state);
-        }
-        if ((input.mi.dwFlags & MOUSEEVENTF_MOVE) != 0) return InterceptionDriver.SendMouseDelta(input.mi.dx, input.mi.dy);
-        if ((input.mi.dwFlags & MOUSEEVENTF_WHEEL) != 0) return InterceptionDriver.SendMouseWheel(input.mi.mouseData);
-        InterceptionDriver.MouseState mouseState = 0;
-        if ((input.mi.dwFlags & MOUSEEVENTF_LEFTDOWN) != 0) mouseState |= InterceptionDriver.MouseState.LeftButtonDown;
-        if ((input.mi.dwFlags & MOUSEEVENTF_LEFTUP) != 0) mouseState |= InterceptionDriver.MouseState.LeftButtonUp;
-        if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTDOWN) != 0) mouseState |= InterceptionDriver.MouseState.RightButtonDown;
-        if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTUP) != 0) mouseState |= InterceptionDriver.MouseState.RightButtonUp;
-        return mouseState == 0 || InterceptionDriver.SendMouse(mouseState);
+        // Submit one event so the existing retry and held-state tracking remain exact.
+        // Success means Windows accepted the event, not that the target app handled it.
+        return SendInput(1, ref input, s_inputSize) == 1;
     }
 
     private void ThrowSendFailure(string actionType, string strokeType) {
-        throw new InvalidOperationException("Interception 发送失败（" + strokeType + "，来源 " + CurrentSource + "，动作 " + actionType + "，原因 " + CurrentReason + "）。");
+        throw new InvalidOperationException("Windows SendInput 发送失败（" + strokeType + "，来源 " + CurrentSource + "，动作 " + actionType + "，原因 " + CurrentReason + "）。请确认 ShikiPad 以管理员身份运行；受保护的系统界面可能拒绝模拟输入。");
     }
 
     private const uint INPUT_MOUSE = 0;
@@ -431,6 +419,8 @@ internal sealed class InputInjector {
     private const uint MAPVK_VK_TO_VSC_EX = 4;
 
     [DllImport("user32.dll")] private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    private static extern uint SendInput(uint cInputs, [In] ref INPUT pInputs, int cbSize);
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct INPUT {

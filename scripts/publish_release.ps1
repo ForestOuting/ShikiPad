@@ -71,8 +71,8 @@ if ($LASTEXITCODE -ne 0) {
 
 $publishedExe = Join-Path $publishDir 'ShikiPad.exe'
 $version = (Get-Item -LiteralPath $publishedExe).VersionInfo
-if ($version.FileVersion -ne '5.2.0.0') {
-    throw "Unexpected file version $($version.FileVersion); expected 5.2.0.0."
+if ($version.FileVersion -ne '5.2.1.0') {
+    throw "Unexpected file version $($version.FileVersion); expected 5.2.1.0."
 }
 
 $signature = Get-AuthenticodeSignature -LiteralPath $publishedExe
@@ -81,11 +81,6 @@ if (!$AllowUnsigned -and $signature.Status -ne 'Valid') {
 }
 
 $packageFiles = @(
-    @{ Source = '安装驱动.cmd'; Destination = '安装驱动.cmd' },
-    @{ Source = '卸载驱动.cmd'; Destination = '卸载驱动.cmd' },
-    @{ Source = 'scripts\manage_driver.ps1'; Destination = 'scripts\manage_driver.ps1' },
-    @{ Source = 'driver\install-interception.exe'; Destination = 'driver\install-interception.exe' },
-    @{ Source = 'interception.dll'; Destination = 'interception.dll' },
     @{ Source = 'README.md'; Destination = 'README.md' },
     @{ Source = 'docs\RELEASE_NOTES.md'; Destination = 'docs\RELEASE_NOTES.md' },
     @{ Source = 'docs\THIRD_PARTY_NOTICES.md'; Destination = 'docs\THIRD_PARTY_NOTICES.md' },
@@ -99,7 +94,7 @@ foreach ($packageFile in $packageFiles) {
 }
 Copy-Item -LiteralPath $publishedExe -Destination (Join-Path $packageDir 'ShikiPad.exe') -Force
 @(
-    'Version: 5.2.0',
+    'Version: 5.2.1-sendinput',
     "GitCommit: $gitCommit",
     "WorkingTreeDirty: $isDirty"
 ) | Set-Content -LiteralPath (Join-Path $packageDir 'BUILD_INFO.txt') -Encoding ascii
@@ -152,6 +147,6 @@ foreach ($path in @($publishDir, $packageDir)) {
 if ((Test-Path -LiteralPath $releaseDir) -and @(Get-ChildItem -LiteralPath $releaseDir -Force).Count -eq 0) {
     Remove-Item -LiteralPath $releaseDir -Force
 }
-Write-Host "ShikiPad V5.2 package created: $zipPath"
+Write-Host "ShikiPad 5.2.1 SendInput package created: $zipPath"
 Write-Host "ZIP SHA256: $zipHash"
 Write-Host "Upload this ZIP as a GitHub Release asset; do not commit it to the repository."

@@ -24,6 +24,7 @@ static class Program {
         VerifyConfigurationGuards(assembly);
         VerifyPureBaseAndLayerSelection(assembly, mapper);
         FaultRegressionTests.Run();
+        SendInputRegressionTests.Run();
         NotNull(mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance), "two-finger continuation update remains available");
         NotNull(mapper.GetMethod("TryRecognizeTwoFingerContinuationGesture", PrivateStatic), "two-finger continuation recognition remains available");
         Equal(null, assembly.GetType("MapperForm+TouchGesturePressType"), "hold gesture enum removed");
@@ -249,7 +250,7 @@ static class Program {
         Equal(null, injector.GetMethod("BeginFrame"), "input injection has no deferred logical-frame queue");
         Equal(null, injector.GetMethod("FlushFrame"), "input injection cannot postpone native delivery until frame end");
         Equal(null, injector.GetMethod("AbortFrame"), "failure recovery cannot blindly release a partially sent frame");
-        Equal(null, injector.GetMethod("MouseMoveAndWheel"), "pointer and wheel use independent verified driver reports");
+        Equal(null, injector.GetMethod("MouseMoveAndWheel"), "pointer and wheel use independent native input events");
         Equal(null, injector.GetField("_frameStrokes", BindingFlags.NonPublic | BindingFlags.Instance), "held-state bookkeeping cannot diverge from a deferred native queue");
         MethodInfo restoreTap = RequiredMethod(injector, "ShouldRestoreHeldKeyForTap");
         Type keyType = RequiredType(assembly, "PhysicalKey");
@@ -263,13 +264,8 @@ static class Program {
         Equal(false, suspendModifier.Invoke(null, new[] { Enum.Parse(keyType, "RAlt"), (object)false, false, true, false }), "either Alt side can satisfy an exact Alt shortcut");
         Equal(true, suspendModifier.Invoke(null, new[] { Enum.Parse(keyType, "LWin"), (object)false, false, false, false }), "an unrelated held Win key is suspended around an exact shortcut");
 
-        Type interception = RequiredType(assembly, "InterceptionDriver");
-        Equal(typeof(bool), interception.GetMethod("SendKey").ReturnType, "keyboard injection reports native send success");
-        Equal(typeof(bool), interception.GetMethod("SendMouse").ReturnType, "mouse injection reports native send success");
-        Equal(typeof(bool), interception.GetMethod("SendMouseDelta").ReturnType, "pointer injection reports native send success");
-        Equal(typeof(bool), interception.GetMethod("SendMouseWheel").ReturnType, "wheel injection reports native send success");
-        Equal(null, interception.GetMethod("SendMouseDeltaAndWheel"), "the driver path does not depend on an unverified combined mouse stroke");
-        Equal(null, interception.GetMethod("SendStrokes"), "the driver path does not expose partial multi-stroke sends");
+        Equal(null, assembly.GetType("InterceptionDriver"), "the SendInput build has no Interception backend");
+        Equal(typeof(bool), RequiredMethod(injector, "SendNativeInput").ReturnType, "native injection reports success for each individual input event");
     }
 
     private static void VerifyContinuousOutputsAdvanceTogether(Assembly assembly) {

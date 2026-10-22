@@ -1,5 +1,15 @@
 # Release Notes
 
+## 5.2.1 SendInput 版 - 2026-10-22
+
+- Replaced the Interception output backend with Windows `SendInput`. Keyboard events retain scan-code and extended-key flags; keyboard, mouse-button, wheel and pointer events are submitted one at a time in the existing synchronous order.
+- Preserved the existing one-retry behavior, confirmed-event bookkeeping, modifier reference counts, temporary-shortcut cleanup and final shutdown release. A successful native return confirms insertion into the Windows input stream, not acceptance by the target application.
+- Preserved the Windows HID reader, controller report conversion, mapper, gestures, layer/modifier rules, continuous-input integration and all mapping/timing defaults. Administrator execution and HidHide usage remain unchanged; the existing `C:\ShikiPad\ShikiPad.exe` whitelist path can be reused.
+- Removed the Interception wrapper, runtime library, driver installer and driver-management scripts from this branch and its release package. Updating the EXE does not uninstall an existing system driver; use the complete original package's uninstall entry and restart Windows if removal is desired.
+- Added regressions for the x64 native input layout, absence of Interception imports, physical-key scan codes and extended flags, signed high-resolution wheel deltas, mouse-button cleanup and initialization without the Interception library. These checks use simulated output and do not send desktop input.
+- Preserved the original Interception version on GitHub `main` at `7fb6d57`; the new version uses `codex/sendinput`. The local original-package backup is `ShikiPad-release-interception-7fb6d57.zip` and is not committed to Git.
+- Updated package metadata to file version `5.2.1.0` and informational version `5.2.1-sendinput`. The current unsigned package is for internal verification; actual controller/application compatibility, including special input environments and protected desktops, is not claimed as verified.
+
 ## V5.2 maintenance - 2026-10-18
 
 - Added root-level `安装驱动.cmd` and `卸载驱动.cmd`, with one shared administrator-elevating script, explicit failure results and manual restart guidance. Interception remains the only keyboard/mouse output backend.
