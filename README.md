@@ -2,6 +2,18 @@
 
 ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工具。当前版本仅支持 DualSense USB；键盘和鼠标输出依赖 Interception。
 
+## 日常使用：只找这三个入口
+
+| 你要做什么 | 双击根目录中的文件 |
+|---|---|
+| 安装或重新安装 Interception | **`安装驱动.cmd`** |
+| 玩游戏前需要卸载 Interception | **`卸载驱动.cmd`** |
+| 正常使用手柄键鼠映射 | **`ShikiPad.exe`** |
+
+安装和卸载入口会自动申请管理员权限，并保留执行结果供你查看。先关闭 ShikiPad，完成安装或卸载后保存工作，再从 Windows 电源菜单选择“重启”；脚本不会自动重启电脑。取消权限提示或执行失败时，不会显示成功。
+
+**驱动原文件就在 `driver\install-interception.exe`，平时直接双击上面两个中文入口即可。**需要重新安装时，无需重新下载或寻找安装器。请保留整个文件夹，入口依赖 `scripts\manage_driver.ps1` 和 `driver` 中的原文件。
+
 ## AI 编程（vibe coding）常用操作
 
 用手柄在编辑器、浏览器和 AI 对话间切换时，以下操作可以减少反复伸手找键盘和鼠标，让常用流程更顺手。**尤其是 DualSense 触控板右区二指上滑：它会触发 `Win + Shift + S`，直接调出 Windows 区域截图。**截取报错、运行结果或界面后，就能把图片粘贴给 AI 作为上下文。
@@ -42,11 +54,13 @@ ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工�
 | `src/` | 程序源码 |
 | `tests/` | 逻辑测试 |
 | `assets/` | 图标、程序清单与 README 截图 |
-| `driver/` | Interception 驱动安装程序 |
+| `driver/` | Interception 原版安装器，日常使用根目录中文入口即可 |
 | `docs/` | 发布记录与第三方许可说明 |
-| `scripts/` | 开发和正式发布脚本 |
-| `ShikiPad.exe`、`interception.dll`、`install_driver.bat` | 根目录可直接使用的程序与安装文件 |
+| `scripts/` | 驱动管理实现与发布脚本 |
+| `安装驱动.cmd`、`卸载驱动.cmd` | 驱动操作入口，自动申请管理员权限 |
+| `ShikiPad.exe`、`interception.dll` | 主程序与必须保留在同目录的运行库 |
 | `ShikiPad.zip` | 本地发布产物；位于根目录但被 Git 忽略 |
+| `bin/`、`obj/` | 编译自动生成的目录，日常使用无需打开 |
 
 ## 支持范围
 
@@ -73,10 +87,10 @@ ShikiPad 必须通过 Interception 输出键盘和鼠标，不会回退到 `Send
 
 首次使用请严格按以下顺序操作，并在确认基础映射正常后再配置 HidHide：
 
-1. 将发布包完整解压到固定目录，例如 `C:\ShikiPad`。不要直接在 ZIP 压缩包中运行程序；确保 `ShikiPad.exe`、`interception.dll`、`install_driver.bat` 和 `driver` 文件夹保持在解压后的原有相对位置。
+1. 将发布包完整解压到固定目录，例如 `C:\ShikiPad`。不要直接在 ZIP 压缩包中运行程序；确保主程序、运行库、两个中文驱动入口以及 `driver`、`scripts` 文件夹保持原有相对位置。
 2. 安装 x64 版 `.NET 8 Desktop Runtime`；当前单文件程序是依赖框架发布，不是自包含运行时。
 3. 使用可传输数据的 USB 线连接官方 DualSense，并在 Windows 中确认手柄已经被识别。启动 ShikiPad 前保持手柄连接；不要使用蓝牙模式。
-4. 在解压目录中右键 `install_driver.bat`，选择“以管理员身份运行”。等待脚本明确显示安装完成和必须重启的提示后再关闭窗口。
+4. 双击根目录的 **`安装驱动.cmd`**，确认 Windows 弹出的管理员权限提示。等待窗口显示安装命令成功和必须重启的提示，再按 Enter 关闭窗口。
 5. 从 Windows 电源菜单选择“重启”。请执行真正的重新启动，不要用“关机后再开机”代替；重启完成前不要启动 ShikiPad。
 6. 重启后重新确认 DualSense 仍通过 USB 连接，然后使用以下任一方式启动 ShikiPad：
    - 在文件资源管理器中右键 `C:\ShikiPad\ShikiPad.exe`，选择“以管理员身份运行”。
@@ -90,7 +104,7 @@ ShikiPad 必须通过 Interception 输出键盘和鼠标，不会回退到 `Send
 7. 确认 UAC 中显示的程序路径是 `C:\ShikiPad\ShikiPad.exe`，然后允许启动。保持 ShikiPad 控制台窗口打开；关闭窗口会退出映射程序。
 8. 先验证基础映射：右摇杆移动鼠标，L3/R3 触发鼠标左键/右键，左摇杆正上或正下控制滚轮。三项均正常后，首次安装即完成。
 
-以后使用时，只需先用 USB 连接 DualSense，再以管理员身份运行同一路径下的 `ShikiPad.exe`；不需要重复安装 Interception。ShikiPad 在同一 Windows 会话中只运行一个实例。
+以后使用时，只需先用 USB 连接 DualSense，再以管理员身份运行同一路径下的 `ShikiPad.exe`。只要没有卸载驱动，就不需要重复安装；如果为运行游戏卸载过，重新双击 **`安装驱动.cmd`** 并重启即可。ShikiPad 在同一 Windows 会话中只运行一个实例。
 
 ### HidHide 建议配置
 
@@ -111,17 +125,20 @@ ShikiPad 必须通过 Interception 输出键盘和鼠标，不会回退到 `Send
 | 文件 | 用途 |
 |---|---|
 | `driver/install-interception.exe` | Interception 驱动安装器 |
-| `install_driver.bat` | 驱动安装脚本 |
+| `安装驱动.cmd` / `卸载驱动.cmd` | 驱动安装与卸载入口 |
+| `scripts/manage_driver.ps1` | 两个入口共用的驱动管理脚本 |
 | `ShikiPad.exe` | 单文件主程序 |
 | `interception.dll` | Interception 运行库 |
 | `README.md` | 中文说明文档 |
-| `RELEASE_NOTES.md` | 版本记录 |
-| `THIRD_PARTY_NOTICES.md` | Interception 来源与第三方许可说明 |
+| `docs/RELEASE_NOTES.md` | 版本记录 |
+| `docs/THIRD_PARTY_NOTICES.md` | Interception 来源与第三方许可说明 |
 | `SHA256SUMS.txt` | 发布包内文件的 SHA-256 校验值 |
 | `BUILD_INFO.txt` | 发布版本、源码提交与工作树状态 |
-| `shiki.ico` / `ShikiPad.manifest` | 图标和程序清单 |
+| `assets/readme/` | 本文引用的界面截图；图标与程序清单已嵌入主程序 |
 
 正式打包使用 `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_release.ps1`。脚本会要求 Git 工作树干净、记录源码提交、重新发布当前工作树、校验 V5.2 文件版本、重建文件清单，并在根目录生成被 Git 忽略的 `ShikiPad.zip`；该 ZIP 只用于 GitHub Release，不应加入 Git 提交。脚本默认拒绝没有有效 Authenticode 签名的主程序；只有制作内部测试包时才应在命令末尾显式传入 `-AllowDirty -AllowUnsigned`。`shikipad.default` 已删除，不属于程序输入，也不会进入新发布包。
+
+逻辑回归检查运行 `dotnet run --project tests/ShikiPad.LogicTests -c Release`。测试使用模拟输入和输出，不安装驱动、不向桌面发送按键；覆盖原有映射、手势和时序，以及 HID 读取取消、断开、短报告和组合快捷键部分发送失败后的释放。驱动入口可用 `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\manage_driver.ps1 -Action Install -CheckOnly` 检查路径；`-CheckOnly` 不申请权限、不执行安装或卸载。
 
 ## 开机自启动
 

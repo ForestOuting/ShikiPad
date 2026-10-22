@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [switch]$AllowUnsigned,
     [switch]$AllowDirty
@@ -16,6 +16,22 @@ $zipPath = Join-Path $root 'ShikiPad.zip'
 $temporaryZip = Join-Path $releaseDir 'ShikiPad.tmp.zip'
 $rootExe = Join-Path $root 'ShikiPad.exe'
 $hashFile = Join-Path $root 'SHA256SUMS.txt'
+
+function Assert-GeneratedDirectory([string]$Path) {
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $expectedRoot = [System.IO.Path]::GetFullPath($releaseDir).TrimEnd('\')
+    if (!$fullPath.StartsWith($expectedRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to clean a path outside the release directory: $fullPath"
+    }
+    foreach ($candidate in @($releaseDir, $fullPath)) {
+        if (Test-Path -LiteralPath $candidate) {
+            $item = Get-Item -LiteralPath $candidate -Force
+            if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing to clean a linked release directory: $candidate"
+            }
+        }
+    }
+}
 
 $gitStatus = @(& git -C $root status --porcelain --untracked-files=all)
 if ($LASTEXITCODE -ne 0) {
@@ -40,6 +56,7 @@ if (Test-Path -LiteralPath $rootExe) {
 }
 
 foreach ($path in @($publishDir, $packageDir)) {
+    Assert-GeneratedDirectory $path
     if (Test-Path -LiteralPath $path) {
         Remove-Item -LiteralPath $path -Recurse -Force
     }
@@ -64,16 +81,21 @@ if (!$AllowUnsigned -and $signature.Status -ne 'Valid') {
 }
 
 $packageFiles = @(
-    @{ Source = 'install_driver.bat'; Destination = 'install_driver.bat' },
+    @{ Source = '安装驱动.cmd'; Destination = '安装驱动.cmd' },
+    @{ Source = '卸载驱动.cmd'; Destination = '卸载驱动.cmd' },
+    @{ Source = 'scripts\manage_driver.ps1'; Destination = 'scripts\manage_driver.ps1' },
+    @{ Source = 'driver\install-interception.exe'; Destination = 'driver\install-interception.exe' },
     @{ Source = 'interception.dll'; Destination = 'interception.dll' },
     @{ Source = 'README.md'; Destination = 'README.md' },
-    @{ Source = 'docs\RELEASE_NOTES.md'; Destination = 'RELEASE_NOTES.md' },
-    @{ Source = 'docs\THIRD_PARTY_NOTICES.md'; Destination = 'THIRD_PARTY_NOTICES.md' },
-    @{ Source = 'assets\shiki.ico'; Destination = 'shiki.ico' },
-    @{ Source = 'assets\ShikiPad.manifest'; Destination = 'ShikiPad.manifest' }
+    @{ Source = 'docs\RELEASE_NOTES.md'; Destination = 'docs\RELEASE_NOTES.md' },
+    @{ Source = 'docs\THIRD_PARTY_NOTICES.md'; Destination = 'docs\THIRD_PARTY_NOTICES.md' },
+    @{ Source = 'assets\readme\shikipad-home.png'; Destination = 'assets\readme\shikipad-home.png' },
+    @{ Source = 'assets\readme\shikipad-keymap.png'; Destination = 'assets\readme\shikipad-keymap.png' }
 )
 foreach ($packageFile in $packageFiles) {
-    Copy-Item -LiteralPath (Join-Path $root $packageFile.Source) -Destination (Join-Path $packageDir $packageFile.Destination) -Force
+    $destination = Join-Path $packageDir $packageFile.Destination
+    New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root $packageFile.Source) -Destination $destination -Force
 }
 Copy-Item -LiteralPath $publishedExe -Destination (Join-Path $packageDir 'ShikiPad.exe') -Force
 @(
@@ -81,10 +103,6 @@ Copy-Item -LiteralPath $publishedExe -Destination (Join-Path $packageDir 'ShikiP
     "GitCommit: $gitCommit",
     "WorkingTreeDirty: $isDirty"
 ) | Set-Content -LiteralPath (Join-Path $packageDir 'BUILD_INFO.txt') -Encoding ascii
-
-$driverDir = Join-Path $packageDir 'driver'
-New-Item -ItemType Directory -Path $driverDir | Out-Null
-Copy-Item -LiteralPath (Join-Path $root 'driver\install-interception.exe') -Destination $driverDir -Force
 
 $hashLines = Get-ChildItem -LiteralPath $packageDir -File -Recurse |
     Sort-Object FullName |
@@ -126,6 +144,7 @@ Move-Item -LiteralPath $temporaryZip -Destination $zipPath -Force
 
 $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
 foreach ($path in @($publishDir, $packageDir)) {
+    Assert-GeneratedDirectory $path
     if (Test-Path -LiteralPath $path) {
         Remove-Item -LiteralPath $path -Recurse -Force
     }

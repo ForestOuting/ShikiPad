@@ -1,5 +1,16 @@
 # Release Notes
 
+## V5.2 maintenance - 2026-10-18
+
+- Added root-level `安装驱动.cmd` and `卸载驱动.cmd`, with one shared administrator-elevating script, explicit failure results and manual restart guidance. Interception remains the only keyboard/mouse output backend.
+- Kept support documentation under `docs/` in release archives and included README screenshots; embedded icon/manifest files no longer clutter the archive root.
+- Applied ShikiFight's reusable report-buffer and cancellable-read principles to the existing HID worker. Each read still publishes only the latest complete state to the original fixed scheduler; report parsing, axis/trigger conversion, touch rules, mappings and all timing/deadzone defaults are preserved.
+- Made the HID reader own its asynchronous device stream through cancellation and disposal, eliminating cross-thread handle closure. Disconnects publish a neutral state before reconnect attempts; only valid reports mark the controller connected.
+- Tracked confirmed temporary keyboard strokes so runtime cleanup can release a shortcut key whose KeyUp failed, while preserving the existing per-stroke send order and single retry.
+- Closed the output path before final shutdown release, preventing a late mapper action from pressing a key again during driver cleanup.
+- Corrected the generic startup-error heading so duplicate instances and invalid configuration are not mislabeled as a missing driver.
+- Added regressions for every partial-shortcut failure position, modifier reference counting, repeated HID start/stop, cancellation, disconnect and buffer reuse with a shorter next report. These tests do not send desktop input or install/uninstall any driver.
+
 ## V5.2 - 2026-07-22
 
 - Replaced the global one-module-per-poll output owner with deterministic non-exclusive processing: every eligible module now runs in order during the same poll, so keyboard actions, mouse buttons, wheel output, and pointer movement no longer suppress one another.

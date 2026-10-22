@@ -23,6 +23,7 @@ static class Program {
         VerifyContinuousOutputsAdvanceTogether(assembly);
         VerifyConfigurationGuards(assembly);
         VerifyPureBaseAndLayerSelection(assembly, mapper);
+        FaultRegressionTests.Run();
         NotNull(mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance), "two-finger continuation update remains available");
         NotNull(mapper.GetMethod("TryRecognizeTwoFingerContinuationGesture", PrivateStatic), "two-finger continuation recognition remains available");
         Equal(null, assembly.GetType("MapperForm+TouchGesturePressType"), "hold gesture enum removed");

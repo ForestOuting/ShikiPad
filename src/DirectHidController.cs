@@ -1,7 +1,9 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.Win32.SafeHandles;
 
 internal sealed class DirectHidController {
     private const ushort SonyVendorId = 0x054C;
@@ -15,15 +17,16 @@ internal sealed class DirectHidController {
     public volatile ControllerState State = new ControllerState();
 
     private Thread _thread;
-    private volatile bool _running;
-    private IntPtr _handle = IntPtr.Zero;
+    private readonly object _lifecycleLock = new object();
+    private readonly Func<Stream> _openDevice;
+    private CancellationTokenSource _stopSignal;
     private string _deviceName = "DualSense";
     private long _lastHidErrorLogMs = -10000;
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool ReadFile(IntPtr hFile, byte[] lpBuffer, uint nNumberOfBytesToRead, out uint lpNumberOfBytesRead, IntPtr lpOverlapped);
+    public DirectHidController() : this(null) { }
 
-    public DirectHidController() {
+    internal DirectHidController(Func<Stream> openDevice) {
+        _openDevice = openDevice ?? FindAndOpenDevice;
         _deviceName = "DualSense / Direct HID (USB)";
     }
 
@@ -32,111 +35,125 @@ internal sealed class DirectHidController {
     }
 
     public void Start() {
-        _running = true;
-        _thread = new Thread(Loop);
-        _thread.IsBackground = true;
-        _thread.Priority = ThreadPriority.AboveNormal;
-        _thread.Start();
+        lock (_lifecycleLock) {
+            if (_thread != null && _thread.IsAlive) return;
+            _stopSignal = new CancellationTokenSource();
+            CancellationTokenSource stopSignal = _stopSignal;
+            _thread = new Thread(() => {
+                try {
+                    Loop(stopSignal.Token);
+                } finally {
+                    State = new ControllerState();
+                    lock (_lifecycleLock) {
+                        _stopSignal = null;
+                        stopSignal.Dispose();
+                    }
+                }
+            });
+            _thread.IsBackground = true;
+            _thread.Priority = ThreadPriority.AboveNormal;
+            _thread.Start();
+        }
     }
 
     public void Stop() {
-        _running = false;
-        if (_handle != IntPtr.Zero && _handle != new IntPtr(-1)) {
-            NativeMethods.CloseHandle(_handle);
-            _handle = IntPtr.Zero;
+        Thread thread;
+        lock (_lifecycleLock) {
+            if (_stopSignal != null) _stopSignal.Cancel();
+            thread = _thread;
         }
-        if (_thread != null) {
-            _thread.Join(500);
+        if (thread != null && thread != Thread.CurrentThread && !thread.Join(1000)) {
+            LogHidError("正在等待 HID 读取取消；设备句柄将由读取线程释放。");
         }
     }
 
-    private void Loop() {
+    private void Loop(CancellationToken cancellationToken) {
         byte[] buffer = new byte[1024];
-        while (_running) {
-            if (_handle == IntPtr.Zero || _handle == new IntPtr(-1)) {
-                State = new ControllerState();
-                _handle = FindAndOpenDevice();
-                if (_handle != IntPtr.Zero && _handle != new IntPtr(-1)) {
-                    State = new ControllerState { Connected = true };
-                } else {
-                    Thread.Sleep(1000);
-                    continue;
-                }
-            }
-
-            uint bytesRead;
-            if (ReadFile(_handle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero)) {
-                if (bytesRead > 0) {
-                    byte[] report = new byte[bytesRead];
-                    Buffer.BlockCopy(buffer, 0, report, 0, (int)bytesRead);
-                    try {
-                        ParseReport(report);
-                    } catch (Exception ex) {
-                        LogHidError("HID 报告处理失败：" + ex.GetType().Name + "：" + ex.Message);
+        while (!cancellationToken.IsCancellationRequested) {
+            try {
+                // Only this thread owns/disposes the stream. ReadAsync cancels the
+                // outstanding OS read before disposal, without closing a shared handle.
+                using (Stream device = _openDevice()) {
+                    if (device != null) {
+                        while (!cancellationToken.IsCancellationRequested) {
+                            int bytesRead = device.ReadAsync(buffer.AsMemory(), cancellationToken).AsTask().GetAwaiter().GetResult();
+                            if (bytesRead == 0) break;
+                            if (cancellationToken.IsCancellationRequested) break;
+                            ParseReport(buffer.AsSpan(0, bytesRead));
+                        }
                     }
                 }
-            } else {
-                NativeMethods.CloseHandle(_handle);
-                _handle = IntPtr.Zero;
+            } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                break;
+            } catch (Exception ex) {
+                LogHidError("HID 读取失败：" + ex.GetType().Name + "：" + ex.Message);
+            } finally {
+                State = new ControllerState();
             }
+            // Publish disconnection before retrying so held outputs can be released.
+            if (cancellationToken.WaitHandle.WaitOne(1000)) break;
         }
     }
 
-    private IntPtr FindAndOpenDevice() {
+    private Stream FindAndOpenDevice() {
         Guid hidGuid;
         NativeMethods.HidD_GetHidGuid(out hidGuid);
 
         IntPtr deviceInfoSet = NativeMethods.SetupDiGetClassDevs(ref hidGuid, IntPtr.Zero, IntPtr.Zero, 0x12);
-        if (deviceInfoSet == new IntPtr(-1)) return IntPtr.Zero;
+        if (deviceInfoSet == new IntPtr(-1)) return null;
 
         NativeMethods.SP_DEVICE_INTERFACE_DATA interfaceData = new NativeMethods.SP_DEVICE_INTERFACE_DATA();
         interfaceData.cbSize = (uint)Marshal.SizeOf(interfaceData);
 
-        IntPtr foundHandle = IntPtr.Zero;
         uint index = 0;
 
-        while (NativeMethods.SetupDiEnumDeviceInterfaces(deviceInfoSet, IntPtr.Zero, ref hidGuid, index, ref interfaceData)) {
-            index++;
-            uint requiredSize = 0;
-            NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, IntPtr.Zero, 0, out requiredSize, IntPtr.Zero);
-            if (requiredSize == 0) continue;
+        try {
+            while (NativeMethods.SetupDiEnumDeviceInterfaces(deviceInfoSet, IntPtr.Zero, ref hidGuid, index, ref interfaceData)) {
+                index++;
+                uint requiredSize = 0;
+                NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, IntPtr.Zero, 0, out requiredSize, IntPtr.Zero);
+                if (requiredSize == 0) continue;
 
-            IntPtr detailData = Marshal.AllocHGlobal((int)requiredSize);
-            try {
-                Marshal.WriteInt32(detailData, (IntPtr.Size == 8) ? 8 : (Marshal.SystemDefaultCharSize == 1 ? 5 : 6));
-                if (!NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, detailData, requiredSize, out requiredSize, IntPtr.Zero)) {
-                    continue;
-                }
-
-                string devicePath = Marshal.PtrToStringAuto(new IntPtr(detailData.ToInt64() + 4));
-                if (!IsDualSenseUsbPath(devicePath)) continue;
-
-                IntPtr handle = NativeMethods.CreateFile(devicePath, 0x80000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero);
-                if (handle == new IntPtr(-1)) continue;
-
-                bool keepHandle = false;
+                IntPtr detailData = Marshal.AllocHGlobal((int)requiredSize);
                 try {
-                    NativeMethods.HIDD_ATTRIBUTES attrs = new NativeMethods.HIDD_ATTRIBUTES();
-                    attrs.Size = (uint)Marshal.SizeOf(attrs);
-                    if (!NativeMethods.HidD_GetAttributes(handle, ref attrs)) continue;
-                    if (!IsDualSenseProduct(attrs.VendorID, attrs.ProductID)) continue;
+                    Marshal.WriteInt32(detailData, (IntPtr.Size == 8) ? 8 : (Marshal.SystemDefaultCharSize == 1 ? 5 : 6));
+                    if (!NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, detailData, requiredSize, out requiredSize, IntPtr.Zero)) {
+                        continue;
+                    }
 
-                    if (!IsGamepadCollection(handle)) continue;
+                    string devicePath = Marshal.PtrToStringAuto(new IntPtr(detailData.ToInt64() + 4));
+                    if (!IsDualSenseUsbPath(devicePath)) continue;
 
-                    _deviceName = ProductName(attrs.ProductID);
-                    foundHandle = handle;
-                    keepHandle = true;
-                    break;
+                    const uint FileFlagOverlapped = 0x40000000;
+                    IntPtr handle = NativeMethods.CreateFile(devicePath, 0x80000000, 3, IntPtr.Zero, 3, FileFlagOverlapped, IntPtr.Zero);
+                    if (handle == new IntPtr(-1)) continue;
+
+                    SafeFileHandle safeHandle = new SafeFileHandle(handle, true);
+                    bool keepHandle = false;
+                    try {
+                        NativeMethods.HIDD_ATTRIBUTES attrs = new NativeMethods.HIDD_ATTRIBUTES();
+                        attrs.Size = (uint)Marshal.SizeOf(attrs);
+                        if (!NativeMethods.HidD_GetAttributes(handle, ref attrs)) continue;
+                        if (!IsDualSenseProduct(attrs.VendorID, attrs.ProductID)) continue;
+
+                        if (!IsGamepadCollection(handle)) continue;
+
+                        // Disable FileStream buffering: one completed read remains one HID report.
+                        FileStream device = new FileStream(safeHandle, FileAccess.Read, 1, true);
+                        _deviceName = ProductName(attrs.ProductID);
+                        keepHandle = true;
+                        return device;
+                    } finally {
+                        if (!keepHandle) safeHandle.Dispose();
+                    }
                 } finally {
-                    if (!keepHandle) NativeMethods.CloseHandle(handle);
+                    Marshal.FreeHGlobal(detailData);
                 }
-            } finally {
-                Marshal.FreeHGlobal(detailData);
             }
+        } finally {
+            NativeMethods.SetupDiDestroyDeviceInfoList(deviceInfoSet);
         }
-
-        NativeMethods.SetupDiDestroyDeviceInfoList(deviceInfoSet);
-        return foundHandle;
+        return null;
     }
 
     private static bool IsDualSenseProduct(ushort vendorId, ushort productId) {
@@ -169,10 +186,10 @@ internal sealed class DirectHidController {
         return name + " (PID 0x" + productId.ToString("X4", CultureInfo.InvariantCulture) + ")";
     }
 
-    private bool ParseReport(byte[] r) {
+    private bool ParseReport(ReadOnlySpan<byte> r) {
         ControllerState s;
-        if (!TryParseDualSenseReport(r, out s)) {
-            LogHidError("忽略了无法解析的 DualSense HID 报告（长度 " + (r == null ? 0 : r.Length) + "）。");
+        if (!TryParseDualSenseReportSpan(r, out s)) {
+            LogHidError("忽略了无法解析的 DualSense HID 报告（长度 " + r.Length + "）。");
             return false;
         }
         State = s;
@@ -187,8 +204,12 @@ internal sealed class DirectHidController {
     }
 
     internal static bool TryParseDualSenseReport(byte[] r, out ControllerState s) {
+        return TryParseDualSenseReportSpan(r, out s);
+    }
+
+    internal static bool TryParseDualSenseReportSpan(ReadOnlySpan<byte> r, out ControllerState s) {
         s = null;
-        if (r == null || r.Length < 8) return false;
+        if (r.Length < 8) return false;
 
         if (r[0] == 0x01) {
             if (r.Length >= 64) return TryParseDualSenseFullReport(r, 1, out s);
@@ -198,7 +219,7 @@ internal sealed class DirectHidController {
         return false;
     }
 
-    private static bool TryParseDualSenseSimpleReport(byte[] r, out ControllerState s) {
+    private static bool TryParseDualSenseSimpleReport(ReadOnlySpan<byte> r, out ControllerState s) {
         s = null;
         if (r.Length < 8) return false;
 
@@ -215,7 +236,7 @@ internal sealed class DirectHidController {
         return true;
     }
 
-    private static bool TryParseDualSenseFullReport(byte[] r, int offset, out ControllerState s) {
+    private static bool TryParseDualSenseFullReport(ReadOnlySpan<byte> r, int offset, out ControllerState s) {
         s = null;
         if (offset < 0 || r.Length <= offset + 9) return false;
 
@@ -251,7 +272,7 @@ internal sealed class DirectHidController {
         s.Mute = (buttons2 & 0x04) != 0;
     }
 
-    private static bool TryParseTouchPoints(ControllerState s, byte[] r, int offset) {
+    private static bool TryParseTouchPoints(ControllerState s, ReadOnlySpan<byte> r, int offset) {
         TouchPoint p1;
         TouchPoint p2;
         if (!TryReadTouchPair(r, offset, out p1, out p2)) return false;
@@ -259,7 +280,7 @@ internal sealed class DirectHidController {
         return true;
     }
 
-    private static bool TryReadTouchPair(byte[] r, int offset, out TouchPoint p1, out TouchPoint p2) {
+    private static bool TryReadTouchPair(ReadOnlySpan<byte> r, int offset, out TouchPoint p1, out TouchPoint p2) {
         p1 = new TouchPoint();
         p2 = new TouchPoint();
         if (!TryReadTouchPoint(r, offset, out p1)) return false;
@@ -283,9 +304,9 @@ internal sealed class DirectHidController {
         s.TouchCount = ActiveTouchCount(p1, p2);
     }
 
-    private static bool TryReadTouchPoint(byte[] r, int offset, out TouchPoint point) {
+    private static bool TryReadTouchPoint(ReadOnlySpan<byte> r, int offset, out TouchPoint point) {
         point = new TouchPoint();
-        if (r == null || offset < 0 || r.Length <= offset + 3) return false;
+        if (offset < 0 || r.Length <= offset + 3) return false;
         point.Active = (r[offset] & 0x80) == 0;
         point.Id = r[offset] & 0x7F;
         point.X = r[offset + 1] | ((r[offset + 2] & 0x0F) << 8);

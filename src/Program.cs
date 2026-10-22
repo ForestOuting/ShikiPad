@@ -231,10 +231,10 @@ internal static class Program {
         Console.WriteLine();
         WriteNeonRule(width, panelWidth, "ShikiPad 无法启动");
         WritePanelBorder(width, panelWidth, true, new Rgb(255, 148, 82));
-        WritePanelTitle(width, panelWidth, "Interception 驱动不可用", new Rgb(255, 215, 92));
+        WritePanelTitle(width, panelWidth, "启动失败", new Rgb(255, 215, 92));
         WritePanelSeparator(width, panelWidth, new Rgb(74, 94, 106));
         WritePanelWrappedLine(width, panelWidth, "  原因", message, SeasonAutumn(), new Rgb(245, 250, 255));
-        WritePanelWrappedLine(width, panelWidth, "  处理", "请安装 Interception 驱动, 重启 Windows, 并以管理员权限运行 ShikiPad. 当前版本不会回退到 SendInput.", SeasonGold(), new Rgb(245, 250, 255));
+        WritePanelWrappedLine(width, panelWidth, "  处理", "请根据上方原因处理。需要安装 Interception 时，请双击同目录的“安装驱动.cmd”，完成后重启 Windows。", SeasonGold(), new Rgb(245, 250, 255));
         WritePanelBorder(width, panelWidth, false, new Rgb(255, 148, 82));
         Console.WriteLine("\x1b[0m");
     }

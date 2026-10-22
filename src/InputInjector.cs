@@ -15,6 +15,9 @@ internal sealed class InputInjector {
     private readonly Dictionary<PhysicalKey, KeyDef> _keys = new Dictionary<PhysicalKey, KeyDef>();
     private readonly Dictionary<PhysicalKey, int> _modifierHoldCounts = new Dictionary<PhysicalKey, int>();
     private readonly HashSet<PhysicalKey> _heldKeys = new HashSet<PhysicalKey>();
+    // Includes temporary shortcut keys whose KeyUp may fail before a tap completes.
+    private readonly Dictionary<int, KEYBDINPUT> _deliveredKeys = new Dictionary<int, KEYBDINPUT>();
+    private readonly Func<INPUT, bool> _sendInput;
     private readonly object _heldLock = new object();
     private readonly KeyDef _shift;
     private readonly KeyDef _ctrl;
@@ -22,20 +25,26 @@ internal sealed class InputInjector {
     private readonly KeyDef _win;
     private bool _leftMouseHeld;
     private bool _rightMouseHeld;
+    private bool _shutdownRequested;
 
     public string CurrentSource = "Unknown";
     public string CurrentReason = "";
 
-    public InputInjector() {
-        if (!InterceptionDriver.Initialize()) {
+    public InputInjector() : this(null) { }
+
+    internal InputInjector(Func<INPUT, bool> sendInput) {
+        if (sendInput == null && !InterceptionDriver.Initialize()) {
             throw new InvalidOperationException("Interception 驱动不可用。请安装驱动、重启 Windows，并以管理员权限运行 ShikiPad。");
         }
+        _sendInput = sendInput ?? SendNativeInput;
         InitKeys();
         _shift = Resolve(0xA0, false);
         _ctrl = Resolve(0xA2, false);
         _alt = Resolve(0xA4, false);
         _win = Resolve(0x5B, true);
-        lock (s_instancesLock) s_instances.Add(this);
+        if (sendInput == null) {
+            lock (s_instancesLock) s_instances.Add(this);
+        }
     }
 
     public static void ReleaseAllRegistered() {
@@ -43,14 +52,21 @@ internal sealed class InputInjector {
         lock (s_instancesLock) injectors = s_instances.ToArray();
         for (int i = 0; i < injectors.Length; i++) {
             try {
-                injectors[i].ReleaseAll();
+                injectors[i].Shutdown();
             } catch (Exception first) {
                 try {
-                    injectors[i].ReleaseAll();
+                    injectors[i].Shutdown();
                 } catch (Exception second) {
                     try { Console.Error.WriteLine("[warn] 输入释放连续失败：" + first.Message + "；重试：" + second.Message); } catch { }
                 }
             }
+        }
+    }
+
+    internal void Shutdown() {
+        lock (_heldLock) {
+            _shutdownRequested = true;
+            ReleaseAll();
         }
     }
 
@@ -206,15 +222,28 @@ internal sealed class InputInjector {
     public void ReleaseAll() {
         List<INPUT> inputs = new List<INPUT>();
         lock (_heldLock) {
+            HashSet<int> releases = new HashSet<int>();
             foreach (PhysicalKey key in _heldKeys) {
                 KeyDef def;
-                if (_keys.TryGetValue(key, out def)) AddKey(inputs, def, true);
+                if (_keys.TryGetValue(key, out def)) {
+                    AddKey(inputs, def, true);
+                    releases.Add(KeyIdentity(inputs[inputs.Count - 1].ki));
+                }
+            }
+            foreach (var delivered in _deliveredKeys) {
+                if (!releases.Add(delivered.Key)) continue;
+                KEYBDINPUT keyboard = delivered.Value;
+                keyboard.dwFlags |= KEYEVENTF_KEYUP;
+                INPUT input = new INPUT();
+                input.type = INPUT_KEYBOARD;
+                input.ki = keyboard;
+                inputs.Add(input);
             }
 
             if (_leftMouseHeld) AddMouseButton(inputs, 0, false);
             if (_rightMouseHeld) AddMouseButton(inputs, 1, false);
 
-            Send(inputs, "ReleaseAll");
+            Send(inputs, "ReleaseAll", true);
             _heldKeys.Clear();
             _modifierHoldCounts.Clear();
             _leftMouseHeld = false;
@@ -340,52 +369,47 @@ internal sealed class InputInjector {
         input.mi = mouse;
         inputs.Add(input);
     }
-    private void Send(List<INPUT> inputs, string actionType) {
+    private void Send(List<INPUT> inputs, string actionType, bool allowDuringShutdown = false) {
         if (inputs.Count == 0) return;
-        string failedStrokeType = null;
-        foreach (var input in inputs) {
-            if (input.type == INPUT_KEYBOARD) {
-                InterceptionDriver.KeyState state;
-                if ((input.ki.dwFlags & KEYEVENTF_KEYUP) != 0) {
-                    state = (input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0 ? (InterceptionDriver.KeyState.E0 | InterceptionDriver.KeyState.Up) : InterceptionDriver.KeyState.Up;
-                } else {
-                    state = (input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0 ? (InterceptionDriver.KeyState.E0 | InterceptionDriver.KeyState.Down) : InterceptionDriver.KeyState.Down;
+        lock (_heldLock) {
+            if (_shutdownRequested && !allowDuringShutdown) {
+                throw new InvalidOperationException("ShikiPad 输入输出已关闭。");
+            }
+            string failedStrokeType = null;
+            foreach (var input in inputs) {
+                bool sent = _sendInput(input) || _sendInput(input);
+                if (!sent) {
+                    if (failedStrokeType == null) failedStrokeType = input.type == INPUT_KEYBOARD ? "keyboard" : "mouse";
+                    continue;
                 }
-                if (!TrySendKey(input.ki.wScan, state) && failedStrokeType == null) failedStrokeType = "keyboard";
-            } else if (input.type == INPUT_MOUSE) {
-                if ((input.mi.dwFlags & MOUSEEVENTF_MOVE) != 0) {
-                    if (!TrySendMouseDelta(input.mi.dx, input.mi.dy) && failedStrokeType == null) failedStrokeType = "mouse move";
-                } else if ((input.mi.dwFlags & MOUSEEVENTF_WHEEL) != 0) {
-                    if (!TrySendMouseWheel(input.mi.mouseData) && failedStrokeType == null) failedStrokeType = "mouse wheel";
-                } else {
-                    InterceptionDriver.MouseState state = 0;
-                    if ((input.mi.dwFlags & MOUSEEVENTF_LEFTDOWN) != 0) state |= InterceptionDriver.MouseState.LeftButtonDown;
-                    if ((input.mi.dwFlags & MOUSEEVENTF_LEFTUP) != 0) state |= InterceptionDriver.MouseState.LeftButtonUp;
-                    if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTDOWN) != 0) state |= InterceptionDriver.MouseState.RightButtonDown;
-                    if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTUP) != 0) state |= InterceptionDriver.MouseState.RightButtonUp;
-                    if (state != 0) {
-                        if (!TrySendMouse(state) && failedStrokeType == null) failedStrokeType = "mouse button";
-                    }
+                if (input.type == INPUT_KEYBOARD) {
+                    int identity = KeyIdentity(input.ki);
+                    if ((input.ki.dwFlags & KEYEVENTF_KEYUP) != 0) _deliveredKeys.Remove(identity);
+                    else _deliveredKeys[identity] = input.ki;
                 }
             }
+            if (failedStrokeType != null) ThrowSendFailure(actionType, failedStrokeType);
         }
-        if (failedStrokeType != null) ThrowSendFailure(actionType, failedStrokeType);
     }
 
-    private static bool TrySendKey(ushort code, InterceptionDriver.KeyState state) {
-        return InterceptionDriver.SendKey(code, state) || InterceptionDriver.SendKey(code, state);
+    private static int KeyIdentity(KEYBDINPUT keyboard) {
+        return keyboard.wScan | ((keyboard.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0 ? 0x10000 : 0);
     }
 
-    private static bool TrySendMouse(InterceptionDriver.MouseState state) {
-        return InterceptionDriver.SendMouse(state) || InterceptionDriver.SendMouse(state);
-    }
-
-    private static bool TrySendMouseDelta(int dx, int dy) {
-        return InterceptionDriver.SendMouseDelta(dx, dy) || InterceptionDriver.SendMouseDelta(dx, dy);
-    }
-
-    private static bool TrySendMouseWheel(int delta) {
-        return InterceptionDriver.SendMouseWheel(delta) || InterceptionDriver.SendMouseWheel(delta);
+    private static bool SendNativeInput(INPUT input) {
+        if (input.type == INPUT_KEYBOARD) {
+            InterceptionDriver.KeyState state = (input.ki.dwFlags & KEYEVENTF_KEYUP) != 0 ? InterceptionDriver.KeyState.Up : InterceptionDriver.KeyState.Down;
+            if ((input.ki.dwFlags & KEYEVENTF_EXTENDEDKEY) != 0) state |= InterceptionDriver.KeyState.E0;
+            return InterceptionDriver.SendKey(input.ki.wScan, state);
+        }
+        if ((input.mi.dwFlags & MOUSEEVENTF_MOVE) != 0) return InterceptionDriver.SendMouseDelta(input.mi.dx, input.mi.dy);
+        if ((input.mi.dwFlags & MOUSEEVENTF_WHEEL) != 0) return InterceptionDriver.SendMouseWheel(input.mi.mouseData);
+        InterceptionDriver.MouseState mouseState = 0;
+        if ((input.mi.dwFlags & MOUSEEVENTF_LEFTDOWN) != 0) mouseState |= InterceptionDriver.MouseState.LeftButtonDown;
+        if ((input.mi.dwFlags & MOUSEEVENTF_LEFTUP) != 0) mouseState |= InterceptionDriver.MouseState.LeftButtonUp;
+        if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTDOWN) != 0) mouseState |= InterceptionDriver.MouseState.RightButtonDown;
+        if ((input.mi.dwFlags & MOUSEEVENTF_RIGHTUP) != 0) mouseState |= InterceptionDriver.MouseState.RightButtonUp;
+        return mouseState == 0 || InterceptionDriver.SendMouse(mouseState);
     }
 
     private void ThrowSendFailure(string actionType, string strokeType) {
@@ -409,7 +433,7 @@ internal sealed class InputInjector {
     [DllImport("user32.dll")] private static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT {
+    internal struct INPUT {
         public uint type;
         public InputUnion u;
         public MOUSEINPUT mi { get { return u.mi; } set { u.mi = value; } }
@@ -417,13 +441,13 @@ internal sealed class InputInjector {
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    private struct InputUnion {
+    internal struct InputUnion {
         [FieldOffset(0)] public MOUSEINPUT mi;
         [FieldOffset(0)] public KEYBDINPUT ki;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct MOUSEINPUT {
+    internal struct MOUSEINPUT {
         public int dx;
         public int dy;
         public int mouseData;
@@ -433,7 +457,7 @@ internal sealed class InputInjector {
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct KEYBDINPUT {
+    internal struct KEYBDINPUT {
         public ushort wVk;
         public ushort wScan;
         public uint dwFlags;
