@@ -59,6 +59,10 @@ internal sealed class MapperForm : Form {
     private bool _createPendingTap;
     private bool _optionsPendingTap;
     private volatile bool _manualVisible;
+    private volatile TextInputLanguage _inputLanguage = TextInputLanguage.Chinese;
+    private int _pendingLanguageToggles;
+    private int _languagePageRefresh;
+    private readonly object _consolePageLock = new object();
     private double _lastTickMs;
     private double _lastTickExceptionLogMs = -10000.0;
 
@@ -94,16 +98,26 @@ internal sealed class MapperForm : Form {
                     if (Console.KeyAvailable) {
                         var key = Console.ReadKey(true);
                         if (key.Key == ConsoleKey.Enter) {
-                            if (_manualVisible) {
-                                Program.PrintRunningHome(_config, _hid.DisplayName, _hid.State.Connected);
-                                _manualVisible = false;
-                            } else {
-                                Program.PrintDetailedManual(_config);
-                                _manualVisible = true;
+                            lock (_consolePageLock) {
+                                if (_manualVisible) {
+                                    Program.PrintRunningHome(_config, _hid.DisplayName, _hid.State.Connected, _inputLanguage);
+                                    _manualVisible = false;
+                                } else {
+                                    Program.PrintDetailedManual(_config, _inputLanguage);
+                                    _manualVisible = true;
+                                }
                             }
+                        } else if (key.Key == ConsoleKey.Tab) {
+                            Interlocked.Increment(ref _pendingLanguageToggles);
                         } else if (key.Key == ConsoleKey.Escape) {
                             CloseFromConsoleThread();
                             break;
+                        }
+                    }
+                    if (Interlocked.Exchange(ref _languagePageRefresh, 0) != 0) {
+                        lock (_consolePageLock) {
+                            if (_manualVisible) Program.PrintDetailedManual(_config, _inputLanguage);
+                            else Program.PrintRunningHome(_config, _hid.DisplayName, _hid.State.Connected, _inputLanguage);
                         }
                     }
                 } catch { }
@@ -209,6 +223,7 @@ internal sealed class MapperForm : Form {
     private void OnTick() {
         ControllerState s = _hid.State;
         double now = NowMs();
+        ApplyRequestedLanguageSwitch();
         double deltaSec = Clamp((now - _lastTickMs) / 1000.0, 0.0, MaxMouseFrameSeconds);
         _lastTickMs = now;
         bool preL1 = _prevL1;
@@ -233,8 +248,10 @@ internal sealed class MapperForm : Form {
         }
         _runtimeReleased = false;
         if (!_printedConnectedGuide) {
-            Program.PrintConnectedWelcome(_config, _hid.DisplayName);
-            _manualVisible = false;
+            lock (_consolePageLock) {
+                if (_manualVisible) Program.PrintDetailedManual(_config, _inputLanguage);
+                else Program.PrintConnectedWelcome(_config, _hid.DisplayName, _inputLanguage);
+            }
             _printedConnectedGuide = true;
         }
         UpdateSystemButtonPresses(s, now);
@@ -257,6 +274,20 @@ internal sealed class MapperForm : Form {
         UpdateRightStick(s, now, deltaSec, out pointerX, out pointerY);
         SendContinuousMouseOutputs(pointerX, pointerY, wheelDelta);
         ClearInactiveLayerOverlapFlags(s);
+    }
+
+    private void ApplyRequestedLanguageSwitch() {
+        if (!ApplyLanguageToggleCount(Interlocked.Exchange(ref _pendingLanguageToggles, 0))) return;
+        // Redraw on the console thread so ANSI rendering cannot stall input decisions.
+        Interlocked.Exchange(ref _languagePageRefresh, 1);
+    }
+
+    // Only the mapper thread changes the active layout. Pending actions keep their own snapshot.
+    private bool ApplyLanguageToggleCount(int count) {
+        if ((count & 1) == 0) return false;
+        _inputLanguage = _inputLanguage == TextInputLanguage.Chinese
+            ? TextInputLanguage.English : TextInputLanguage.Chinese;
+        return true;
     }
 
     private void UpdateTriggers(ControllerState s, double now) {
@@ -1494,83 +1525,36 @@ internal sealed class MapperForm : Form {
             bool prev = _prevDown[i];
             bool curr = currentDown[i];
             ButtonHold hold = _holds[i];
-            ResolvedActionStroke layerAction = ResolveActionStroke(_mapping.Lookup(layer, (ActionButton)i));
+            ResolvedActionStroke layerAction = ResolveActionStroke(_mapping.Lookup(layer, (ActionButton)i, _inputLanguage));
             KeyStroke layerKey = layerAction.Stroke;
 
+            if (hold.Pending && !curr) hold.PendingReleased = true;
+            if (hold.Pending && !prev && curr) {
+                // A new physical press owns a new decision window. The earlier
+                // released press must keep receiving its own layer/modifier history.
+                hold.PendingReleased = true;
+                ReleasedActionPendings(i).Add(hold);
+                hold = CreatePendingAction(layer, layerMs, now);
+            }
+
+            UpdateReleasedActionPendings(i, layer, layerMs, now);
+
             if (hold.Pending) {
-                if (!curr && !hold.PendingReleased) {
-                    hold.PendingReleased = true;
+                UpdatePendingActionDecision(ref hold, layer, layerMs, now);
+                if (hold.PendingReady && !HasReleasedActionPendings(i)) {
+                    FlushPendingAction(i, ref hold, now);
                 }
-                UpdatePendingLayer(ref hold, layer, layerMs, now);
-
-                bool shouldFlushPending = now - hold.PendingSinceMs >= PendingActionDecisionDelayMs(_config) &&
-                    !ShouldWaitForPendingSingleLayerToSettle(hold, now);
-                if (!shouldFlushPending) {
-                    _holds[i] = hold;
-                    _prevDown[i] = curr;
-                    continue;
-                }
-
-                bool releasedPending = hold.PendingReleased || !curr;
-                Layer resolvedLayer = hold.PendingLayer != Layer.Base && hold.PendingLayer != Layer.Reserved
-                    ? hold.PendingLayer
-                    : ((releasedPending || hold.PendingLayerSettled) ? hold.PendingLayer : layer);
-                ResolvedActionStroke resolvedLayerAction = ResolveActionStroke(_mapping.Lookup(resolvedLayer, (ActionButton)i));
-                KeyStroke resolvedLayerKey = resolvedLayerAction.Stroke;
-                if (!resolvedLayerKey.IsNone) {
-                    if (resolvedLayer != Layer.Base || IsFunctionKey(resolvedLayerKey)) {
-                        TapStickyActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " virtual tap", resolvedLayerAction.FnTranslated, hold.PendingModifierMask);
-                        if (!releasedPending) {
-                            hold.Pending = false;
-                            hold.PendingReleased = false;
-                            hold.Key = resolvedLayerKey;
-                            hold.KeyLayer = resolvedLayer;
-                            hold.SuppressUntilRelease = true;
-                            _holds[i] = hold;
-                        } else {
-                            _holds[i] = new ButtonHold();
-                        }
-                        _prevDown[i] = curr;
-                        continue;
-                    }
-
-                    if (releasedPending) {
-                        hold.Pending = false;
-                        hold.PendingReleased = false;
-                        PressStickyActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, false, now, resolvedLayerAction.FnTranslated, hold.PendingModifierMask);
-                        ReleaseActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i) + " release after layer settle");
-                        ReleaseBoundModifiers(hold.StickyModifierMask, ActionSource(i));
-                        _holds[i] = new ButtonHold();
-                        _prevDown[i] = curr;
-                        continue;
-                    }
-
-                    hold.Pending = false;
-                    hold.PendingReleased = false;
-                    PressStickyActionKey(i, resolvedLayerKey, "Button " + ActionButtonName(i), ref hold, resolvedLayer, IsBaseRepeatableAction(i, resolvedLayer), now, resolvedLayerAction.FnTranslated, hold.PendingModifierMask);
-                    _holds[i] = hold;
-                    _prevDown[i] = curr;
-                    continue;
-                }
-
-                _holds[i] = new ButtonHold();
+                _holds[i] = hold;
                 _prevDown[i] = curr;
                 continue;
             }
 
             if (!prev && curr) {
                 Layer initialLayer = InitialActionLayer(layer, now, layerMs);
-                ResolvedActionStroke initialAction = ResolveActionStroke(_mapping.Lookup(initialLayer, (ActionButton)i));
+                ResolvedActionStroke initialAction = ResolveActionStroke(_mapping.Lookup(initialLayer, (ActionButton)i, _inputLanguage));
                 KeyStroke key = initialAction.Stroke;
                 if (ShouldDeferInitialAction(initialLayer)) {
-                    hold = new ButtonHold();
-                    hold.Pending = true;
-                    hold.OriginalPendingLayer = initialLayer;
-                    hold.PendingLayer = initialLayer;
-                    hold.PendingLayerMs = initialLayer == layer ? layerMs : LayerTimestamp(initialLayer);
-                    hold.PendingSinceMs = now;
-                    hold.PendingModifierMask = CaptureCurrentBindingModifiers();
-                    InitializePendingTrace(ref hold, layer, layerMs, now);
+                    hold = CreatePendingAction(layer, layerMs, now);
                     _holds[i] = hold;
                     _prevDown[i] = curr;
                     continue;
@@ -1686,6 +1670,96 @@ internal sealed class MapperForm : Form {
                 _r1ConsumedByCombo = true;
                 _l2ConsumedByCombo = true;
                 break;
+        }
+    }
+
+    private ButtonHold CreatePendingAction(Layer layer, double layerMs, double now) {
+        Layer initialLayer = InitialActionLayer(layer, now, layerMs);
+        ButtonHold hold = new ButtonHold();
+        hold.Pending = true;
+        hold.OriginalPendingLayer = initialLayer;
+        hold.PendingLayer = initialLayer;
+        hold.PendingLayerMs = initialLayer == layer ? layerMs : LayerTimestamp(initialLayer);
+        hold.PendingSinceMs = now;
+        hold.PendingLanguage = _inputLanguage;
+        hold.PendingModifierMask = CaptureCurrentBindingModifiers();
+        InitializePendingTrace(ref hold, layer, layerMs, now);
+        return hold;
+    }
+
+    private List<ButtonHold> ReleasedActionPendings(int index) {
+        if (_releasedActionPendings == null) _releasedActionPendings = new List<ButtonHold>[8];
+        if (_releasedActionPendings[index] == null) _releasedActionPendings[index] = new List<ButtonHold>();
+        return _releasedActionPendings[index];
+    }
+
+    private bool HasReleasedActionPendings(int index) {
+        return _releasedActionPendings != null && _releasedActionPendings[index] != null && _releasedActionPendings[index].Count != 0;
+    }
+
+    private void UpdateReleasedActionPendings(int index, Layer layer, double layerMs, double now) {
+        if (!HasReleasedActionPendings(index)) return;
+        List<ButtonHold> pending = _releasedActionPendings[index];
+        for (int j = 0; j < pending.Count; j++) {
+            ButtonHold hold = pending[j];
+            UpdatePendingActionDecision(ref hold, layer, layerMs, now);
+            pending[j] = hold;
+        }
+        // A prior press can wait longer for a single layer's combo window.
+        // Freeze each later decision at its own deadline, but emit in press order.
+        while (pending.Count > 0 && pending[0].PendingReady) {
+            ButtonHold hold = pending[0];
+            FlushPendingAction(index, ref hold, now);
+            pending.RemoveAt(0);
+        }
+    }
+
+    private void UpdatePendingActionDecision(ref ButtonHold hold, Layer layer, double layerMs, double now) {
+        if (hold.PendingReady) return;
+        UpdatePendingLayer(ref hold, layer, layerMs, now);
+        if (now - hold.PendingSinceMs < PendingActionDecisionDelayMs(_config) ||
+            ShouldWaitForPendingSingleLayerToSettle(hold, now)) return;
+        hold.PendingResolvedLayer = hold.PendingLayer != Layer.Base && hold.PendingLayer != Layer.Reserved
+            ? hold.PendingLayer
+            : ((hold.PendingReleased || hold.PendingLayerSettled) ? hold.PendingLayer : layer);
+        hold.PendingReady = true;
+    }
+
+    private void FlushPendingAction(int index, ref ButtonHold hold, double now) {
+        Layer resolvedLayer = hold.PendingResolvedLayer;
+        ResolvedActionStroke action = ResolveActionStroke(_mapping.Lookup(resolvedLayer, (ActionButton)index, hold.PendingLanguage));
+        KeyStroke key = action.Stroke;
+        if (key.IsNone) {
+            // A held physical press must not enter the layer-change fallback
+            // after its decision window has already been consumed.
+            bool released = hold.PendingReleased;
+            hold = new ButtonHold();
+            hold.SuppressUntilRelease = !released;
+            return;
+        }
+
+        bool releasedPending = hold.PendingReleased;
+        hold.Pending = false;
+        hold.PendingReady = false;
+        hold.PendingReleased = false;
+        if (resolvedLayer != Layer.Base || IsFunctionKey(key)) {
+            TapStickyActionKey(index, key, "Button " + ActionButtonName(index) + " virtual tap", action.FnTranslated, hold.PendingModifierMask);
+            if (releasedPending) {
+                hold = new ButtonHold();
+            } else {
+                hold.Key = key;
+                hold.KeyLayer = resolvedLayer;
+                hold.SuppressUntilRelease = true;
+            }
+            return;
+        }
+
+        PressStickyActionKey(index, key, "Button " + ActionButtonName(index), ref hold, resolvedLayer,
+            !releasedPending && IsBaseRepeatableAction(index, resolvedLayer), now, action.FnTranslated, hold.PendingModifierMask);
+        if (releasedPending) {
+            ReleaseActionKey(index, key, "Button " + ActionButtonName(index) + " release after layer settle");
+            ReleaseBoundModifiers(hold.StickyModifierMask, ActionSource(index));
+            hold = new ButtonHold();
         }
     }
 
@@ -2097,13 +2171,24 @@ internal sealed class MapperForm : Form {
 
         for (int i = 0; i < _holds.Length; i++) {
             ButtonHold hold = _holds[i];
-            if (!hold.Pending || !IsWithinModifierBindingWindow(hold.PendingSinceMs, now, _config)) continue;
-            hold.PendingModifierMask |= bit;
+            RegisterPendingActionModifier(bit, now, ref hold);
             _holds[i] = hold;
+            if (!HasReleasedActionPendings(i)) continue;
+            List<ButtonHold> pending = _releasedActionPendings[i];
+            for (int j = 0; j < pending.Count; j++) {
+                ButtonHold released = pending[j];
+                RegisterPendingActionModifier(bit, now, ref released);
+                pending[j] = released;
+            }
         }
 
         RegisterPendingMouseModifier(bit, now, ref _leftMouseButton);
         RegisterPendingMouseModifier(bit, now, ref _rightMouseButton);
+    }
+
+    private void RegisterPendingActionModifier(int bit, double now, ref ButtonHold hold) {
+        if (!hold.Pending || hold.PendingReady || !IsWithinModifierBindingWindow(hold.PendingSinceMs, now, _config)) return;
+        hold.PendingModifierMask |= bit;
     }
 
     private int CaptureCurrentBindingModifiers() {
@@ -2493,6 +2578,11 @@ internal sealed class MapperForm : Form {
     }
 
     private void ReleaseHeldActionKeys() {
+        if (_releasedActionPendings != null) {
+            for (int i = 0; i < _releasedActionPendings.Length; i++) {
+                if (_releasedActionPendings[i] != null) _releasedActionPendings[i].Clear();
+            }
+        }
         for (int i = 0; i < _holds.Length; i++) {
             if (_holds[i].KeyIsDown) {
                 ReleaseActionKey(i, _holds[i].Key, "Runtime release " + ActionButtonName(i));
@@ -2664,6 +2754,10 @@ internal sealed class MapperForm : Form {
         }
     }
 
+    // Only completed physical presses awaiting their independent decision windows.
+    // The most recent press (pending, held or suppressed) remains in _holds.
+    private List<ButtonHold>[] _releasedActionPendings;
+
     private struct ButtonHold {
         public KeyStroke Key;
         public Layer KeyLayer;
@@ -2671,6 +2765,9 @@ internal sealed class MapperForm : Form {
         public bool SuppressUntilRelease;
         public bool Pending;
         public bool PendingReleased;
+        public bool PendingReady;
+        public Layer PendingResolvedLayer;
+        public TextInputLanguage PendingLanguage;
         public double PendingSinceMs;
         public Layer OriginalPendingLayer;
         public Layer PendingLayer;

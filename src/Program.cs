@@ -53,7 +53,7 @@ internal static class Program {
         return pattern.Replace('#', '\u2588');
     }
 
-    public static void PrintDetailedManual(Config config) {
+    public static void PrintDetailedManual(Config config, TextInputLanguage language = TextInputLanguage.Chinese) {
         try { Console.Clear(); } catch { }
         EnableAnsi();
         int width = GetConsoleWidth();
@@ -61,21 +61,23 @@ internal static class Program {
 
         Console.WriteLine();
         WriteEmbossedCenteredText(width, panelWidth, "映 射 说 明", SeasonGlowStops(), true);
+        WriteEmbossedCenteredText(width, panelWidth, "当前键位：" + TypingLayouts.Name(language), SeasonGlowStops(), false);
         Console.WriteLine();
         
         int blockWidth = 76;
         int indent = Math.Max(0, (panelWidth - blockWidth) / 2);
         string pad = new string(' ', indent);
 
-        WriteManualSingleLayer(width, panelWidth, pad, blockWidth, "基础层", "↑", "→", "Tab", "Esc", "←", "↓", "Space", "Enter");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1/RB", "o", "p", "j", "i", "n", "m", "k", "l",
-            "L1/LB", "w", "d", "q", "e", "a", "s", "z", "x");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R2/RT", "0", "g", "y", "u", "-", "=", "b", "h",
-            "L2/LT", "r", "f", "t", "1", "c", "v", "3", "2");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L1", "4", ",", ".", "7", "5", "6", "9", "8",
-            "R2+L2", "+", "/", "&", "*", "_", "^", "$", "%");
-        WriteManualLayerPair(width, panelWidth, pad, blockWidth, "R1+L2", "(", ")", ";", "'", "<", ">", "`", "\\",
-            "L1+R2", "[", "]", "!", "?", "{", "}", "@", "#");
+        MappingEngine mapping = new MappingEngine();
+        WriteManualSingleLayer(width, panelWidth, pad, blockWidth, "基础层", ManualKeys(mapping, Layer.Base, language));
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth,
+            "R1/RB", ManualKeys(mapping, Layer.R1, language), "L1/LB", ManualKeys(mapping, Layer.L1, language));
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth,
+            "R2/RT", ManualKeys(mapping, Layer.R2, language), "L2/LT", ManualKeys(mapping, Layer.L2, language));
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth,
+            "R1+L1", ManualKeys(mapping, Layer.R1L1, language), "R2+L2", ManualKeys(mapping, Layer.R2L2, language));
+        WriteManualLayerPair(width, panelWidth, pad, blockWidth,
+            "R1+L2", ManualKeys(mapping, Layer.R1L2, language), "L1+R2", ManualKeys(mapping, Layer.L1R2, language));
         WriteManualGradientLine(width, panelWidth, pad + "Shift       ;→:  '→\"  `→~  \\→|", blockWidth);
         Console.WriteLine();
         WriteManualGradientLine(width, panelWidth, pad + "右摇杆      鼠标移动; L3 左键; R3 右键", blockWidth);
@@ -88,33 +90,32 @@ internal static class Program {
         WriteManualGradientLine(width, panelWidth, pad + "Caps/Fn     1..0/-/= -> F1..F12; 字母 -> 大写", blockWidth);
         
         Console.WriteLine();
-        WriteEmbossedCenteredText(width, panelWidth, "Enter 主界面   |   Esc 关闭软件", SeasonGlowStops(), false);
+        WriteEmbossedCenteredText(width, panelWidth, "Enter 主界面   |   Tab 切换中英文键位   |   Esc 关闭软件", SeasonGlowStops(), false);
+        WriteEmbossedCenteredText(width, panelWidth, "键位模式不改变系统输入法；请按需要切换系统输入法。", SeasonGlowStops(), false);
         Console.WriteLine("\x1b[0m");
     }
 
+    private static string[] ManualKeys(MappingEngine mapping, Layer layer, TextInputLanguage language) {
+        string[] labels = new string[8];
+        for (int i = 0; i < labels.Length; i++) labels[i] = MappingEngine.KeyLabel(mapping.Lookup(layer, (ActionButton)i, language));
+        return labels;
+    }
+
     private static void WriteManualSingleLayer(int width, int panelWidth, string pad, int blockWidth,
-        string title, string up, string right, string square, string triangle, string left, string down, string cross, string circle) {
+        string title, string[] keys) {
         string spacing = new string(' ', 20);
-        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(0, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(1, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(2, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(3, title, up, right, square, triangle, left, down, cross, circle) + spacing, blockWidth);
+        for (int row = 0; row < 4; row++)
+            WriteManualGradientLine(width, panelWidth, pad + spacing + LayerDiagramLine(row, title, keys) + spacing, blockWidth);
     }
 
     private static void WriteManualLayerPair(int width, int panelWidth, string pad, int blockWidth,
-        string leftTitle, string leftUp, string leftRight, string leftSquare, string leftTriangle, string leftLeft, string leftDown, string leftCross, string leftCircle,
-        string rightTitle, string rightUp, string rightRight, string rightSquare, string rightTriangle, string rightLeft, string rightDown, string rightCross, string rightCircle) {
-        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(0, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
-            LayerDiagramLine(0, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(1, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
-            LayerDiagramLine(1, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(2, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
-            LayerDiagramLine(2, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
-        WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(3, leftTitle, leftUp, leftRight, leftSquare, leftTriangle, leftLeft, leftDown, leftCross, leftCircle) + "    " +
-            LayerDiagramLine(3, rightTitle, rightUp, rightRight, rightSquare, rightTriangle, rightLeft, rightDown, rightCross, rightCircle), blockWidth);
+        string leftTitle, string[] leftKeys, string rightTitle, string[] rightKeys) {
+        for (int row = 0; row < 4; row++)
+            WriteManualGradientLine(width, panelWidth, pad + LayerDiagramLine(row, leftTitle, leftKeys) + "    " +
+                LayerDiagramLine(row, rightTitle, rightKeys), blockWidth);
     }
 
-    private static string LayerDiagramLine(int row, string title, string up, string right, string square, string triangle, string left, string down, string cross, string circle) {
+    private static string LayerDiagramLine(int row, string title, string[] keys) {
         const int diagramWidth = 36;
         if (String.IsNullOrEmpty(title)) return new string(' ', diagramWidth);
         string[] line = new string[diagramWidth];
@@ -124,18 +125,18 @@ internal static class Program {
                 PutCentered(line, 0, 36, title);
                 break;
             case 1:
-                PutCentered(line, 5, 5, up);
-                PutCentered(line, 26, 5, triangle);
+                PutCentered(line, 5, 5, keys[(int)ActionButton.Up]);
+                PutCentered(line, 26, 5, keys[(int)ActionButton.Triangle]);
                 break;
             case 2:
-                PutCentered(line, 0, 5, left);
-                PutCentered(line, 10, 5, right);
-                PutCentered(line, 21, 5, square);
-                PutCentered(line, 31, 5, circle);
+                PutCentered(line, 0, 5, keys[(int)ActionButton.Left]);
+                PutCentered(line, 10, 5, keys[(int)ActionButton.Right]);
+                PutCentered(line, 21, 5, keys[(int)ActionButton.Square]);
+                PutCentered(line, 31, 5, keys[(int)ActionButton.Circle]);
                 break;
             case 3:
-                PutCentered(line, 5, 5, down);
-                PutCentered(line, 26, 5, cross);
+                PutCentered(line, 5, 5, keys[(int)ActionButton.Down]);
+                PutCentered(line, 26, 5, keys[(int)ActionButton.Cross]);
                 break;
         }
         return string.Join("", line);
@@ -157,15 +158,15 @@ internal static class Program {
         }
     }
 
-    public static void PrintConnectedWelcome(Config config, string deviceName) {
-        PrintHomeSurface(config, deviceName, true, false);
+    public static void PrintConnectedWelcome(Config config, string deviceName, TextInputLanguage language = TextInputLanguage.Chinese) {
+        PrintHomeSurface(config, deviceName, true, false, language);
     }
 
-    public static void PrintRunningHome(Config config, string deviceName, bool connected) {
-        PrintHomeSurface(config, deviceName, connected, false);
+    public static void PrintRunningHome(Config config, string deviceName, bool connected, TextInputLanguage language = TextInputLanguage.Chinese) {
+        PrintHomeSurface(config, deviceName, connected, false, language);
     }
 
-    private static void PrintHomeSurface(Config config, string deviceName, bool connected, bool pageBreak) {
+    private static void PrintHomeSurface(Config config, string deviceName, bool connected, bool pageBreak, TextInputLanguage language) {
         EnableAnsi();
         if (pageBreak) {
             WritePageBreak();
@@ -179,8 +180,9 @@ internal static class Program {
         WriteNeonRule(width, panelWidth, "ShikiPad");
         WriteExtrudedLogo(width, BuildShikiPadBlockLogo(), SeasonFlowStops());
         WriteEmbossedCenteredText(width, panelWidth, "手 柄 键 鼠 映 射", SeasonGlowStops(), true);
+        WriteEmbossedCenteredText(width, panelWidth, "当前键位：" + TypingLayouts.Name(language), SeasonGlowStops(), false);
         Console.WriteLine();
-        WriteEmbossedCenteredText(width, panelWidth, "Enter 映射说明   |   Esc 关闭软件   |   关闭窗口释放按键", SeasonGlowStops(), false);
+        WriteEmbossedCenteredText(width, panelWidth, "Enter 映射说明   |   Tab 切换中英文键位   |   Esc 关闭软件", SeasonGlowStops(), false);
         Console.WriteLine("\x1b[0m");
     }
 

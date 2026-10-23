@@ -1,6 +1,6 @@
 # ShikiPad
 
-ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工具。当前为 **5.2.1 SendInput 版**，仅支持 DualSense USB；键盘和鼠标通过 Windows 自带的 `SendInput` 输出，无需安装 Interception。
+ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工具。当前为 **5.5.1 中英文双布局 SendInput 版**，仅支持 DualSense USB；键盘和鼠标通过 Windows 自带的 `SendInput` 输出，无需安装 Interception。
 
 ## 日常使用
 
@@ -10,11 +10,13 @@ ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工�
 | 防止原始手柄产生重复输入 | 保留现有 HidHide 配置，白名单仍为 `C:\ShikiPad\ShikiPad.exe` |
 | 找回 Interception 原版 | GitHub 的 `main` 分支保留原版；SendInput 版位于 `codex/sendinput` |
 
-本版只替换键鼠输出方式，保留原有手柄读取、映射、手势、修饰绑定、连发和时序参数。管理员运行要求和 HidHide 用法保留。HidHide 本身是独立驱动，因此本版表示“无需 Interception”，不表示移除了所有第三方驱动。
+默认使用中文全拼布局。在程序的主页或映射说明页按 **Tab** 切换中英文布局，Enter 仍切换页面，Esc 仍退出。数字、符号和 Base 操作在两种布局中均使用你原来设计的位置。布局切换只影响随后按下的动作，不会改写已经等待输出或保持中的动作，也不会切换 Windows 输入法；重新启动默认回到中文。
+
+本版增加独立语言布局，并修复等待判定期间同一动作键快速再次按下时丢失点击的问题。5.5.1 将组合窗口改为 **35 ms**、动作前置窗口改为 **40 ms**、本体累计截点改为 **30 ms**，含义与例子见[键层解析与时序](#键层解析与时序)。手柄读取、手势、修饰绑定、连发、管理员运行要求和 HidHide 用法保留。HidHide 本身是独立驱动，因此本版表示“无需 Interception”，不表示移除了所有第三方驱动。
 
 **替换 EXE 不会自动卸载电脑上已有的 Interception。**本版不再包含它的运行库、安装器或安装/卸载入口。若需要卸载已安装的 Interception，先关闭 ShikiPad，从完整的旧版文件夹运行 `卸载驱动.cmd`，确认卸载成功后保存工作并重启 Windows。本次本地原版备份为 `ShikiPad-release-interception-7fb6d57.zip`，包含原版程序和驱动管理入口；该备份不提交到 GitHub。回退时从旧包恢复原版文件，按旧版说明安装 Interception 并重启。
 
-当前 SendInput 包是未签名的内部验证版本。输入规则保持原样，但仍需在实际手柄和常用软件中验证接收效果；不承诺安全桌面或采用特殊输入处理的软件与 Interception 完全等效。
+当前 SendInput 包是未签名的内部验证版本。新布局与时序调整后的手感、输入接收效果仍需在实际手柄和常用软件中验证。
 
 ## AI 编程（vibe coding）常用操作
 
@@ -31,20 +33,16 @@ ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工�
 
 这里的“左区 / 右区”按滑动起点和首次识别方向判定，并非简单地以手指最后停留的位置区分；详细规则和连发行为见[触控板手势](#触控板手势)。
 
-## 界面预览
+## 页面与键位图
 
-启动后的主界面；按 `Enter` 可查看手柄映射说明：
+保留原有主界面和映射说明页的排版。按 `Enter` 查看当前语言的实时键位图，按 `Tab` 切换布局，按 `Esc` 退出。映射说明页展示基础层、肩键与扳机键层，以及摇杆、触控板和静音键的作用；键位图直接读取实际输出表。
 
-![ShikiPad 主界面](assets/readme/shikipad-home.png)
-
-映射说明页展示基础层、肩键与扳机键层，以及摇杆、触控板和静音键的作用。触控板各方向手势的完整映射见下文[触控板手势](#触控板手势)。
-
-![ShikiPad 映射说明页](assets/readme/shikipad-keymap.png)
+当前两套完整布局见[打字键层](#打字键层)，设计方法及语料验证见[布局说明](docs/KEYBOARD_LAYOUTS.md)。`assets/readme/` 中旧版截图仅作历史外观参考，不代表 5.5.1 键位。
 
 ## 修改入口
 
 - 默认参数集中在 `src/Config.cs`。当前程序直接 `new Config()`，没有读取 JSON 配置文件；修改参数后需要重新构建和发布。
-- 键层字符表位于 `src/MappingEngine.cs`。
+- 中英文字母表及共用数字符号位于 `src/TypingLayouts.cs`；键层选择和旧版基线表位于 `src/MappingEngine.cs`。界面键位图直接读取运行时表。
 - 触控板手势识别、区域归属、连发、按压互斥和快捷键输出位于 `src/MapperForm.cs`。
 - 鼠标和滚轮积分分别位于 `src/RightStickMouseIntegrator.cs`、`src/LeftStickScrollIntegrator.cs`。
 - `Enabled = true` 是启动时默认启用状态；SendInput 键盘输出固定使用扫描码，不提供虚拟键码切换。
@@ -56,11 +54,12 @@ ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工�
 | `src/` | 程序源码 |
 | `tests/` | 逻辑测试 |
 | `assets/` | 图标、程序清单与 README 截图 |
-| `docs/` | 发布记录与第三方许可说明 |
+| `docs/` | 布局设计、发布记录与第三方许可说明 |
 | `scripts/` | 发布脚本 |
 | `ShikiPad.exe` | SendInput 版单文件主程序 |
 | `ShikiPad.zip` | 本地发布产物；位于根目录但被 Git 忽略 |
 | `ShikiPad-release-interception-7fb6d57.zip` | 本次本地原版备份，包含旧驱动安装/卸载入口，被 Git 忽略 |
+| `ShikiPad-release-sendinput-5.2.1-before-layouts.zip` | 本次改布局前的 SendInput 版备份，被 Git 忽略 |
 | `bin/`、`obj/` | 编译自动生成的目录，日常使用无需打开 |
 
 ## 支持范围
@@ -79,7 +78,7 @@ ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工�
 将下面这句话复制给支持本机终端和文件操作的 Agent：
 
 ```text
-按照 codex/sendinput 分支的 README 帮我安装 https://github.com/ForestOuting/ShikiPad.git 的 5.2.1 SendInput 版，保留 HidHide，不安装 Interception，也不要自动卸载系统已有驱动。
+按照随包 README 帮我安装本地 ShikiPad.zip 中的 5.5.1 中英文双布局 SendInput 版，保留 HidHide，不安装 Interception，也不要自动卸载系统已有驱动。
 ```
 
 启动时仍需确认 UAC 权限提示。安装本版程序不需要安装 Interception 或为它重启；若另行卸载旧驱动，请按旧版卸载入口的提示完成重启。
@@ -126,14 +125,17 @@ ShikiPad 是面向有线 PS5 DualSense 的 Windows 原生手柄键鼠映射工�
 | `ShikiPad.exe` | 单文件主程序 |
 | `README.md` | 中文说明文档 |
 | `docs/RELEASE_NOTES.md` | 版本记录 |
+| `docs/KEYBOARD_LAYOUTS.md` | 两套布局的设计与验证结果 |
+| `docs/COMMON_SEQUENCES.md` | 高频组合、路径及切层次数对比 |
+| `docs/LAYOUT_EVALUATION.json` | 键位、指标和约束的机器可读记录 |
 | `docs/THIRD_PARTY_NOTICES.md` | 系统依赖与第三方组件说明 |
 | `SHA256SUMS.txt` | 发布包内文件的 SHA-256 校验值 |
 | `BUILD_INFO.txt` | 发布版本、源码提交与工作树状态 |
-| `assets/readme/` | 本文引用的界面截图；图标与程序清单已嵌入主程序 |
+| `assets/readme/` | 旧版外观参考截图；当前键位请看程序页面及本文表格 |
 
-正式打包使用 `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_release.ps1`。脚本会要求 Git 工作树干净、记录源码提交、重新发布当前工作树、校验 5.2.1 文件版本、重建文件清单，并在根目录生成被 Git 忽略的 `ShikiPad.zip`；该 ZIP 可用于 GitHub Release 附件，不应加入 Git 提交。脚本默认拒绝没有有效 Authenticode 签名的主程序；当前未签名内部验证包使用 `-AllowUnsigned`，仅在需要打包未提交的本地改动时额外传入 `-AllowDirty`。`shikipad.default` 不属于程序输入，也不会进入新发布包。本版发布包不包含 Interception 文件或驱动管理入口，也不捆绑 HidHide。
+正式打包使用 `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_release.ps1`。脚本会要求 Git 工作树干净、记录源码提交、重新发布当前工作树、校验 5.5.1 文件版本、重建文件清单，并在根目录生成被 Git 忽略的 `ShikiPad.zip`；该 ZIP 可用于 GitHub Release 附件，不应加入 Git 提交。脚本默认拒绝没有有效 Authenticode 签名的主程序；当前未签名内部验证包使用 `-AllowUnsigned`，仅在需要打包未提交的本地改动时额外传入 `-AllowDirty`。`shikipad.default` 不属于程序输入，也不会进入新发布包。本版发布包不包含 Interception 文件或驱动管理入口，也不捆绑 HidHide。
 
-从源码构建本版时，使用 .NET 8 SDK 并选择 `codex/sendinput` 分支；`main` 保存 Interception 原版。例如，在尚未创建的目标目录中克隆：
+从源码构建时，使用 .NET 8 SDK；`codex/sendinput` 为当前 5.5.1 中英文双布局 SendInput 分支，`main` 保存 Interception 原版。本次更新内容见[版本说明](docs/RELEASE_NOTES.md)。例如，在尚未创建的目标目录中克隆：
 
 ```powershell
 git clone --branch codex/sendinput https://github.com/ForestOuting/ShikiPad.git C:\ShikiPad-SendInput
@@ -165,10 +167,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_release.ps
 
 ## 控制台页面
 
-| 页面 | Enter | Esc |
-|---|---|---|
-| 主界面 | 打开映射说明 | 退出 ShikiPad |
-| 映射说明 | 返回主界面 | 退出 ShikiPad |
+| 页面 | Enter | Tab | Esc |
+|---|---|---|---|
+| 主界面 | 打开映射说明 | 切换中英文键位 | 退出 ShikiPad |
+| 映射说明 | 返回主界面 | 切换中英文键位 | 退出 ShikiPad |
 
 关闭控制台窗口也会退出，并释放程序保持中的键盘和鼠标输入。
 
@@ -188,11 +190,11 @@ Home 蓄力可收集多个左摇杆修饰键。先触发修饰键再短按 Home�
 
 ### 模块身份与独立 45 ms 修饰绑定
 
-Base 只表示在没有按住任何 L1/R1 肩键或 L2/R2 扳机键时，方向键和四个图案键这八个位置对应的 `↑ → Tab Esc ← ↓ Space Enter`。肩键与扳机键只负责选择单层或组合层；触控板按压、Home、静音键、L3/R3 鼠标键都属于各自的独立模块，不属于 Base，也不参与键层选择。
+Base 表示方向键和四个图案键这八个位置对应的 `↑ → Tab Esc ← ↓ Space Enter`。没有有效肩键/扳机层时使用 Base；组合层拆开后，已经被该组合消费但仍保持的组件不恢复为单层，释放并重新按下后才重新取得单层资格，因此也可能在仍保持组件时使用 Base。肩键与扳机键只负责选择单层或组合层；触控板按压、Home、静音键、L3/R3 鼠标键都属于各自的独立模块，不属于 Base，也不参与键层选择。
 
 修饰键来源只有左摇杆四个斜向扇区的 `Left Shift`、`Left Ctrl`、`Left Win`、`Left Alt`，以及 Create/Options 的 `Right Alt`、`Right Ctrl`。独立的 45 ms 修饰绑定只覆盖两类输入：L3/R3 鼠标键，以及方向键/图案键这八个动作位置在 Base、单层和组合层中的全部输出。Home、触控板三个按压键、静音键、摇杆滚轮、右摇杆移动和触控板滑动都不进入该窗口。
 
-键层先完全按照自己的 45/15/35/20/30 ms 规则解析，修饰键不会获得键层优先级，也不会冻结、回退或改写动作所属键层。动作按下时已经存在的修饰键，或动作按下后 45 ms 内出现的修饰键，只与最终由纯键层逻辑解析出的输出绑定。
+键层先按照自己的 25/15/35/20/30 ms 规则解析，修饰键不会获得键层优先级，也不会冻结、回退或改写动作所属键层。动作按下时已经存在的修饰键，或动作按下后 45 ms 内出现的修饰键，只与最终由纯键层逻辑解析出的输出绑定。
 
 绑定归属于动作本身：单次虚拟点按会由修饰键完整包住；非连发的真实保持输出和 L3/R3 会让绑定引用保持到对应动作释放。Base 方向键等连发输入采用完整组合脉冲：首发以及之后每个连发节拍都会依次按下绑定修饰键和动作键，再依次释放动作键和该次绑定修饰键；因此不会出现修饰键一直保持、期间只重复动作键的状态。物理修饰键即使提前松开，已经记录的绑定掩码仍会用于后续每个连发脉冲，直到动作键本身松开。Home 只运行原有蓄力状态机，不作为 45 ms 窗口的被绑定动作；蓄力已经锁住的左摇杆修饰键仍会随 Base 方向键的每个连发脉冲一起触发和释放。
 
@@ -422,15 +424,35 @@ Base 只表示在没有按住任何 L1/R1 肩键或 L2/R2 扳机键时，方向�
 
 ## 打字键层
 
-下表列顺序为 `↑ → □ △ ← ↓ × ○`。
+默认中文全拼；程序页面按 `Tab` 切换英文，重新启动回到中文。下表列顺序为 `↑ → □ △ ← ↓ × ○`。全拼中的 ü 使用 `v`。不强制左右手交替；相邻方向同手衔接允许，重点减少切层、同侧食指肩键/扳机移位及切层同时十字反向。
+
+### 中文全拼
+
+| 键层 | ↑ | → | □ | △ | ← | ↓ | × | ○ |
+|---|---|---|---|---|---|---|---|---|
+| L1 | e | x | i | l | d | a | n | g |
+| R1 | j | y | s | c | h | o | u | z |
+| L2 | v | b | w | 1 | k | q | 3 | 2 |
+| R2 | 0 | t | m | p | - | = | r | f |
+
+`dan` 在 L1 内依次按 `←、↓、×`；`ing` 在 L1 内依次按 `□、×、○`，右拇指相邻移动。高频 `ng、an、ia、en、xi、in、de` 均在 L1，`sh、zh、ch、hu、ou、uo` 均在 R1；`ang、ian、eng、xian、liang` 也在 L1 内完成。`ji/jian` 改为需要切层，这是扩大高频衔接保护的取舍。
+
+### 英文
+
+| 键层 | ↑ | → | □ | △ | ← | ↓ | × | ○ |
+|---|---|---|---|---|---|---|---|---|
+| L1 | m | f | d | u | c | l | y | o |
+| R1 | r | s | a | i | n | t | e | h |
+| L2 | v | p | k | 1 | g | w | 3 | 2 |
+| R2 | 0 | b | z | j | - | = | x | q |
+
+`the` 在 R1 内依次为 `↓、○、×`，`you` 在 L1 内依次为 `×、○、△`。本版固定原数字标点位置，让每种语言全部 26 个字母参与搜索。字母频率与常用片段是主要目标，整词和技术词没有额外优待权重；保护中文 209 种、英文 100 种衔接免于“切层＋立即十字反向”。语料范围、保护衔接与取舍见[布局说明](docs/KEYBOARD_LAYOUTS.md)，高频组合路径见[常用组合](docs/COMMON_SEQUENCES.md)。
+
+### 两种语言共用
 
 | 键层 | ↑ | → | □ | △ | ← | ↓ | × | ○ |
 |---|---|---|---|---|---|---|---|---|
 | Base | ↑ | → | Tab | Esc | ← | ↓ | Space | Enter |
-| R1 | o | p | j | i | n | m | k | l |
-| L1 | w | d | q | e | a | s | z | x |
-| R2 | 0 | g | y | u | - | = | b | h |
-| L2 | r | f | t | 1 | c | v | 3 | 2 |
 | R1 + L1 | 4 | , | . | 7 | 5 | 6 | 9 | 8 |
 | L2 + R2 | + | / | & | * | _ | ^ | $ | % |
 | L1 + R2 | [ | ] | ! | ? | { | } | @ | # |
@@ -454,20 +476,28 @@ Base 方向键以及独立触控板模块的 `Delete` / `Backspace` 复用同一
 
 如果多个键层输入落在同一个轮询时间戳，单层优先级为 `R1 > L1 > R2 > L2`。组合层只检查按下时间最新的两个仍按住的键层输入，并且二者必须落在组合窗口内。
 
-键层切换恢复为纯键层状态机。动作键按下后，键层前窗只观察肩键/扳机键，不读取任何修饰键状态。组合层作为独立键层处理：帮助形成组合的单层按压仍占用 35 ms 时间线，但不算作组合层自身的本体占用。修饰绑定另用独立 45 ms 窗口记录掩码，只包装最终输出，不参加以下键层归属计算。
+键层切换使用纯键层状态机。动作键按下后，键层前窗只观察肩键/扳机键，不读取任何修饰键状态。组合层作为独立键层处理：帮助形成组合的单层按压仍占用 40 ms 时间线，但不算作组合层自身的本体占用。修饰绑定另用独立 45 ms 窗口记录掩码，只包装最终输出，不参加以下键层归属计算。
 
 | 参数 | 当前值 | 作用 |
 |---|---:|---|
 | `TriggerPressThreshold` | 0.25 | L2/R2 进入键层的按下阈值 |
 | `TriggerReleaseThreshold` | 0.15 | L2/R2 退出键层的释放阈值；低于按下阈值形成迟滞，减少边界抖动 |
-| `ComboLayerWindowMs` | 25 ms | 两个键层输入形成组合层的最大间隔 |
-| `ActionLayerGraceMs` | 35 ms | 动作键与肩键/扳机键之间的纯键层前置判定窗口 |
+| `ComboLayerWindowMs` | 35 ms | 两个合法组件形成组合层的最大按下间隔；边界计入 |
+| `ActionLayerGraceMs` | 40 ms | 动作键按下后允许新肩键/扳机键接管的纯键层前置判定窗口；边界计入，仍受本体追溯限制 |
 | `ActionLayerPostGraceMs` | 15 ms | 释放旧键层后按下新键层的空窗归属；发生过键层重叠时不获得此后置窗口 |
-| `LayerOccupancyCarryCutoffMs` | 20 ms | 向前追溯键层本体占用的累计截点 |
+| `LayerOccupancyCarryCutoffMs` | 30 ms | 向前追溯键层本体占用的累计截点；达到截点后不能跨入更早区段 |
 | `LayerTakeoverWindowMs` | 30 ms | 截点落在旧键层本体后允许继续追溯的累计上限 |
 | `ModifierBindingWindowMs` | 45 ms | 八个动作位置与 L3/R3 的独立修饰绑定窗口；边界计入，不影响键层归属 |
 
-`ActionLayerGraceMs` 是键层向前观察范围；累计本体达到 20 ms 后，只能继续停留在当前边界键层本体内追到 30 ms，不能再跨入更早键层或其前置窗口。`ModifierBindingWindowMs` 与这条时间线相互独立：动作仍会等待两者中较长的窗口结束再输出，但超过 35 ms 才按下的肩键/扳机键不能再改变该动作的键层。缩短这个窗口可减少快速换层时前一个字符被新键层接管的概率；在 35 ms 内发生的换层仍可能接管。键层参数直接影响快速输入时的归属和延迟，修改时建议一次只调整一个值并进行连续快速输入测试。所有参数会在启动时验证，非法死区、间隔或曲线类型会直接给出启动错误，不再带着无效值运行。
+`ActionLayerGraceMs` 是动作按下后的 40 ms 观察范围。向前追溯时，累计本体达到 30 ms 就停止跨段；本体追溯上限也为 30 ms，因此到达截点后没有额外的本体延长额度，不能再跨入更早键层或其前置窗口。动作已经处于旧单层本体时，新单层最多可追溯到动作后 30 ms（边界计入）。若本体之前还有 Base 区段，即使总时间不超过 40 ms，本体恰好达到 30 ms 也不能越过它再追到 Base 动作。
+
+`ModifierBindingWindowMs` 与这条时间线相互独立。动作通常等待 `max(40,45)=45 ms` 后输出；若动作之后才被一个新单层接管，还会等该单层的 35 ms 组合窗口结束（恰好 35 ms 仍等待）。例如 Base 动作在 0 ms 按下、R2 在 40 ms 接管并保持单层，要到 75 ms 之后的首个轮询才输出。R2 本身越过 0.25 阈值后当轮即参与选层，没有额外固定的“R2 前置延迟”。
+
+**保留晚组合撤销规则：**超过动作后 40 ms 的新层一般不能接管该动作，但若等待中的单层是后来合法组合的组件，晚形成的组合会撤销这次单层接管，回退到动作最初的键层。例如 Base 动作 0 ms、R1 20 ms、L1 41 ms（两肩间隔 21 ms），最终回到 Base；若 L1 恰好在 40 ms 按下，则仍在前窗内，该动作归属 R1＋L1 组合层。这是独立于修饰绑定的纯键层规则。已经完成判定并输出的动作不会被撤销。
+
+R1＋R2 和 L1＋L2 不是合法组合，保持这两个键不会因时间经过而自动形成组合。若第三个层键参与，最新层释放后，较早但仍按住的两个合法组件可以重新显现为组合；判断仍使用它们原始的按下时间差。组合组件被消费后的单层过滤也继续保留。
+
+每次动作键的真实按下都拥有独立的归属、修饰和布局快照。前一次仍等待输出时再次松开并按下，会按同位置的物理先后顺序保留两次点击；后一次不会借用前一次的窗口提前输出。所有参数会在启动时验证，非法死区、间隔或曲线类型会直接给出启动错误，不再带着无效值运行。
 
 ## 故障排查
 

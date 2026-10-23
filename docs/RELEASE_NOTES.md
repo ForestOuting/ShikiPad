@@ -1,5 +1,75 @@
 # Release Notes
 
+## 5.5.1 中英文独立布局与键层时序调整 - 2026-10-23
+
+本次 GitHub 更新汇总了上一版 5.2.1 之后的布局优化、快速连按修复与时序调整；中间版本的研究过程保留在下方记录中。
+
+### 中英文独立键位
+
+- 新增中文全拼和英文两套字母布局，启动时默认中文。两种语言的全部 26 个字母分别参与优化；数字、标点和 Base 操作沿用原来的位置。
+- 根据字母频率、双字母与三字母衔接安排位置，结合每侧一个食指切换肩键/扳机的握持方式，关注切层、同侧食指移位和十字键反向的共同成本。允许同一拇指连续按相邻位置，不强制左右手交替。
+- 两种语言的前 10 个高频字母均放在肩键层；中文 `ang`、`ing`、`dan` 等组合可在同层完成。整词和技术词不额外加权，避免为少数词牺牲其他组合。
+- 在主页或映射说明页按 **Tab** 切换布局，**Enter** 切换页面，**Esc** 退出。切换布局不切换 Windows 输入法；已按下或等待输出的动作保留按下时的语言。
+- 页面键位图直接使用实际映射表，README 提供两套完整键位。布局报告列出改善、退步及适用范围，实际手感仍需本人使用手柄验证。
+
+### 快速连按修复
+
+- 修复同一动作位置在上一下尚未完成判定时再次按下，可能丢失后一次点击的问题。
+- 每次按下分别记录键层、修饰窗口和语言，按同位置的物理按下顺序输出；退出和清理时一并释放。
+
+### 时序默认值
+
+| 参数 | 原值 | 5.5.1 |
+|---|---:|---:|
+| `ComboLayerWindowMs` | 25 ms | **35 ms** |
+| `ActionLayerGraceMs` | 35 ms | **40 ms** |
+| `LayerOccupancyCarryCutoffMs` | 20 ms | **30 ms** |
+
+- `LayerTakeoverWindowMs` 仍为 30 ms，`ModifierBindingWindowMs` 仍为 45 ms，`ActionLayerPostGraceMs` 仍为 15 ms。
+- 通常输出仍等待 45 ms；若 Base 动作后 40 ms 才由新单层接管并保持单层，需要等到动作后 75 ms 之后的首个轮询才输出。
+- 保留用户选定的晚组合撤销规则：例如 Base 动作在 0 ms 按下、R1 在 20 ms 按下、L1 在 41 ms 按下，等待中的动作回到最初 Base；若 L1 恰好在 40 ms 按下，则仍可归属合法组合层。
+- README 同步参数含义、包含边界的判定和本体追溯限制。
+
+### 验证与文档
+
+- 通过实际 MapperForm 的 **13,788 组连续输入序列、41,891 个字母**回归，覆盖双语所有双字母组合、语料三字母、中文拼音及技术词串。
+- 通过 35/40 ms 窗口、30 ms 本体截点与上限、45 ms 独立修饰窗口、晚组合撤销和快速重复点按等边界测试。测试使用假输出，不向系统发送按键。
+- 新增布局设计说明、常用组合路径和机器可读评估数据。更新 5.5.1 EXE、发布脚本和文件校验清单。
+- 沿用 Windows SendInput 输出，无需安装 Interception；HidHide 配置方式沿用原版。运行需要有线 DualSense 和 x64 .NET 8 Desktop Runtime，当前程序仍为未签名内部验证包。
+
+## 5.5.0 字母频率与衔接优先 - 2026-10-23
+
+- Reoptimized all 26 letters with higher shoulder-frequency priority and broader protection: 209 Chinese and 100 English directed transitions exclude immediate layer change plus D-pad reversal. Original numbers, punctuation and Base positions are fixed.
+- No whole-word or technical-term bonus. Chinese ing uses a same-layer adjacent face-button route; English c moves to a shoulder layer. Published both gains and regressions, including higher Chinese layer-switch counts.
+- Compared strict top-16 shoulder constraints with free-letter searches, independently checked 796 candidate records and all 140,075 two/three/four-letter neighbors per selected layout. Added 108 weight combinations, complete words/syllables, technical vocabulary and literal-space sentence diagnostics; no global optimality or measured-speed claim.
+- Added actual-mapper continuous-input regressions: 13,788 sequences / 41,891 letters, every letter pair in two layer-overlap conditions, observed trigrams, Chinese syllables and technical strings. A fake sink produces no system keystrokes.
+- Application changes from 5.4.0 are letter tables and version metadata only. Timing, gestures, language snapshots, digits/symbols and console Enter/Tab/Esc behavior remain intact.
+
+## 5.4.0 全部字母重新优化 - 2026-10-23
+
+- Reoptimized all 26 letters independently for Chinese full pinyin and English, with every original number/symbol position fixed. Removed 5.3.1's restriction to moving only three displaced letters.
+- Used two seed batches, four cost preferences, 1,024 pair-stage starts and 64 direct full-objective starts per language. Refined shortlisted candidates using complete trigram costs, then exhausted all 140,075 reassignments involving up to four letters at each final layout. No improving neighbor was found under the declared model; this is not proof of global optimality.
+- Independently verified 458 candidate scores, protection constraints, selected layouts and corpus metrics. Chinese 162 protected pairs and English 50 protected pairs still have no combined layer change and immediate D-pad reversal. All 64 outputs and original nonletter positions are preserved.
+- Added common 2–6-letter/word/pinyin paths, external-corpus tradeoffs and machine-readable evaluation data. Some sequences regress; no measured typing-speed claim is made.
+- Changed only layout tables and related documentation/version metadata in the application. Console shortcuts, timing, language snapshots, gestures and the rapid-press fix are unchanged.
+
+## 5.3.1 恢复原数字标点位置 - 2026-10-23
+
+- Restored every number and symbol to the user's original layer/button position in both languages, including the original R1+L1 row and R2 `0`, `-`, `=`.
+- Kept 23 letter positions per language. Only the three letters displaced by restored symbols moved: Chinese `f` to L2 Square, `l` to R2 Square, `m` to R2 Triangle; English `b` to L2 Square, `v` to R2 Square, `w` to R2 Triangle. Selected among all six assignments using the existing training model.
+- Rechecked the Chinese 162 and English 50 protected transitions, full 64-output inventory and external corpus metrics. Added a regression requiring all 38 nonletter outputs to remain at their legacy positions.
+- Page shortcuts, input timing, gestures, language snapshots and the rapid-press fix are unchanged.
+
+## 5.3.0 中英文双布局 - 2026-10-23
+
+- Added separate Chinese full-pinyin and English letter layouts. Both preserve all 64 direct character outputs and share number/symbol positions and the Base layer. Startup defaults to Chinese.
+- Tab in either console page switches layouts; Enter retains page navigation and Esc retains exit on both pages. Switching layouts does not switch the Windows IME. Pending/held actions keep the language selected at their physical press.
+- Generated the displayed key diagrams from the same tables used by the mapper, eliminating a separate hard-coded manual map.
+- Fixed rapid repeated presses of the same action button while an earlier press is still pending. Each press retains its own layer trace and modifier window; same-position presses are emitted in physical order and cleared on runtime cleanup.
+- Preserved all layer/modifier timing parameters, trigger hysteresis, late-combo cancellation, combo component consumption, gestures and repeat rules. Clarified the late-combo exception, extra combo-settle wait and consumed-component Base fallback in README.
+- Layout optimization permits adjacent same-thumb movement and does not impose alternation. Protected Chinese training syllable transitions/high-frequency cross-syllable pairs and the top 50 English training bigrams exclude a layer change combined with immediate D-pad reversal. These corpus constraints are not a proof of global optimum or measured typing speed.
+- Uses the existing SendInput backend and HidHide path. No driver installation or system input-method change is performed.
+
 ## 5.2.1 SendInput 版 - 2026-10-22
 
 - Replaced the Interception output backend with Windows `SendInput`. Keyboard events retain scan-code and extended-key flags; keyboard, mouse-button, wheel and pointer events are submitted one at a time in the existing synchronous order.

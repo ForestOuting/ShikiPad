@@ -3,6 +3,8 @@ using System.Globalization;
 
 internal sealed class MappingEngine {
     private readonly KeyStroke[][] _tables;
+    private readonly KeyStroke[][] _chineseTables;
+    private readonly KeyStroke[][] _englishTables;
 
     public MappingEngine() {
         _tables = new KeyStroke[(int)Layer.Reserved][];
@@ -42,6 +44,8 @@ internal sealed class MappingEngine {
             KeyStroke.Of(PhysicalKey.Grave),
             KeyStroke.Of(PhysicalKey.Backslash)
         };
+        _chineseTables = TypingLayouts.CreateTables(TextInputLanguage.Chinese, _tables);
+        _englishTables = TypingLayouts.CreateTables(TextInputLanguage.English, _tables);
     }
 
     public Layer Resolve(bool l1, bool r1, bool l2, bool r2, double l1Ms, double r1Ms, double l2Ms, double r2Ms, double comboLayerWindowMs) {
@@ -94,11 +98,23 @@ internal sealed class MappingEngine {
     }
 
     public KeyStroke Lookup(Layer layer, ActionButton action) {
+        return LookupTable(_tables, layer, action);
+    }
+
+    public KeyStroke Lookup(Layer layer, ActionButton action, TextInputLanguage language) {
+        switch (language) {
+            case TextInputLanguage.Chinese: return LookupTable(_chineseTables, layer, action);
+            case TextInputLanguage.English: return LookupTable(_englishTables, layer, action);
+            default: return KeyStroke.None;
+        }
+    }
+
+    private static KeyStroke LookupTable(KeyStroke[][] tables, Layer layer, ActionButton action) {
         if (layer == Layer.Reserved) return KeyStroke.None;
         int li = (int)layer;
         int ai = (int)action;
-        if (li < 0 || li >= _tables.Length || ai < 0 || ai >= 8) return KeyStroke.None;
-        return _tables[li][ai];
+        if (li < 0 || li >= tables.Length || ai < 0 || ai >= 8) return KeyStroke.None;
+        return tables[li][ai];
     }
 
     private static KeyStroke[] Row(params PhysicalKey[] keys) {
@@ -116,6 +132,30 @@ internal sealed class MappingEngine {
         if (stroke.IsNone) return "None";
         if (!stroke.Shift) return KeyName(stroke.Key);
         return ShiftedKeyName(stroke.Key);
+    }
+
+    public static string KeyLabel(KeyStroke stroke) {
+        if (stroke.Shift) return ShiftedKeyName(stroke.Key);
+        if (stroke.Key >= PhysicalKey.A && stroke.Key <= PhysicalKey.Z) return stroke.Key.ToString().ToLowerInvariant();
+        switch (stroke.Key) {
+            case PhysicalKey.ArrowUp: return "↑";
+            case PhysicalKey.ArrowRight: return "→";
+            case PhysicalKey.ArrowLeft: return "←";
+            case PhysicalKey.ArrowDown: return "↓";
+            case PhysicalKey.Escape: return "Esc";
+            case PhysicalKey.Minus: return "-";
+            case PhysicalKey.Equals: return "=";
+            case PhysicalKey.LeftBracket: return "[";
+            case PhysicalKey.RightBracket: return "]";
+            case PhysicalKey.Backslash: return "\\";
+            case PhysicalKey.Semicolon: return ";";
+            case PhysicalKey.Apostrophe: return "'";
+            case PhysicalKey.Comma: return ",";
+            case PhysicalKey.Period: return ".";
+            case PhysicalKey.Slash: return "/";
+            case PhysicalKey.Grave: return "`";
+            default: return KeyName(stroke.Key);
+        }
     }
 
     private static string ShiftedKeyName(PhysicalKey key) {

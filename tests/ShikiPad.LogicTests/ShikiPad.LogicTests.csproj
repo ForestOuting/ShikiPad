@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ShikiPad.csproj" />
+    <None Update="TypingSequenceCases.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

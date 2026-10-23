@@ -25,6 +25,8 @@ static class Program {
         VerifyPureBaseAndLayerSelection(assembly, mapper);
         FaultRegressionTests.Run();
         SendInputRegressionTests.Run();
+        TypingLayoutRegressionTests.Run();
+        RapidActionRegressionTests.Run();
         NotNull(mapper.GetMethod("UpdateTwoFingerContinuationRepeat", BindingFlags.NonPublic | BindingFlags.Instance), "two-finger continuation update remains available");
         NotNull(mapper.GetMethod("TryRecognizeTwoFingerContinuationGesture", PrivateStatic), "two-finger continuation recognition remains available");
         Equal(null, assembly.GetType("MapperForm+TouchGesturePressType"), "hold gesture enum removed");
@@ -42,13 +44,16 @@ static class Program {
         object L1 = Enum.Parse(layerType, "L1");
         object R1 = Enum.Parse(layerType, "R1");
         object R1L1 = Enum.Parse(layerType, "R1L1");
-        Equal(Base, resolve.Invoke(mapping, new object[] { false, false, false, false, 0.0, 0.0, 0.0, 0.0, 25.0 }), "no shoulder or trigger resolves to Base");
-        Equal(L1, resolve.Invoke(mapping, new object[] { true, false, false, false, 100.0, 0.0, 0.0, 0.0, 25.0 }), "one held shoulder resolves its own layer");
-        Equal(R1L1, resolve.Invoke(mapping, new object[] { true, true, false, false, 100.0, 124.0, 0.0, 0.0, 25.0 }), "two compatible shoulders inside 25 ms resolve a combo");
-        Equal(R1, resolve.Invoke(mapping, new object[] { true, true, false, false, 100.0, 126.0, 0.0, 0.0, 25.0 }), "combo outside 25 ms resolves the latest single layer");
+        Equal(Base, resolve.Invoke(mapping, new object[] { false, false, false, false, 0.0, 0.0, 0.0, 0.0, 35.0 }), "no shoulder or trigger resolves to Base");
+        Equal(L1, resolve.Invoke(mapping, new object[] { true, false, false, false, 100.0, 0.0, 0.0, 0.0, 35.0 }), "one held shoulder resolves its own layer");
+        foreach (double gap in new[] { 34.99, 35.0, 35.01 }) {
+            Equal(gap <= 35 ? R1L1 : R1,
+                resolve.Invoke(mapping, new object[] { true, true, false, false, 100.0, 100.0 + gap, 0.0, 0.0, 35.0 }),
+                "compatible shoulders include the 35 ms combo boundary, then use the latest single layer");
+        }
 
         string[] expected = { "ArrowUp", "ArrowRight", "Tab", "Escape", "ArrowLeft", "ArrowDown", "Space", "Enter" };
-        MethodInfo lookup = mappingType.GetMethod("Lookup");
+        MethodInfo lookup = mappingType.GetMethod("Lookup", new[] { layerType, actionType });
         for (int i = 0; i < expected.Length; i++) {
             object stroke = lookup.Invoke(mapping, new[] { Base, Enum.ToObject(actionType, i) });
             Equal(expected[i], stroke.GetType().GetField("Key").GetValue(stroke).ToString(), "Base contains only the eight documented action mappings " + i);
@@ -72,10 +77,10 @@ static class Program {
         Equal(1.5, configType.GetField("MouseSensitivity").GetValue(config), "mouse sensitivity default");
         Equal(0.30, configType.GetField("LeftStickEnterDeadzone").GetValue(config), "left-stick scroll deadzone default");
         Equal(0.50, configType.GetField("LeftStickModifierEnterDeadzone").GetValue(config), "left-stick modifier sector deadzone default");
-        Equal(35, configType.GetField("ActionLayerGraceMs").GetValue(config), "pure layer grace window default");
+        Equal(40, configType.GetField("ActionLayerGraceMs").GetValue(config), "pure layer grace window default");
         Equal(15, configType.GetField("ActionLayerPostGraceMs").GetValue(config), "pure layer post-grace default");
-        Equal(25, configType.GetField("ComboLayerWindowMs").GetValue(config), "combo-layer window default");
-        Equal(20, configType.GetField("LayerOccupancyCarryCutoffMs").GetValue(config), "layer body carry cutoff default");
+        Equal(35, configType.GetField("ComboLayerWindowMs").GetValue(config), "combo-layer window default");
+        Equal(30, configType.GetField("LayerOccupancyCarryCutoffMs").GetValue(config), "layer body carry cutoff default");
         Equal(30, configType.GetField("LayerTakeoverWindowMs").GetValue(config), "layer body takeover cap default");
         Equal(45, configType.GetField("ModifierBindingWindowMs").GetValue(config), "independent modifier binding window default");
         Equal(null, configType.GetField("ActionDecisionWindowMs"), "coupled action decision window removed");
@@ -112,10 +117,10 @@ static class Program {
         Equal(null, mapper.GetMethod("IsModifierWindowEligibleAction", PrivateStatic), "old modifier eligibility classification removed");
         Equal(null, mapper.GetMethod("ResolvePendingActionLayer", PrivateStatic), "modifier cannot override resolved layer");
         MethodInfo resolveLayer = RequiredMethod(mapper, "ResolvePendingLayer");
-        Equal("R1", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "Base"), Enum.Parse(layerType, "Base"), (object)100.0, Enum.Parse(layerType, "R1"), (object)135.0, true, (object)35.0 }).ToString(), "layer pressed at the 35 ms boundary takes over without consulting modifiers");
-        Equal("Base", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "Base"), Enum.Parse(layerType, "Base"), (object)100.0, Enum.Parse(layerType, "R1"), (object)135.01, true, (object)35.0 }).ToString(), "layer pressed after 35 ms cannot take over");
-        Equal("R2", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "L1"), Enum.Parse(layerType, "L1"), (object)100.0, Enum.Parse(layerType, "R2"), (object)135.0, true, (object)35.0 }).ToString(), "R2 can still take over a pending L1 s at the shortened boundary");
-        Equal("L1", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "L1"), Enum.Parse(layerType, "L1"), (object)100.0, Enum.Parse(layerType, "R2"), (object)135.01, true, (object)35.0 }).ToString(), "R2 after the shortened boundary cannot turn pending s into equals");
+        Equal("R1", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "Base"), Enum.Parse(layerType, "Base"), (object)100.0, Enum.Parse(layerType, "R1"), (object)140.0, true, (object)40.0 }).ToString(), "layer pressed at the 40 ms boundary takes over without consulting modifiers");
+        Equal("Base", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "Base"), Enum.Parse(layerType, "Base"), (object)100.0, Enum.Parse(layerType, "R1"), (object)140.01, true, (object)40.0 }).ToString(), "layer pressed after 40 ms cannot take over");
+        Equal("R2", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "L1"), Enum.Parse(layerType, "L1"), (object)100.0, Enum.Parse(layerType, "R2"), (object)140.0, true, (object)40.0 }).ToString(), "layer rule includes 40 ms when the occupancy trace reaches the action start");
+        Equal("L1", resolveLayer.Invoke(null, new[] { Enum.Parse(layerType, "L1"), Enum.Parse(layerType, "L1"), (object)100.0, Enum.Parse(layerType, "R2"), (object)140.01, true, (object)40.0 }).ToString(), "layer rule rejects arrivals beyond 40 ms even when the occupancy trace reaches the action start");
 
         MethodInfo touchRepeat = RequiredMethod(mapper, "IsTouchpadClickRepeatKey");
         Equal(true, touchRepeat.Invoke(null, new[] { Enum.Parse(keyType, "Delete") }), "Delete is immediate repeat input");
@@ -348,6 +353,10 @@ static class Program {
         object config = Activator.CreateInstance(configType);
         validate.Invoke(config, null);
 
+        configType.GetField("LayerOccupancyCarryCutoffMs").SetValue(config, 31);
+        ExpectInvocationFailure(() => validate.Invoke(config, null), "body carry cutoff may equal, but cannot exceed, the 30 ms takeover cap");
+
+        config = Activator.CreateInstance(configType);
         configType.GetField("RightStickDeadzone").SetValue(config, 1.0);
         ExpectInvocationFailure(() => validate.Invoke(config, null), "right-stick deadzone cannot make normalization divide by zero");
 

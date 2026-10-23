@@ -47,6 +47,11 @@ internal struct KeyStroke {
     }
 }
 
+internal enum TextInputLanguage {
+    Chinese,
+    English
+}
+
 internal enum Layer {
     Base,
     L1,

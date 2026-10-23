@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [switch]$AllowUnsigned,
     [switch]$AllowDirty
@@ -71,8 +71,8 @@ if ($LASTEXITCODE -ne 0) {
 
 $publishedExe = Join-Path $publishDir 'ShikiPad.exe'
 $version = (Get-Item -LiteralPath $publishedExe).VersionInfo
-if ($version.FileVersion -ne '5.2.1.0') {
-    throw "Unexpected file version $($version.FileVersion); expected 5.2.1.0."
+if ($version.FileVersion -ne '5.5.1.0') {
+    throw "Unexpected file version $($version.FileVersion); expected 5.5.1.0."
 }
 
 $signature = Get-AuthenticodeSignature -LiteralPath $publishedExe
@@ -83,6 +83,9 @@ if (!$AllowUnsigned -and $signature.Status -ne 'Valid') {
 $packageFiles = @(
     @{ Source = 'README.md'; Destination = 'README.md' },
     @{ Source = 'docs\RELEASE_NOTES.md'; Destination = 'docs\RELEASE_NOTES.md' },
+    @{ Source = 'docs\KEYBOARD_LAYOUTS.md'; Destination = 'docs\KEYBOARD_LAYOUTS.md' },
+    @{ Source = 'docs\COMMON_SEQUENCES.md'; Destination = 'docs\COMMON_SEQUENCES.md' },
+    @{ Source = 'docs\LAYOUT_EVALUATION.json'; Destination = 'docs\LAYOUT_EVALUATION.json' },
     @{ Source = 'docs\THIRD_PARTY_NOTICES.md'; Destination = 'docs\THIRD_PARTY_NOTICES.md' },
     @{ Source = 'assets\readme\shikipad-home.png'; Destination = 'assets\readme\shikipad-home.png' },
     @{ Source = 'assets\readme\shikipad-keymap.png'; Destination = 'assets\readme\shikipad-keymap.png' }
@@ -94,7 +97,7 @@ foreach ($packageFile in $packageFiles) {
 }
 Copy-Item -LiteralPath $publishedExe -Destination (Join-Path $packageDir 'ShikiPad.exe') -Force
 @(
-    'Version: 5.2.1-sendinput',
+    'Version: 5.5.1-dual-layout-sendinput',
     "GitCommit: $gitCommit",
     "WorkingTreeDirty: $isDirty"
 ) | Set-Content -LiteralPath (Join-Path $packageDir 'BUILD_INFO.txt') -Encoding ascii
@@ -147,6 +150,6 @@ foreach ($path in @($publishDir, $packageDir)) {
 if ((Test-Path -LiteralPath $releaseDir) -and @(Get-ChildItem -LiteralPath $releaseDir -Force).Count -eq 0) {
     Remove-Item -LiteralPath $releaseDir -Force
 }
-Write-Host "ShikiPad 5.2.1 SendInput package created: $zipPath"
+Write-Host "ShikiPad 5.5.1 dual-layout SendInput package created: $zipPath"
 Write-Host "ZIP SHA256: $zipHash"
 Write-Host "Upload this ZIP as a GitHub Release asset; do not commit it to the repository."
